@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="210dp"
+    android:height="182dp"
+    android:viewportWidth="210"
+    android:viewportHeight="182">
+
+    <!-- Background soft pink halo (lebih besar dari api) -->
+    <path
+        android:fillColor="#FFF0EE"
+        android:pathData="M105,8
+                          C128,6 158,30 164,56
+                          C176,80 174,110 150,132
+                          C130,150 96,156 72,140
+                          C46,122 34,92 42,64
+                          C52,38 82,14 105,8 z" />
+
+    <!-- Outer stroke/soft border to halo (slightly darker/pinkish glow) -->
+    <path
+        android:fillColor="#FFE6E6"
+        android:pathData="M105,16
+                          C126,14 152,34 156,56
+                          C166,76 162,104 142,124
+                          C124,142 98,146 78,132
+                          C54,114 44,92 50,66
+                          C60,44 84,20 105,16 z" />
+
+    <!-- Main orange flame (base) -->
+    <path
+        android:fillColor="#FF8A00"
+        android:pathData="M105,28
+                          C122,24 142,44 142,72
+                          C158,92 156,118 132,134
+                          C114,148 92,146 76,130
+                          C54,110 64,86 82,72
+                          C96,60 100,44 105,28 z" />
+
+    <!-- Inner top/center brighter orange (to suggest gradient/highlight) -->
+    <path
+        android:fillColor="#FFA726"
+        android:pathData="M110,36
+                          C122,34 136,48 136,68
+                          C148,84 144,104 126,116
+                          C112,126 96,122 88,110
+                          C76,96 84,82 96,72
+                          C102,64 106,48 110,36 z" />
+
+    <!-- White inner cutout (teardrop / bite shape) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M118,86
+                          C132,82 138,98 126,112
+                          C110,130 86,126 94,112
+                          C102,98 110,92 118,86 z" />
+
+    <!-- Small white crescent / bottom highlight -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M100,122
+                          C108,126 126,124 132,118
+                          C128,122 112,128 96,120
+                          C98,122 98,122 100,122 z" />
+
+    <!-- Blue horizontal line across (as in photo) -->
+    <path
+        android:fillColor="#0099FF"
+        android:pathData="M0,98 L210,98 L210,102 L0,102 z" />
+
+</vector>
