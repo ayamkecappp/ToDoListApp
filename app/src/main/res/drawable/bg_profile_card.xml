@@ -4,9 +4,9 @@
 
     <!-- Gradient lembut biru -->
     <gradient
-        android:startColor="#FFFFFF"   <!-- putih atas -->
-    android:endColor="#B3D4F9"     <!-- biru lembut bawah -->
-    android:angle="270"/>
+        android:startColor="#FFFFFF"
+        android:endColor="#B3D4F9"
+        android:angle="270"/>
 
     <!-- Sudut membulat di bawah -->
     <corners

@@ -62,7 +62,7 @@
             android:id="@+id/ivProfile"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:src="@drawable/ic_profile"
+            android:src="@drawable/ic_user"
             android:background="@drawable/circle_bg"
             android:scaleType="centerInside" />
 
@@ -275,7 +275,6 @@
             android:orientation="vertical"
             android:gravity="right"
             android:background="@drawable/rounded_background_light_purple"
-            android:gravity="right"
             android:padding="16dp">
 
             <TextView
@@ -306,8 +305,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:menu="@menu/menu_bottom"
-        app:selectedItemId="@id/nav_profile" />
+        app:menu="@menu/menu_bottom" />
 
     <ImageView
         android:id="@+id/imgFire"

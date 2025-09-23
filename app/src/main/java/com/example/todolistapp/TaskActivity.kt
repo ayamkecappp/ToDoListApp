@@ -23,7 +23,7 @@ class TaskActivity : AppCompatActivity() {
         }
 
         // Tandai nav_task sebagai aktif
-        bottomNav.selectedItemId = R.id.nav_menu
+        bottomNav.selectedItemId = R.id.nav_task
 
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
@@ -33,7 +33,7 @@ class TaskActivity : AppCompatActivity() {
                     startActivity(intent)
                     true
                 }
-                R.id.nav_menu -> {
+                R.id.nav_task -> {
                     // Sudah di TaskActivity, tidak perlu action
                     true
                 }

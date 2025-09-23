@@ -38,15 +38,21 @@ class HomeActivity : AppCompatActivity() {
                     // Sudah di Home
                     true
                 }
-                R.id.nav_menu -> { // <-- ini harus sama dengan XML
+                R.id.nav_task-> {
                     val intent = Intent(this, TaskActivity::class.java)
                     intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                    startActivity(intent)
+                    true
+                }
+                R.id.nav_profile -> {  // <-- ini untuk profile
+                    val intent = Intent(this, ProfileActivity::class.java)
                     startActivity(intent)
                     true
                 }
                 else -> false
             }
         }
+
 
     }
 }
