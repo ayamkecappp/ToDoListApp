@@ -1,0 +1,17 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_home_white"
+        android:title="Home" />
+
+    <item
+        android:id="@+id/nav_task"
+        android:icon="@drawable/ic_history_blue"
+        android:title="Tasks"
+        android:checked="true" />
+
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@drawable/ic_user"
+        android:title="Profile" />
+</menu>

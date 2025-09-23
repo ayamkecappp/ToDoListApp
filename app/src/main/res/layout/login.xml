@@ -27,7 +27,7 @@
         android:layout_height="462dp"
         android:scaleType="centerInside"
         android:src="@drawable/timy1"
-        android:translationY="-30dp"
+        android:translationY="1dp"
         android:elevation="4dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -38,8 +38,8 @@
     <!-- Avatar (dibesarkan, melayang di atas card) -->
     <LinearLayout
         android:id="@+id/login_card"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_width="412dp"
+        android:layout_height="628dp"
         android:layout_marginTop="264dp"
         android:background="@drawable/bg_login_card"
         android:gravity="center"
@@ -62,7 +62,7 @@
             android:layout_marginBottom="16dp"
             android:text="Login"
             android:textColor="#0f2440"
-            android:textSize="18sp"
+            android:textSize="28sp"
             android:textStyle="bold" />
 
         <!-- Input Email -->
@@ -97,8 +97,8 @@
         <!-- Tombol Login -->
         <Button
             android:id="@+id/btn_login"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_width="360dp"
+            android:layout_height="49dp"
             android:layout_marginBottom="20dp"
             android:backgroundTint="#183351"
             android:text="Login"
@@ -107,8 +107,8 @@
 
         <!-- Divider -->
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_width="336dp"
+            android:layout_height="20dp"
             android:layout_marginBottom="12dp"
             android:gravity="center"
             android:orientation="horizontal">
@@ -162,7 +162,7 @@
             android:id="@+id/signup"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="60dp"
             android:gravity="center"
             android:text="Don't have account? Sign Up"
             android:textColor="#233447" />
