@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ProfileActivity">
+
+    <!-- Bagian background biru hanya di atas -->
+
+
+    <!-- Profile Title -->
+
+    <View
+        android:id="@+id/bgTop"
+        android:layout_width="419dp"
+        android:layout_height="219dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_top_blue"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Settings Icon -->
+
+    <TextView
+        android:id="@+id/tvProfile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="56dp"
+        android:text="Profile"
+        android:textColor="#2B0A2B"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/ivSettings"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:src="@drawable/ic_settings"
+        app:tint="#2B0A2B"
+        app:layout_constraintTop_toTopOf="@id/tvProfile"
+        app:layout_constraintBottom_toBottomOf="@id/tvProfile"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginEnd="16dp" />
+
+    <!-- Avatar with camera icon -->
+    <FrameLayout
+        android:id="@+id/avatarContainer"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        app:layout_constraintTop_toBottomOf="@id/tvProfile"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp">
+
+        <ImageView
+            android:id="@+id/ivProfile"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/ic_profile"
+            android:background="@drawable/circle_bg"
+            android:scaleType="centerInside" />
+
+        <ImageView
+            android:id="@+id/ivCamera"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_camera"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="4dp"
+            app:tint="#666" />
+    </FrameLayout>
+
+    <!-- Username -->
+    <TextView
+        android:id="@+id/tvUsername"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Username"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:textColor="#2B0A2B"
+        app:layout_constraintTop_toTopOf="@id/avatarContainer"
+        app:layout_constraintStart_toEndOf="@id/avatarContainer"
+        android:layout_marginStart="12dp" />
+
+    <!-- Edit Profile Button -->
+    <TextView
+        android:id="@+id/btnEditProfile"
+        android:layout_width="wrap_content"
+        android:layout_height="32dp"
+        android:gravity="center"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:text="Edit Profile"
+        android:textSize="12sp"
+        android:textColor="#2B0A2B"
+        android:background="@drawable/bg_edit_button"
+        app:layout_constraintTop_toBottomOf="@id/tvUsername"
+        app:layout_constraintStart_toStartOf="@id/tvUsername"
+        android:layout_marginTop="8dp" />
+
+    <!-- Fire & Streak -->
+    <LinearLayout
+        android:id="@+id/streakLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/avatarContainer"
+        app:layout_constraintBottom_toBottomOf="@id/avatarContainer"
+        android:layout_marginEnd="16dp">
+
+    </LinearLayout>
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="411dp"
+        android:layout_height="34dp"
+        android:layout_marginTop="40dp"
+        android:background="@drawable/tab_unselected_background"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/avatarContainer"
+        app:tabIndicator="@drawable/tab_selected_background"
+        app:tabIndicatorColor="@android:color/transparent"
+        app:tabIndicatorHeight="0dp"
+        app:tabSelectedTextAppearance="@style/TabTextAppearance.Selected"
+        app:tabSelectedTextColor="@color/dark_blue"
+        app:tabTextAppearance="@style/TabTextAppearance.Unselected"
+        app:tabTextColor="@android:color/white">
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Daily" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Weekly" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Monthly" />
+    </com.google.android.material.tabs.TabLayout>
+
+    <TextView
+        android:id="@+id/tvDailyStats"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Daily Productivity Statistics"
+        android:textColor="#2B0A2B"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        app:layout_constraintTop_toBottomOf="@id/tabLayout"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="16dp" />
+
+    <!-- Daily Productivity Number -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toTopOf="@id/tvDailyStats"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginEnd="16dp">
+
+        <ImageView
+            android:id="@+id/imgFire"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:contentDescription="Fire Icon"
+            android:src="@drawable/ic_fire" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="3"
+            android:textColor="#FF6D00"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Bar Chart Placeholder -->
+    <ImageView
+        android:id="@+id/barChart"
+        android:layout_width="0dp"
+        android:layout_height="180dp"
+        android:src="@drawable/ic_barchart_placeholder"
+        android:scaleType="fitCenter"
+        app:layout_constraintTop_toBottomOf="@id/tvDailyStats"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_margin="16dp" />
+
+    <!-- Bottom Stats -->
+    <LinearLayout
+        android:id="@+id/bottomStats"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="right"
+        app:layout_constraintTop_toBottomOf="@id/barChart"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="12dp"
+        android:weightSum="3"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="right"
+            android:background="@drawable/rounded_background_light_purple"
+            android:padding="16dp">
+
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Completed Tasks (9)"
+                android:textColor="@color/white"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:layout_width="45dp"
+                android:layout_height="45dp"
+                android:src="@drawable/ic_completed"
+                android:tint="@color/white"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="right"
+            android:background="@drawable/rounded_background_dark_blue"
+            android:padding="16dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Missed Tasks (10)"
+                android:textColor="@color/white"
+                android:textStyle="bold"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:layout_width="45dp"
+                android:layout_height="45dp"
+                android:layout_marginTop="8dp"
+                android:src="@drawable/ic_missed"
+                android:tint="@color/white" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="right"
+            android:background="@drawable/rounded_background_light_purple"
+            android:gravity="right"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Deleted Tasks (2)"
+                android:textColor="@color/white"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:layout_width="45dp"
+                android:layout_height="45dp"
+                android:layout_marginTop="8dp"
+                android:src="@drawable/ic_deleted"
+                android:tint="@color/white" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Bottom navigation -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        app:itemIconTint="@color/nav_selector"
+        app:labelVisibilityMode="unlabeled"
+        app:itemIconSize="40dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:menu="@menu/menu_bottom"
+        app:selectedItemId="@id/nav_profile" />
+
+    <ImageView
+        android:id="@+id/imgFire"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:contentDescription="Fire Icon"
+        android:src="@drawable/ic_fire"
+        tools:layout_editor_absoluteX="361dp"
+        tools:layout_editor_absoluteY="126dp" />
+
+    <TextView
+        android:id="@+id/tvStreak"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="130"
+        android:textColor="#2B0A2B"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        tools:layout_editor_absoluteX="361dp"
+        tools:layout_editor_absoluteY="166dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

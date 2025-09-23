@@ -4,4 +4,10 @@
     <color name="white">#FFFFFFFF</color>
     <color name="orange">#FFA500</color>
     <color name="gray">#DDDDDD</color>
+    <color name="dark_blue">#283F6D</color>
+    <color name="light_purple">#9AC1F0</color>
+    <color name="purple_tab_indicator">#2B0A2B</color>
+    <color name="purple_tab_text">#FFFFFF</color>
+    <color name="gray_tab_text">#888888</color>
+    <color name="purple_tab_background">#2B0A2B</color>
 </resources>

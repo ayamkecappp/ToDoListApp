@@ -27,6 +27,7 @@
 
         <!-- Input Email -->
 
+        <!-- Input Password -->
         <TextView
             android:id="@+id/tvBackLogin"
             android:layout_width="wrap_content"
@@ -43,7 +44,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Input Password -->
         <TextView
             android:id="@+id/tvSignupTitle"
             android:layout_width="wrap_content"
