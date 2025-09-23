@@ -1,0 +1,677 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#f0f4f9">
+
+    <!-- Header Card -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/headerText"
+        android:layout_width="match_parent"
+        android:layout_height="240dp"
+        android:background="@drawable/bg_card"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Today -->
+        <TextView
+            android:id="@+id/todayText"
+            android:layout_width="165dp"
+            android:layout_height="32dp"
+            android:text="Today ☀"
+            android:textColor="#14142A"
+            android:textSize="29sp"
+            android:fontFamily="@font/lexend"
+            android:textStyle="bold"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginTop="80dp"
+            android:layout_marginStart="16dp"/>
+
+        <!-- October -->
+        <TextView
+            android:id="@+id/octoberText"
+            android:layout_width="147dp"
+            android:layout_height="24dp"
+            android:text="October 23rd"
+            android:textColor="#000000"
+            android:textSize="20sp"
+            android:fontFamily="@font/lexend"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginTop="112dp"
+            android:layout_marginStart="16dp"/>
+
+        <!-- Ikon Calendar -->
+        <ImageView
+            android:id="@+id/btn_calendar"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_calendar"
+            android:contentDescription="Calendar"
+            app:layout_constraintTop_toTopOf="@id/todayText"
+            app:layout_constraintEnd_toStartOf="@id/btn_search"
+            android:layout_marginEnd="16dp" />
+
+        <!-- Ikon Search -->
+        <ImageView
+            android:id="@+id/btn_search"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_search"
+            android:contentDescription="Search"
+            app:layout_constraintTop_toTopOf="@id/todayText"
+            app:layout_constraintBottom_toBottomOf="@id/todayText"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginEnd="16dp" />
+
+
+        <!-- Calendar -->
+        <LinearLayout
+            android:id="@+id/calendar_main"
+            android:layout_width="wrap_content"
+            android:layout_height="66dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            app:layout_constraintTop_toBottomOf="@id/octoberText"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginTop="12dp"
+            android:layout_marginStart="16dp">
+
+            <!-- Kotak template: pakai ulang untuk Mon-Sun -->
+            <LinearLayout
+                android:id="@+id/calendar_item_mon"
+                android:layout_width="48dp"
+                android:layout_height="56dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_calendar_date"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:id="@+id/calendar_text_mon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Mon"
+                    android:textColor="#14142A"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter" />
+
+                <TextView
+                    android:id="@+id/calendar_number_mon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="1"
+                    android:textColor="#14142A"
+                    android:textSize="24sp"
+                    android:fontFamily="@font/inter" />
+            </LinearLayout>
+
+            <!-- Tue -->
+            <LinearLayout
+                android:id="@+id/calendar_item_tue"
+                android:layout_width="48dp"
+                android:layout_height="56dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_calendar_date"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:id="@+id/calendar_text_tue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tue"
+                    android:textColor="#14142A"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter" />
+
+                <TextView
+                    android:id="@+id/calendar_number_tue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="2"
+                    android:textColor="#14142A"
+                    android:textSize="24sp"
+                    android:fontFamily="@font/inter" />
+            </LinearLayout>
+
+            <!-- Wed -->
+            <LinearLayout
+                android:id="@+id/calendar_item_wed"
+                android:layout_width="48dp"
+                android:layout_height="56dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_calendar_date"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:id="@+id/calendar_text_wed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Wed"
+                    android:textColor="#14142A"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter" />
+
+                <TextView
+                    android:id="@+id/calendar_number_wed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="3"
+                    android:textColor="#14142A"
+                    android:textSize="24sp"
+                    android:fontFamily="@font/inter" />
+            </LinearLayout>
+
+            <!-- Thu -->
+            <LinearLayout
+                android:id="@+id/calendar_item_thu"
+                android:layout_width="48dp"
+                android:layout_height="56dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_calendar_date"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:id="@+id/calendar_text_thu"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Thu"
+                    android:textColor="#14142A"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter" />
+
+                <TextView
+                    android:id="@+id/calendar_number_thu"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="4"
+                    android:textColor="#14142A"
+                    android:textSize="24sp"
+                    android:fontFamily="@font/inter" />
+            </LinearLayout>
+
+            <!-- Fri -->
+            <LinearLayout
+                android:id="@+id/calendar_item_fri"
+                android:layout_width="48dp"
+                android:layout_height="56dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_calendar_date"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:id="@+id/calendar_text_fri"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Fri"
+                    android:textColor="#14142A"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter" />
+
+                <TextView
+                    android:id="@+id/calendar_number_fri"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="5"
+                    android:textColor="#14142A"
+                    android:textSize="24sp"
+                    android:fontFamily="@font/inter" />
+            </LinearLayout>
+
+            <!-- Sat -->
+            <LinearLayout
+                android:id="@+id/calendar_item_sat"
+                android:layout_width="48dp"
+                android:layout_height="56dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_calendar_date"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:id="@+id/calendar_text_sat"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sat"
+                    android:textColor="#14142A"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter" />
+
+                <TextView
+                    android:id="@+id/calendar_number_sat"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="6"
+                    android:textColor="#14142A"
+                    android:textSize="24sp"
+                    android:fontFamily="@font/inter" />
+            </LinearLayout>
+
+            <!-- Sun -->
+            <LinearLayout
+                android:id="@+id/calendar_item_sun"
+                android:layout_width="48dp"
+                android:layout_height="56dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_calendar_date">
+
+                <TextView
+                    android:id="@+id/calendar_text_sun"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sun"
+                    android:textColor="#14142A"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/inter" />
+
+                <TextView
+                    android:id="@+id/calendar_number_sun"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="7"
+                    android:textColor="#14142A"
+                    android:textSize="24sp"
+                    android:fontFamily="@font/inter" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- My Reminder -->
+    <TextView
+        android:id="@+id/myReminderText"
+        android:layout_width="147dp"
+        android:layout_height="24dp"
+        android:text="My Reminder"
+        android:textColor="#14142A"
+        android:textSize="20sp"
+        android:fontFamily="@font/lexend"
+        android:textStyle="normal"
+        app:layout_constraintTop_toBottomOf="@id/headerText"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="16dp"/>
+
+
+    <!-- New Reminder container -->
+    <RelativeLayout
+        android:id="@+id/reminderContainer"
+        android:layout_width="127dp"
+        android:layout_height="26dp"
+        android:background="@drawable/bg_new_reminder_with_add"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        app:layout_constraintTop_toBottomOf="@id/headerText"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="16dp">
+
+
+        <!-- Teks New Reminder -->
+        <TextView
+            android:id="@+id/tvNewReminder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="25dp"
+            android:text="New Reminder"
+            android:textColor="#FFFFFF"
+            android:textSize="10dp"
+            android:fontFamily="@font/lexend"
+            android:textStyle="normal" />
+    </RelativeLayout>
+
+    <!-- Task Item -->
+
+
+    <!-- Floating Add Task Button -->
+    <LinearLayout
+        android:id="@+id/taskItem"
+        android:layout_width="380dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="19dp"
+        android:background="@drawable/bg_task"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:elevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/myReminderText">
+
+        <!-- Checklist -->
+        <View
+            android:id="@+id/checklistBox"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8.5dp"
+            android:background="@drawable/bg_checklist" />
+
+        <!-- Laundry text -->
+        <TextView
+            android:id="@+id/taskTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="17dp"
+            android:fontFamily="@font/lexend"
+            android:text="Laundry"
+            android:textColor="#14142A"
+            android:textSize="16sp" />
+
+        <!-- Jam -->
+        <ImageView
+            android:id="@+id/ivExclamation"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="13dp"
+            android:src="@drawable/ic_exclamation_circle" />
+
+        <TextView
+            android:id="@+id/taskTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="35dp"
+            android:fontFamily="@font/lexend"
+            android:text="07.00 - 08.00"
+            android:textColor="#283F6D"
+            android:textSize="14sp" />
+
+        <!-- Kategori -->
+        <TextView
+            android:id="@+id/taskCategory"
+            android:layout_width="41dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="28dp"
+            android:fontFamily="@font/lexend"
+            android:text="Home"
+            android:textColor="#283F6D"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Task 2: Science Exam -->
+    <LinearLayout
+        android:id="@+id/taskItem2"
+        android:layout_width="380dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_task"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:elevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintTop_toBottomOf="@id/taskItem">
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8.5dp"
+            android:background="@drawable/bg_checklist" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="17dp"
+            android:fontFamily="@font/lexend"
+            android:text="Science Exam"
+            android:textColor="#14142A"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:fontFamily="@font/lexend"
+            android:text="08.30 - 10.30"
+            android:textColor="#283F6D"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:fontFamily="@font/lexend"
+            android:text="School"
+            android:textColor="#283F6D"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- Task 3: Shoe Repair -->
+
+    <!-- Task 4: Cook Lunch -->
+    <LinearLayout
+        android:id="@+id/taskItem3"
+        android:layout_width="380dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_task"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:elevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintTop_toBottomOf="@id/taskItem2">
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8.5dp"
+            android:background="@drawable/bg_checklist" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="17dp"
+            android:fontFamily="@font/lexend"
+            android:text="Shoe Repair"
+            android:textColor="#14142A"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="35dp"
+            android:fontFamily="@font/lexend"
+            android:text="11.30 - 12.00"
+            android:textColor="#283F6D"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="41dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="35dp"
+            android:fontFamily="@font/lexend"
+            android:text="PIM"
+            android:textColor="#283F6D"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/taskItem4"
+        android:layout_width="380dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_task"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:elevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintTop_toBottomOf="@id/taskItem3">
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8.5dp"
+            android:background="@drawable/bg_checklist" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="17dp"
+            android:text="Cook Lunch"
+            android:textColor="#14142A"
+            android:textSize="16sp"
+            android:fontFamily="@font/lexend" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="35dp"
+            android:text="13.00 - 14.00"
+            android:textColor="#283F6D"
+            android:textSize="14sp"
+            android:fontFamily="@font/lexend" />
+
+        <TextView
+            android:layout_width="41dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="35dp"
+            android:text="Home"
+            android:textColor="#283F6D"
+            android:textSize="14sp"
+            android:fontFamily="@font/lexend" />
+    </LinearLayout>
+
+    <!-- Task 5: Tea Time -->
+    <LinearLayout
+        android:id="@+id/taskItem5"
+        android:layout_width="380dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_task"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:elevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintTop_toBottomOf="@id/taskItem4">
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8.5dp"
+            android:background="@drawable/bg_checklist" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="17dp"
+            android:text="Tea Time"
+            android:textColor="#14142A"
+            android:textSize="16sp"
+            android:fontFamily="@font/lexend" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="55dp"
+            android:text="15.00 - 16.00"
+            android:textColor="#283F6D"
+            android:textSize="14sp"
+            android:fontFamily="@font/lexend" />
+
+        <TextView
+            android:layout_width="78dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="35dp"
+            android:fontFamily="@font/lexend"
+            android:text="Langham"
+            android:textColor="#283F6D"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- Task 6: Yoga -->
+    <LinearLayout
+        android:id="@+id/taskItem6"
+        android:layout_width="380dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_task"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:elevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintTop_toBottomOf="@id/taskItem5">
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8.5dp"
+            android:background="@drawable/bg_checklist" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="17dp"
+            android:text="Yoga"
+            android:textColor="#14142A"
+            android:textSize="16sp"
+            android:fontFamily="@font/lexend" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="85dp"
+            android:text="17.00 - 18.00"
+            android:textColor="#283F6D"
+            android:textSize="14sp"
+            android:fontFamily="@font/lexend" />
+
+        <TextView
+            android:layout_width="41dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="35dp"
+            android:text="PIK"
+            android:textColor="#283F6D"
+            android:textSize="14sp"
+            android:fontFamily="@font/lexend" />
+    </LinearLayout>
+
+    <!-- Bottom navigation -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        app:itemIconTint="@color/nav_selector"
+        app:labelVisibilityMode="unlabeled"
+        app:itemIconSize="40dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:menu="@menu/task_nav_bottom" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
