@@ -14,6 +14,8 @@ import androidx.core.content.res.ResourcesCompat
 import android.graphics.drawable.GradientDrawable
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.activity.result.contract.ActivityResultContracts
+import android.app.Activity
 
 class CalendarActivity : AppCompatActivity() {
 
@@ -29,6 +31,31 @@ class CalendarActivity : AppCompatActivity() {
 
     private val CORNER_RADIUS_DP = 8
 
+    // Tambahkan ActivityResultLauncher untuk menerima data task
+    private val addTaskFromCalendarLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // Ketika AddTaskActivity mengembalikan RESULT_OK (tugas ditambahkan)
+
+            // 1. Luncurkan TaskActivity
+            val taskIntent = Intent(this, TaskActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+
+                // 2. Teruskan data tugas yang diterima
+                result.data?.let { data ->
+                    // Salin semua extra dari Intent hasil (yang berisi data tugas)
+                    putExtras(data.extras ?: Bundle())
+                }
+
+                // Tambahkan flag khusus agar TaskActivity tahu harus segera memproses task ini
+                putExtra("SHOULD_ADD_TASK", true)
+            }
+            startActivity(taskIntent)
+        }
+        // Jika result CANCELED, biarkan CalendarActivity tetap aktif.
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.calendar)
@@ -38,10 +65,7 @@ class CalendarActivity : AppCompatActivity() {
         val arrowLeft = findViewById<ImageView>(R.id.arrow_left)
         val arrowRight = findViewById<ImageView>(R.id.arrow_right)
 
-        // Temukan tombol Add Reminder
         val addReminderButton = findViewById<LinearLayout>(R.id.addReminderButton)
-
-        // TEMUKAN CONTAINER UTAMA UNTUK SWIPE (calendar_container)
         val rootSwipeView = findViewById<LinearLayout>(R.id.calendar_container)
 
         currentCalendar = Calendar.getInstance()
@@ -59,14 +83,14 @@ class CalendarActivity : AppCompatActivity() {
             updateCalendar()
         }
 
-        // OnClickListener untuk tombol Add Reminder
+        // OnClickListener untuk tombol Add Reminder (Launch AddTaskActivity)
         addReminderButton.setOnClickListener {
             val intent = Intent(this, AddTaskActivity::class.java)
-            startActivity(intent)
+            addTaskFromCalendarLauncher.launch(intent) // Gunakan launcher
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // PERBAIKAN: Pindahkan listener dari calendarGrid ke container yang lebih besar (rootSwipeView)
+        // Swipe gesture
         rootSwipeView.setOnTouchListener(object : OnSwipeTouchListener(this) {
             override fun onSwipeLeft() {
                 currentCalendar.add(Calendar.MONTH, 1)
