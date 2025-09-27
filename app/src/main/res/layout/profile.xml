@@ -293,38 +293,13 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Bottom navigation -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
+     <include
+        layout="@layout/include_bottom_nav"
         android:id="@+id/bottomNav"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@android:color/white"
-        app:itemIconTint="@color/nav_selector"
-        app:labelVisibilityMode="unlabeled"
-        app:itemIconSize="40dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:menu="@menu/menu_bottom" />
-
-    <ImageView
-        android:id="@+id/imgFire"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:contentDescription="Fire Icon"
-        android:src="@drawable/ic_fire"
-        tools:layout_editor_absoluteX="361dp"
-        tools:layout_editor_absoluteY="126dp" />
-
-    <TextView
-        android:id="@+id/tvStreak"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="130"
-        android:textColor="#2B0A2B"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        tools:layout_editor_absoluteX="361dp"
-        tools:layout_editor_absoluteY="166dp" />
+        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

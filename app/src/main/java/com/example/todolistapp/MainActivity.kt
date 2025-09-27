@@ -1,51 +1,51 @@
 package com.example.todolistapp
 
+import android.content.Intent
 import android.os.Bundle
-import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.bottomnavigation.BottomNavigationView
+
+// Catatan: Menghapus import com.example.todolistapp.databinding.ActivityMainBinding
+// untuk mengatasi "Unresolved reference 'ActivityMainBinding'".
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var usernameInput: EditText
-    lateinit var passwordInput: EditText
-    lateinit var loginBtn: Button
-    lateinit var signupText: TextView
-    lateinit var facebookBtn: ImageButton
-    lateinit var googleBtn: ImageButton
+    // Menghapus deklarasi binding: private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.login)
 
-        usernameInput = findViewById(R.id.input_username)
-        passwordInput = findViewById(R.id.input_password)
-        loginBtn = findViewById(R.id.btn_login)
-        signupText = findViewById(R.id.signup)
-        facebookBtn = findViewById(R.id.btn_facebook)
-        googleBtn = findViewById(R.id.btn_google)
+        // Memuat R.layout.home karena layout ini sudah menyertakan R.id.bottomNav.
+        setContentView(R.layout.home)
+        // Mengatasi "Unresolved reference 'ActivityMainBinding'" & error terkait setContentView.
 
-        loginBtn.setOnClickListener {
-            val username = usernameInput.text.toString()
-            val password = passwordInput.text.toString()
+        // Menggunakan findViewById untuk menemukan BottomNavigationView
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
+        // Mengatasi "Unresolved reference 'bottomNav'".
 
-            if (username.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Login Success!", Toast.LENGTH_SHORT).show()
+        // Navigasi Bottom Bar
+        bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    // Saat ini di Home (R.layout.home), tidak perlu navigasi
+                    true
+                }
+                R.id.nav_tasks -> {
+                    val intent = Intent(this, TaskActivity::class.java)
+                    startActivity(intent)
+                    true
+                }
+                R.id.nav_profile -> {
+                    val intent = Intent(this, ProfileActivity::class.java)
+                    startActivity(intent)
+                    true
+                }
+                else -> false
             }
         }
 
-        signupText.setOnClickListener {
-            Toast.makeText(this, "Go to Signup Page", Toast.LENGTH_SHORT).show()
-            // startActivity(Intent(this, SignupActivity::class.java))
-        }
-
-        facebookBtn.setOnClickListener {
-            Toast.makeText(this, "Facebook login clicked", Toast.LENGTH_SHORT).show()
-        }
-
-        googleBtn.setOnClickListener {
-            Toast.makeText(this, "Google login clicked", Toast.LENGTH_SHORT).show()
-        }
+        // Kode untuk tombol floating action button (FAB) — dihapus.
+        // Karena ID 'fab' tidak ada di R.layout.home atau layout yang dimuat,
+        // kode FAB dihapus untuk mengatasi "Unresolved reference 'fab'".
     }
 }

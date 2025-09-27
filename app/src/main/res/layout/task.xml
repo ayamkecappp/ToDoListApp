@@ -5,7 +5,6 @@
     android:layout_height="match_parent"
     android:background="#f0f4f9">
 
-    <!-- Header Card -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/headerText"
         android:layout_width="match_parent"
@@ -15,7 +14,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Today -->
         <TextView
             android:id="@+id/todayText"
             android:layout_width="165dp"
@@ -30,7 +28,6 @@
             android:layout_marginTop="80dp"
             android:layout_marginStart="16dp"/>
 
-        <!-- October -->
         <TextView
             android:id="@+id/octoberText"
             android:layout_width="147dp"
@@ -44,7 +41,6 @@
             android:layout_marginTop="112dp"
             android:layout_marginStart="16dp"/>
 
-        <!-- Ikon Calendar -->
         <ImageView
             android:id="@+id/btn_calendar"
             android:layout_width="32dp"
@@ -52,10 +48,10 @@
             android:src="@drawable/ic_calendar"
             android:contentDescription="Calendar"
             app:layout_constraintTop_toTopOf="@id/todayText"
+            app:layout_constraintBottom_toBottomOf="@id/todayText"
             app:layout_constraintEnd_toStartOf="@id/btn_search"
             android:layout_marginEnd="16dp" />
 
-        <!-- Ikon Search -->
         <ImageView
             android:id="@+id/btn_search"
             android:layout_width="32dp"
@@ -68,7 +64,6 @@
             android:layout_marginEnd="16dp" />
 
 
-        <!-- Calendar -->
         <LinearLayout
             android:id="@+id/calendar_main"
             android:layout_width="wrap_content"
@@ -80,7 +75,6 @@
             android:layout_marginTop="12dp"
             android:layout_marginStart="16dp">
 
-            <!-- Kotak template: pakai ulang untuk Mon-Sun -->
             <LinearLayout
                 android:id="@+id/calendar_item_mon"
                 android:layout_width="48dp"
@@ -109,7 +103,6 @@
                     android:fontFamily="@font/inter" />
             </LinearLayout>
 
-            <!-- Tue -->
             <LinearLayout
                 android:id="@+id/calendar_item_tue"
                 android:layout_width="48dp"
@@ -138,7 +131,6 @@
                     android:fontFamily="@font/inter" />
             </LinearLayout>
 
-            <!-- Wed -->
             <LinearLayout
                 android:id="@+id/calendar_item_wed"
                 android:layout_width="48dp"
@@ -167,7 +159,6 @@
                     android:fontFamily="@font/inter" />
             </LinearLayout>
 
-            <!-- Thu -->
             <LinearLayout
                 android:id="@+id/calendar_item_thu"
                 android:layout_width="48dp"
@@ -196,7 +187,6 @@
                     android:fontFamily="@font/inter" />
             </LinearLayout>
 
-            <!-- Fri -->
             <LinearLayout
                 android:id="@+id/calendar_item_fri"
                 android:layout_width="48dp"
@@ -225,7 +215,6 @@
                     android:fontFamily="@font/inter" />
             </LinearLayout>
 
-            <!-- Sat -->
             <LinearLayout
                 android:id="@+id/calendar_item_sat"
                 android:layout_width="48dp"
@@ -254,7 +243,6 @@
                     android:fontFamily="@font/inter" />
             </LinearLayout>
 
-            <!-- Sun -->
             <LinearLayout
                 android:id="@+id/calendar_item_sun"
                 android:layout_width="48dp"
@@ -289,7 +277,6 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- My Reminder -->
     <TextView
         android:id="@+id/myReminderText"
         android:layout_width="147dp"
@@ -305,7 +292,6 @@
         android:layout_marginStart="16dp"/>
 
 
-    <!-- New Reminder container -->
     <RelativeLayout
         android:id="@+id/reminderContainer"
         android:layout_width="127dp"
@@ -319,7 +305,6 @@
         android:layout_marginEnd="16dp">
 
 
-        <!-- Teks New Reminder -->
         <TextView
             android:id="@+id/tvNewReminder"
             android:layout_width="wrap_content"
@@ -333,10 +318,6 @@
             android:textStyle="normal" />
     </RelativeLayout>
 
-    <!-- Task Item -->
-
-
-    <!-- Floating Add Task Button -->
     <LinearLayout
         android:id="@+id/taskItem"
         android:layout_width="380dp"
@@ -353,7 +334,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/myReminderText">
 
-        <!-- Checklist -->
         <View
             android:id="@+id/checklistBox"
             android:layout_width="24dp"
@@ -361,7 +341,6 @@
             android:layout_marginStart="8.5dp"
             android:background="@drawable/bg_checklist" />
 
-        <!-- Laundry text -->
         <TextView
             android:id="@+id/taskTitle"
             android:layout_width="wrap_content"
@@ -372,7 +351,6 @@
             android:textColor="#14142A"
             android:textSize="16sp" />
 
-        <!-- Jam -->
         <ImageView
             android:id="@+id/ivExclamation"
             android:layout_width="16dp"
@@ -390,7 +368,6 @@
             android:textColor="#283F6D"
             android:textSize="14sp" />
 
-        <!-- Kategori -->
         <TextView
             android:id="@+id/taskCategory"
             android:layout_width="41dp"
@@ -403,7 +380,6 @@
 
     </LinearLayout>
 
-    <!-- Task 2: Science Exam -->
     <LinearLayout
         android:id="@+id/taskItem2"
         android:layout_width="380dp"
@@ -454,9 +430,6 @@
             android:textSize="14sp" />
     </LinearLayout>
 
-    <!-- Task 3: Shoe Repair -->
-
-    <!-- Task 4: Cook Lunch -->
     <LinearLayout
         android:id="@+id/taskItem3"
         android:layout_width="380dp"
@@ -557,7 +530,6 @@
             android:fontFamily="@font/lexend" />
     </LinearLayout>
 
-    <!-- Task 5: Tea Time -->
     <LinearLayout
         android:id="@+id/taskItem5"
         android:layout_width="380dp"
@@ -608,7 +580,6 @@
             android:textSize="14sp" />
     </LinearLayout>
 
-    <!-- Task 6: Yoga -->
     <LinearLayout
         android:id="@+id/taskItem6"
         android:layout_width="380dp"
@@ -659,19 +630,14 @@
             android:fontFamily="@font/lexend" />
     </LinearLayout>
 
-    <!-- Bottom navigation -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
+    <include
+        layout="@layout/include_bottom_nav"
         android:id="@+id/bottomNav"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@android:color/white"
-        app:itemIconTint="@color/nav_selector"
-        app:labelVisibilityMode="unlabeled"
-        app:itemIconSize="40dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:menu="@menu/task_nav_bottom" />
+        app:layout_constraintStart_toStartOf="parent" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

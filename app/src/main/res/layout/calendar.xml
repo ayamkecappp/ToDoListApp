@@ -5,13 +5,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#f0f4f9">
+    android:background="#ffffff">
     <!--tools:context=".CalendarActivity"-->
 
     <LinearLayout
         android:id="@+id/calendar_container"
         android:layout_width="411dp"
-        android:layout_height="803dp"
+        android:layout_height="650dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:background="@drawable/bg_card"
@@ -152,6 +152,7 @@
     </LinearLayout>
 
     <!-- Frame kalender dengan pinggiran -->
+    <!-- Frame kalender dengan pinggiran -->
     <FrameLayout
         android:id="@+id/calendar_frame"
         android:layout_width="412dp"
@@ -162,129 +163,17 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Grid kalender 6 kolom x 5 baris -->
+        <!-- Grid kalender 6x7 (42 cell), akan diisi via Kotlin -->
         <GridLayout
+            android:id="@+id/calendar_grid"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:columnCount="7"
-            android:rowCount="5"
+            android:rowCount="6"
             android:alignmentMode="alignMargins"
             android:useDefaultMargins="true"
-            android:layout_gravity="center">
-
-            <!-- Baris 1: Sun, Mon, Tue (kosong), Rabu=1 -->
-            <TextView android:layout_width="44dp" android:layout_height="56dp"/>
-            <TextView android:layout_width="44dp" android:layout_height="56dp"/>
-            <TextView android:layout_width="44dp" android:layout_height="56dp"/>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-
-            <!-- Baris 2 -->
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center" android:layout_margin="4dp">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="6" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="7" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="8" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="9" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="10" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-
-            <!-- Baris 3 -->
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="11" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="12" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="13" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="14" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="15" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="16" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-
-            <!-- Baris 4 -->
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="17" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="18" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="19" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="20" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="21" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="22" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-
-            <!-- Baris 5 -->
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="23" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="24" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="25" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="26" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="27" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="28" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="29" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-            <LinearLayout android:layout_width="44dp" android:layout_height="56dp" android:background="@drawable/bg_calendar_date" android:orientation="vertical" android:gravity="center">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="30" android:textColor="#000000" android:textSize="16sp" android:gravity="center" android:fontFamily="@font/inter"/>
-            </LinearLayout>
-
-            <!-- Kosong di akhir supaya GridLayout tetap 5x7 -->
-            <TextView android:layout_width="44dp" android:layout_height="56dp"/>
-            <TextView android:layout_width="44dp" android:layout_height="56dp"/>
-            <TextView android:layout_width="44dp" android:layout_height="56dp"/>
-            <TextView android:layout_width="44dp" android:layout_height="56dp"/>
-            <TextView android:layout_width="44dp" android:layout_height="56dp"/>
-        </GridLayout>
-
+            android:layout_gravity="center"/>
     </FrameLayout>
-
 
     <!-- Tombol Add Reminder -->
     <LinearLayout
