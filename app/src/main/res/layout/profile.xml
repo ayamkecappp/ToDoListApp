@@ -1,52 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".ProfileActivity">
+    android:layout_height="match_parent">
 
-    <!-- Bagian background biru hanya di atas -->
-
-
-    <!-- Profile Title -->
-
+    <!-- Top blue background -->
     <View
         android:id="@+id/bgTop"
-        android:layout_width="419dp"
-        android:layout_height="219dp"
-        android:layout_marginTop="4dp"
+        android:layout_width="0dp"
+        android:layout_height="248dp"
         android:background="@drawable/bg_top_blue"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Settings Icon -->
+    <!-- Fire Icon -->
+    <ImageView
+        android:id="@+id/fire_icon"
+        android:layout_width="34dp"
+        android:layout_height="37dp"
+        app:layout_constraintTop_toTopOf="@id/bgTop"
+        app:layout_constraintStart_toStartOf="@id/bgTop"
+        android:background="@drawable/ic_fire2"
+        android:layout_marginTop="144dp"
+        android:layout_marginStart="326dp"/>
 
+    <!-- Fire Number -->
+    <TextView
+        android:id="@+id/some_id"
+        app:layout_constraintTop_toTopOf="@id/bgTop"
+        app:layout_constraintStart_toStartOf="@id/bgTop"
+        android:layout_width="66dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="182dp"
+        android:layout_marginStart="310dp"
+        android:layout_marginEnd="36dp"
+        android:text="@string/some_id"
+        android:textAppearance="@style/some_id"
+        android:gravity="center_horizontal"
+        />
+
+    <!-- Profile title -->
     <TextView
         android:id="@+id/tvProfile"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="56dp"
         android:text="Profile"
-        android:textColor="#2B0A2B"
         android:textSize="22sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
+        android:textColor="#2B0A2B"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        android:layout_marginTop="80dp"/>
 
+    <!-- Settings icon -->
     <ImageView
         android:id="@+id/ivSettings"
         android:layout_width="28dp"
         android:layout_height="28dp"
         android:src="@drawable/ic_settings"
         app:tint="#2B0A2B"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/tvProfile"
         app:layout_constraintBottom_toBottomOf="@id/tvProfile"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginEnd="16dp" />
+        android:layout_marginEnd="16dp"/>
 
     <!-- Avatar with camera icon -->
     <FrameLayout
@@ -55,16 +77,15 @@
         android:layout_height="80dp"
         app:layout_constraintTop_toBottomOf="@id/tvProfile"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="24dp">
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="16dp">
 
         <ImageView
             android:id="@+id/ivProfile"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:src="@drawable/ic_user"
-            android:background="@drawable/circle_bg"
-            android:scaleType="centerInside" />
+            android:src="@drawable/ic_profile"
+            android:scaleType="centerInside"/>
 
         <ImageView
             android:id="@+id/ivCamera"
@@ -72,38 +93,39 @@
             android:layout_height="24dp"
             android:src="@drawable/ic_camera"
             android:layout_gravity="bottom|end"
-            android:layout_margin="4dp"
-            app:tint="#666" />
+            android:layout_margin="4dp"/>
     </FrameLayout>
 
     <!-- Username -->
     <TextView
         android:id="@+id/tvUsername"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Username"
+        android:textSize="20sp"
         android:textStyle="bold"
-        android:textSize="16sp"
         android:textColor="#2B0A2B"
         app:layout_constraintTop_toTopOf="@id/avatarContainer"
         app:layout_constraintStart_toEndOf="@id/avatarContainer"
-        android:layout_marginStart="12dp" />
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="16dp"/>
 
-    <!-- Edit Profile Button -->
+    <!-- Edit Profile button -->
     <TextView
         android:id="@+id/btnEditProfile"
-        android:layout_width="wrap_content"
+        android:layout_width="149dp"
         android:layout_height="32dp"
         android:gravity="center"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         android:text="Edit Profile"
-        android:textSize="12sp"
+        android:textSize="14sp"
         android:textColor="#2B0A2B"
         android:background="@drawable/bg_edit_button"
         app:layout_constraintTop_toBottomOf="@id/tvUsername"
         app:layout_constraintStart_toStartOf="@id/tvUsername"
-        android:layout_marginTop="8dp" />
+        android:layout_marginTop="8dp"/>
 
     <!-- Fire & Streak -->
     <LinearLayout
@@ -111,195 +133,343 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/avatarContainer"
         app:layout_constraintBottom_toBottomOf="@id/avatarContainer"
-        android:layout_marginEnd="16dp">
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginEnd="16dp"/>
 
-    </LinearLayout>
-
+    <!-- Tabs -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"
-        android:layout_width="411dp"
-        android:layout_height="34dp"
-        android:layout_marginTop="40dp"
-        android:background="@drawable/tab_unselected_background"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_width="0dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"
+        android:clipToOutline="true"
+        android:background="@drawable/daily_weekl"
+        android:elevation="8dp"
+        app:layout_constraintTop_toBottomOf="@id/bgTop"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/avatarContainer"
-        app:tabIndicator="@drawable/tab_selected_background"
-        app:tabIndicatorColor="@android:color/transparent"
-        app:tabIndicatorHeight="0dp"
-        app:tabSelectedTextAppearance="@style/TabTextAppearance.Selected"
-        app:tabSelectedTextColor="@color/dark_blue"
-        app:tabTextAppearance="@style/TabTextAppearance.Unselected"
-        app:tabTextColor="@android:color/white">
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tabIndicator="@drawable/rectangle_1"
+        app:tabIndicatorColor="@color/dark_blue"
+        app:tabRippleColor="@android:color/transparent"
+        app:tabIndicatorFullWidth="true"
+        app:tabIndicatorGravity="stretch"
+        app:tabTextAppearance="@style/TabTextStyle"
+        app:tabTextColor="@color/tab_text_profile_color"
+        app:tabSelectedTextColor="@android:color/white"
+        app:tabMode="fixed"
+        app:tabGravity="fill">
 
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Daily" />
-
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Weekly" />
-
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Monthly" />
+        <com.google.android.material.tabs.TabItem android:text="@string/daily"/>
+        <com.google.android.material.tabs.TabItem android:text="@string/weekly"/>
+        <com.google.android.material.tabs.TabItem android:text="@string/monthly"/>
     </com.google.android.material.tabs.TabLayout>
 
-    <TextView
-        android:id="@+id/tvDailyStats"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Daily Productivity Statistics"
-        android:textColor="#2B0A2B"
-        android:textStyle="bold"
-        android:textSize="14sp"
+    <!-- Bar chart background -->
+    <View
+        android:id="@+id/barchart_bg"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/rectangle_3"
         app:layout_constraintTop_toBottomOf="@id/tabLayout"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="20dp"
-        android:layout_marginStart="16dp" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/bottomStats"
+        android:layout_marginStart="17dp"
+        android:layout_marginEnd="17dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"/>
 
-    <!-- Daily Productivity Number -->
+    <!-- Daily Productivity label -->
+    <TextView
+        android:id="@+id/daily_productivity_statistics"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/daily_productivity"
+        android:textAppearance="@style/DailyProductivityText"
+        android:gravity="start"
+        app:layout_constraintTop_toTopOf="@id/barchart_bg"
+        app:layout_constraintStart_toStartOf="@id/barchart_bg"
+        app:layout_constraintEnd_toEndOf="@id/barchart_bg"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Fire Number 2 -->
+    <TextView
+        android:id="@+id/some_id2"
+        android:layout_width="39dp"
+        android:layout_height="wrap_content"
+        android:text="@string/some_id2"
+        android:textAppearance="@style/some_id2"
+        android:gravity="center_horizontal"
+        app:layout_constraintTop_toTopOf="@id/barchart_bg"
+        app:layout_constraintStart_toStartOf="@id/barchart_bg"
+        android:layout_marginTop="48dp"
+        android:layout_marginStart="30dp"/>
+
+    <!-- Fire Icon 2 -->
+    <ImageView
+        android:id="@+id/fire_icon2"
+        android:layout_width="19.39dp"
+        android:layout_height="25dp"
+        android:background="@drawable/ic_fire2"
+        app:layout_constraintTop_toTopOf="@id/barchart_bg"
+        app:layout_constraintStart_toStartOf="@id/barchart_bg"
+        android:layout_marginTop="58dp"
+        android:layout_marginStart="19dp"/>
+
+
+    <!-- Hari labels -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="52dp"
+        app:layout_constraintBottom_toBottomOf="@id/barchart_bg"
+        app:layout_constraintEnd_toEndOf="@id/barchart_bg"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="@id/barchart_bg">
+
+
+        <!-- Rectangle 1 -->
+        <View
+            android:id="@+id/rectangle_1"
+            android:layout_width="33dp"
+            android:layout_height="140dp"
+            android:background="@drawable/rectangle_2"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/rectangle_2"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintWidth_percent="0.14" /> <!-- sekitar 1/7 -->
+
+        <!-- Rectangle 2 -->
+        <View
+            android:id="@+id/rectangle_2"
+            android:layout_width="33dp"
+            android:layout_height="91dp"
+            android:background="@drawable/rectangle_2"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/rectangle_3"
+            app:layout_constraintStart_toEndOf="@id/rectangle_1"
+            app:layout_constraintWidth_percent="0.14" />
+
+        <!-- Rectangle 3 -->
+        <View
+            android:id="@+id/rectangle_3"
+            android:layout_width="33dp"
+            android:layout_height="44dp"
+            android:background="@drawable/rectangle_2"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/rectangle_4"
+            app:layout_constraintStart_toEndOf="@id/rectangle_2"
+            app:layout_constraintWidth_percent="0.14" />
+
+        <!-- Rectangle 4 -->
+        <View
+            android:id="@+id/rectangle_4"
+            android:layout_width="33dp"
+            android:layout_height="84dp"
+            android:background="@drawable/rectangle_2"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/rectangle_5"
+            app:layout_constraintStart_toEndOf="@id/rectangle_3"
+            app:layout_constraintWidth_percent="0.14" />
+
+        <!-- Rectangle 5 -->
+        <View
+            android:id="@+id/rectangle_5"
+            android:layout_width="33dp"
+            android:layout_height="64dp"
+            android:background="@drawable/rectangle_2_gold"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/rectangle_6"
+            app:layout_constraintStart_toEndOf="@id/rectangle_4"
+            app:layout_constraintWidth_percent="0.14" />
+
+        <!-- Rectangle 6 -->
+        <View
+            android:id="@+id/rectangle_6"
+            android:layout_width="33dp"
+            android:layout_height="10dp"
+            android:background="@drawable/rectangle_2"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/rectangle_7"
+            app:layout_constraintStart_toEndOf="@id/rectangle_5"
+            app:layout_constraintWidth_percent="0.1" />
+
+        <!-- Rectangle 7 -->
+        <View
+            android:id="@+id/rectangle_7"
+            android:layout_width="33dp"
+            android:layout_height="10dp"
+            android:background="@drawable/rectangle_2"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/rectangle_6"
+            app:layout_constraintWidth_percent="0.14" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintTop_toTopOf="@id/tvDailyStats"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginEnd="16dp">
-
-        <ImageView
-            android:id="@+id/imgFire"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:contentDescription="Fire Icon"
-            android:src="@drawable/ic_fire" />
+        android:gravity="center"
+        app:layout_constraintBottom_toBottomOf="@id/barchart_bg"
+        app:layout_constraintStart_toStartOf="@id/barchart_bg"
+        app:layout_constraintEnd_toEndOf="@id/barchart_bg"
+        android:layout_marginBottom="16dp">
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:text="3"
-            android:textColor="#FF6D00"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:layout_weight="1"
+            android:text="S"
+            style="@style/labelHari"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="M"
+            style="@style/labelHari"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="T"
+            style="@style/labelHari"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="W"
+            style="@style/labelHari"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="T"
+            style="@style/labelHari"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="F"
+            style="@style/labelHari"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="S"
+            style="@style/labelHari"/>
     </LinearLayout>
 
-    <!-- Bar Chart Placeholder -->
-    <ImageView
-        android:id="@+id/barChart"
-        android:layout_width="0dp"
-        android:layout_height="180dp"
-        android:src="@drawable/ic_barchart_placeholder"
-        android:scaleType="fitCenter"
-        app:layout_constraintTop_toBottomOf="@id/tvDailyStats"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_margin="16dp" />
-
-    <!-- Bottom Stats -->
+    <!-- Bottom stats -->
     <LinearLayout
         android:id="@+id/bottomStats"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="120dp"
         android:orientation="horizontal"
-        android:gravity="right"
-        app:layout_constraintTop_toBottomOf="@id/barChart"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="12dp"
         android:weightSum="3"
-        android:padding="8dp">
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        app:layout_constraintStart_toStartOf="@id/barchart_bg"
+        app:layout_constraintEnd_toEndOf="@id/barchart_bg"
+        app:layout_constraintBottom_toTopOf="@id/bottomNav"
+        android:layout_marginBottom="0dp">
 
+        <!-- Completed -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="right"
-            android:background="@drawable/rounded_background_light_purple"
-            android:padding="16dp">
-
+            android:gravity="center"
+            android:padding="16dp"
+            android:background="@drawable/rounded_background_light_blue">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Completed Tasks (9)"
                 android:textColor="@color/white"
-                android:textSize="14sp" />
-
+                android:textSize="14sp"/>
             <ImageView
                 android:layout_width="45dp"
                 android:layout_height="45dp"
+                android:layout_marginTop="8dp"
                 android:src="@drawable/ic_completed"
-                android:tint="@color/white"
-                android:layout_marginTop="8dp"/>
+                android:tint="@color/white"/>
         </LinearLayout>
 
+        <!-- Missed -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="right"
-            android:background="@drawable/rounded_background_dark_blue"
-            android:padding="16dp"
             android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp">
+            android:layout_marginEnd="8dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="16dp"
+            android:background="@drawable/rounded_background_dark_blue">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Missed Tasks (10)"
                 android:textColor="@color/white"
-                android:textStyle="bold"
-                android:textSize="14sp" />
-
+                android:textSize="14sp"
+                android:textStyle="bold"/>
             <ImageView
                 android:layout_width="45dp"
                 android:layout_height="45dp"
                 android:layout_marginTop="8dp"
                 android:src="@drawable/ic_missed"
-                android:tint="@color/white" />
+                android:tint="@color/white"/>
         </LinearLayout>
 
+        <!-- Deleted -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="right"
-            android:background="@drawable/rounded_background_light_purple"
-            android:padding="16dp">
+            android:gravity="center"
+            android:padding="16dp"
+            android:background="@drawable/rounded_background_light_blue">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Deleted Tasks (2)"
                 android:textColor="@color/white"
-                android:textSize="14sp" />
-
+                android:textSize="14sp"/>
             <ImageView
                 android:layout_width="45dp"
                 android:layout_height="45dp"
                 android:layout_marginTop="8dp"
                 android:src="@drawable/ic_deleted"
-                android:tint="@color/white" />
+                android:tint="@color/white"/>
         </LinearLayout>
     </LinearLayout>
 
-     <include
+    <!-- Bottom navigation include -->
+    <include
         layout="@layout/include_bottom_nav"
         android:id="@+id/bottomNav"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

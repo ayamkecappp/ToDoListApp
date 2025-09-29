@@ -94,19 +94,13 @@ class TaskActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // Tombol kalender kembali ke bulan saat ini
+        // Tombol kalender diperbaiki: sekarang menavigasi ke CalendarActivity
         val btnCalendar = findViewById<ImageView?>(R.id.btn_calendar)
         btnCalendar?.setOnClickListener {
-            currentCalendar = Calendar.getInstance().apply {
-                set(Calendar.DAY_OF_MONTH, 1)
-            }
-            selectedDate = Calendar.getInstance()
-            updateCalendar()
-            setDynamicMonthYear()
-            // Gulir ulang ke hari ini setelah pembaruan
-            calendarMain.post {
-                scrollToToday()
-            }
+            // PERBAIKAN: Meluncurkan CalendarActivity
+            val intent = Intent(this, CalendarActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         } ?: Log.w(TAG, "btn_calendar tidak ditemukan di layout task.xml")
 
         val bottomNav = findViewById<BottomNavigationView?>(R.id.bottomNav)
