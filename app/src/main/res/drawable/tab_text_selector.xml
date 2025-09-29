@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:color="#1E3A72" android:state_selected="true"/> <!-- teks biru saat aktif -->
-    <item android:color="@android:color/white"/> <!-- teks putih saat normal -->
-</selector>
