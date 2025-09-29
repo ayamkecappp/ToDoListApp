@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="@android:color/white">
+
+    <EditText
+        android:id="@+id/input_search"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_search_input"
+        android:hint="Search"
+        android:paddingStart="16dp"
+        android:paddingEnd="12dp"
+        android:textColor="@android:color/black"
+        android:drawableStart="@drawable/ic_search"
+        android:drawableEnd="@drawable/ic_cancel"
+        android:drawablePadding="8dp"
+        android:textSize="16sp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:elevation="2dp" />
+
+    <HorizontalScrollView
+        android:id="@+id/scroll_chips"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/input_search"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:id="@+id/chip_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/chip_jan"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text=" Jan "
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:gravity="center"
+                android:textColor="@android:color/white"
+                android:textSize="14sp"
+                android:background="@drawable/chip_selected"
+                android:drawableStart="@drawable/ic_check"
+                app:drawableTint="@color/white"
+                android:drawablePadding="4dp"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:id="@+id/chip_feb"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text=" Feb "
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:gravity="center"
+                android:textColor="@android:color/black"
+                android:textSize="14sp"
+                android:background="@drawable/chip_unselected"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:id="@+id/chip_mar"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text=" Mar "
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:gravity="center"
+                android:textColor="@android:color/black"
+                android:textSize="14sp"
+                android:background="@drawable/chip_unselected"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:id="@+id/chip_apr"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text=" Apr "
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:gravity="center"
+                android:textColor="@android:color/black"
+                android:textSize="14sp"
+                android:background="@drawable/chip_unselected"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:id="@+id/chip_projects"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text=" Projects "
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:gravity="center"
+                android:textColor="@android:color/black"
+                android:textSize="14sp"
+                android:background="@drawable/chip_unselected"
+                android:layout_marginEnd="8dp"/>
+
+        </LinearLayout>
+    </HorizontalScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
