@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/settings"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToOutline="true"
+    android:background="#FFFFFF">
+
+    <!-- Top background -->
+    <View
+        android:id="@+id/bgTop"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/rectangle_4"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_percent="0.157"/>
+
+    <!-- Settings title di atas bgTop -->
+    <TextView
+        android:id="@+id/tvSettingsTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Settings"
+        android:textAppearance="@style/tvSettingsTitle"
+        app:layout_constraintBottom_toBottomOf="@id/bgTop"
+        app:layout_constraintStart_toStartOf="@id/bgTop"
+        app:layout_constraintEnd_toEndOf="@id/bgTop"
+        android:layout_marginBottom="40dp"/>
+
+    <!--Arrow-->
+    <ImageView
+        android:id="@+id/ivBackArrow"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/ic_panah_kiri"
+        android:contentDescription="Back"
+        app:layout_constraintStart_toStartOf="@id/bgTop"
+        app:layout_constraintBottom_toBottomOf="@id/bgTop"
+        android:layout_marginStart="36dp"
+        android:layout_marginBottom="47dp"/>
+
+
+    <!-- Background bawah bgTop -->
+    <View
+        android:id="@+id/bgSettings"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_settings"
+        app:layout_constraintTop_toBottomOf="@id/bgTop"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="35dp"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+    <!-- Drawable timy_settings di paling bawah -->
+    <ImageView
+        android:id="@+id/ivTimySettings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/timy_settings"
+        android:contentDescription="Timy Settings"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginBottom="0dp"/>
+
+    <!-- Text General di kiri atas bgSettings -->
+    <TextView
+        android:id="@+id/tvGeneral"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="General"
+        android:textAppearance="@style/settingsLabel"
+        app:layout_constraintStart_toStartOf="@id/bgSettings"
+        app:layout_constraintTop_toTopOf="@id/bgSettings"
+        android:layout_marginStart="11dp"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Overlay top rectangle di Settings -->
+    <View
+        android:id="@+id/rectangleSettings"
+        android:layout_width="0dp"
+        android:layout_height="35dp"
+        android:background="@drawable/rectangle_settings"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="26dp"
+        android:layout_marginEnd="26dp"
+        android:layout_marginTop="192dp" /> <!-- sesuaikan tinggi -->
+
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

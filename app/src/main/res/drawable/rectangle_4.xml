@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- Gradient dari atas ke bawah -->
+    <gradient
+        android:startColor="#E5EFFB"
+        android:endColor="#9AC1F0"
+        android:angle="270" />
+
+    <!-- Sudut rounded -->
+    <corners
+        android:bottomLeftRadius="30dp"
+        android:bottomRightRadius="30dp"/>
+</shape>
