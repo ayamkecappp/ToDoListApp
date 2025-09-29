@@ -20,6 +20,10 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.appcompat.app.AlertDialog
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class AddTaskActivity : AppCompatActivity() {
 
@@ -27,6 +31,12 @@ class AddTaskActivity : AppCompatActivity() {
     private lateinit var inputActivity: EditText
     private lateinit var inputTime: EditText
     private lateinit var inputLocation: EditText
+
+    // VARIABEL BARU: Untuk menyimpan timestamp tanggal yang akan digunakan
+    private var taskDateMillis: Long = System.currentTimeMillis()
+    private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
+    private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
+
 
     private var currentSelectedPriority: String = "None"
     private val priorities = arrayOf("None", "Low", "Medium", "High")
@@ -38,37 +48,58 @@ class AddTaskActivity : AppCompatActivity() {
         val btnBack = findViewById<ImageView>(R.id.btnBack)
         val btnSave = findViewById<Button>(R.id.btnSave)
 
-        // Temukan semua input fields
         inputActivity = findViewById(R.id.inputActivity)
         inputTime = findViewById(R.id.inputTime)
         inputLocation = findViewById(R.id.inputLocation)
         inputPriority = findViewById(R.id.inputPriority)
 
-        // SET KONDISI AWAL
+        // 1. Periksa Intent untuk tanggal yang dipilih
+        val selectedMillis = intent.getLongExtra(EXTRA_SELECTED_DATE_MILLIS, -1L)
+        if (selectedMillis != -1L) {
+            taskDateMillis = selectedMillis
+            val selectedDate = Date(taskDateMillis)
+
+            // Tampilkan tanggal yang dipilih kepada pengguna
+            Toast.makeText(this, "Aktivitas akan ditambahkan pada: ${uiDateFormat.format(selectedDate)}", Toast.LENGTH_LONG).show()
+        } else {
+            // Jika tidak ada tanggal yang dikirim, gunakan hari ini
+            taskDateMillis = System.currentTimeMillis()
+            val todayDate = Date(taskDateMillis)
+            Toast.makeText(this, "Aktivitas akan ditambahkan pada hari ini: ${uiDateFormat.format(todayDate)}", Toast.LENGTH_SHORT).show()
+        }
+
+
         inputPriority.setText(currentSelectedPriority)
 
-        // 1. Tombol kembali (Back)
         btnBack.setOnClickListener {
             setResult(Activity.RESULT_CANCELED)
             finish()
         }
 
-        // 2. Tombol Simpan (Save)
         btnSave.setOnClickListener {
             val title = inputActivity.text.toString().trim()
             val time = inputTime.text.toString().trim()
-            val category = inputLocation.text.toString().trim()
+            val location = inputLocation.text.toString().trim()
+            val priority = currentSelectedPriority
 
             if (title.isEmpty()) {
                 Toast.makeText(this, "Nama Aktivitas tidak boleh kosong!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            // Panggil dialog konfirmasi setelah validasi
-            showConfirmationDialog(title, time, category)
+            // PERUBAHAN UTAMA: MENGGUNAKAN taskDateMillis SEBAGAI ID UNTUK MENYIMPAN TANGGAL
+            val newTask = Task(
+                id = taskDateMillis, // Menggunakan timestamp dari tanggal yang dipilih/default
+                title = title,
+                time = if (time.isEmpty()) "Waktu tidak disetel" else time,
+                category = if (location.isEmpty()) "Uncategorized" else location,
+                priority = priority
+            )
+            TaskRepository.addTask(newTask)
+
+            showConfirmationDialog(newTask)
         }
 
-        // 3. Dropdown Priority - Panggil ListPopupWindow
         inputPriority.setOnClickListener {
             showPriorityDialog()
         }
@@ -76,15 +107,10 @@ class AddTaskActivity : AppCompatActivity() {
 
     override fun finish() {
         super.finish()
-        // Transisi saat Activity ini ditutup
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
 
-    /**
-     * Menampilkan dialog konfirmasi kustom setelah menekan Save.
-     */
-    private fun showConfirmationDialog(title: String, time: String, category: String) {
-        // Inflate custom layout
+    private fun showConfirmationDialog(newTask: Task) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_save_success, null)
 
         val dialog = AlertDialog.Builder(this)
@@ -94,43 +120,35 @@ class AddTaskActivity : AppCompatActivity() {
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        // ID diperbaiki di XML sebelumnya: btnIgnore -> Add more, btnView -> View
         val btnAddMore = dialogView.findViewById<TextView>(R.id.btnIgnore)
         val btnView = dialogView.findViewById<TextView>(R.id.btnView)
 
-        // Helper untuk menyiapkan Intent hasil
         val createResultIntent = {
             Intent().apply {
-                putExtra("EXTRA_TASK_TITLE", title)
-                putExtra("EXTRA_TASK_TIME", if (time.isEmpty()) "Waktu tidak disetel" else time)
-                putExtra("EXTRA_TASK_CATEGORY", if (category.isEmpty()) "Uncategorized" else category)
+                putExtra("EXTRA_TASK_TITLE", newTask.title)
+                putExtra("EXTRA_TASK_TIME", newTask.time)
+                putExtra("EXTRA_TASK_CATEGORY", newTask.category)
             }
         }
 
-        // LOGIKA BARU: "Add more" (Simpan task, lalu reset form pada Activity ini)
         btnAddMore.setOnClickListener {
-            // 1. Kirim data dan set RESULT_OK (agar TaskActivity menambahkan task)
             setResult(Activity.RESULT_OK, createResultIntent())
 
-            // 2. Reset semua input field pada form ini
             inputActivity.setText("")
             inputTime.setText("")
             inputLocation.setText("")
             currentSelectedPriority = "None"
             inputPriority.setText(currentSelectedPriority)
+            taskDateMillis = System.currentTimeMillis() // Reset ke hari ini untuk tugas berikutnya
 
-            // 3. Tutup dialog. TETAP di Activity ini (tidak panggil finish()).
             dialog.dismiss()
         }
 
-        // LOGIKA BARU: "View" (Simpan task, lalu kembali ke TaskActivity)
         btnView.setOnClickListener {
-            // 1. Kirim data dan set RESULT_OK (agar TaskActivity menambahkan task)
             setResult(Activity.RESULT_OK, createResultIntent())
 
-            // 2. Tutup dialog dan Activity saat ini (kembali ke TaskActivity)
             dialog.dismiss()
-            finish() // Kembali ke TaskActivity
+            finish()
         }
 
         dialog.show()

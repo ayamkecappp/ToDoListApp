@@ -131,6 +131,7 @@
     </RelativeLayout>
 
     <ScrollView
+        android:id="@+id/task_scrollview"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="16dp"
@@ -145,22 +146,24 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tvNoActivity"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="No activity"
-                android:textColor="#919ca8"
-                android:textSize="18sp"
-                android:fontFamily="@font/lexend"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="50dp"
-                android:visibility="gone"
-                />
-
         </LinearLayout>
 
     </ScrollView>
+
+    <TextView
+        android:id="@+id/tvNoActivity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="You don't have remainder"
+        android:textColor="#919ca8"
+        android:textSize="18sp"
+        android:fontFamily="@font/lexend"
+        app:layout_constraintBottom_toBottomOf="@id/task_scrollview"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@id/task_scrollview"
+        android:visibility="gone"
+        />
 
     <include
         layout="@layout/include_bottom_nav"

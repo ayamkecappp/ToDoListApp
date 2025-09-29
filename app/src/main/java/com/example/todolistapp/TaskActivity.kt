@@ -10,7 +10,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.HorizontalScrollView // Diperlukan untuk mengakses HorizontalScrollView
+import android.widget.HorizontalScrollView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
@@ -25,32 +25,29 @@ class TaskActivity : AppCompatActivity() {
     private val TAG = "TaskActivity"
     private lateinit var tasksContainer: LinearLayout
     private lateinit var tvNoActivity: TextView
-    private lateinit var octoberText: TextView
+    private lateinit var octoberText: TextView // Akan diubah menjadi tvMonthYear
 
-    // VARIABEL KALENDER
-    private lateinit var calendarMain: HorizontalScrollView // Tambah inisialisasi HorizontalScrollView
+    // Pastikan ini terikat ke HorizontalScrollView di layout (R.id.calendar_main)
+    private lateinit var calendarMain: HorizontalScrollView
     private lateinit var dateItemsContainer: LinearLayout
+
     private lateinit var currentCalendar: Calendar
     private var selectedDate: Calendar = Calendar.getInstance()
+
     private val COLOR_ACTIVE_SELECTION = Color.parseColor("#283F6D")
     private val COLOR_DEFAULT_TEXT = Color.BLACK
     private val COLOR_SELECTED_TEXT = Color.WHITE
     private val CORNER_RADIUS_DP = 8
-    private val ITEM_WIDTH_DP = 68 // Lebar total item (60dp + 8dp margin)
+    private val ITEM_WIDTH_DP = 60
 
-    // Activity Result Launcher... (Kode tidak berubah)
+    // Key untuk Intent Extra (Harus sama dengan yang digunakan di AddTaskActivity)
+    private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
+
     private val addTaskLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.let { data ->
-                val title = data.getStringExtra("EXTRA_TASK_TITLE") ?: "New Activity"
-                val time = data.getStringExtra("EXTRA_TASK_TIME") ?: "00.00 - 00.00"
-                val category = data.getStringExtra("EXTRA_TASK_CATEGORY") ?: "Other"
-
-                addNewTaskToUI(title, time, category)
-                updateEmptyState()
-            }
+            loadTasksForSelectedDate()
         }
     }
 
@@ -59,108 +56,129 @@ class TaskActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.task)
 
+        // --- Inisialisasi Views ---
         tasksContainer = findViewById(R.id.tasksContainer)
         tvNoActivity = findViewById(R.id.tvNoActivity)
+
+        // Asumsi ID untuk teks bulan adalah R.id.octoberText (sesuai kode sebelumnya)
         octoberText = findViewById(R.id.octoberText)
 
-        // Inisialisasi HorizontalScrollView dan LinearLayout kalender
-        calendarMain = findViewById(R.id.calendar_main) // NEW
+        // Inisialisasi HorizontalScrollView (Fix Scroll)
+        calendarMain = findViewById(R.id.calendar_main)
         dateItemsContainer = findViewById(R.id.date_items_container)
 
-        currentCalendar = Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-        }
-        selectedDate = Calendar.getInstance()
+        // --- Setup Kalender ---
+        currentCalendar = selectedDate.clone() as Calendar
+        currentCalendar.set(Calendar.DAY_OF_MONTH, 1)
 
-        // Panggil fungsi generate calendar (1 bulan penuh)
         updateCalendar()
 
-        // NEW: Gulir ke tanggal hari ini setelah kalender dimuat
+        // PERMINTAAN 1: Langsung scroll ke hari ini
         calendarMain.post {
             scrollToToday()
         }
 
-        // Panggil fungsi untuk mengatur Bulan dan Tahun
         setDynamicMonthYear()
-
-        // TANGANI DATA TUGAS YANG MUNGKIN DATANG DARI INTENT
         handleIncomingTaskIntent(intent)
 
-        // OnClickListener untuk membuat Reminder baru
+        // --- Listener ---
+
+        // 1. Tombol search/filter: Membuka SearchFilterActivity
+        val btnSearch = findViewById<ImageView?>(R.id.btn_search)
+        btnSearch?.setOnClickListener {
+            val intent = Intent(this, SearchFilterActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+        }
+
+        // PERMINTAAN 2: Tombol New Reminder (Meneruskan tanggal yang dipilih)
         val btnNewReminder = findViewById<View>(R.id.reminderContainer)
         btnNewReminder?.setOnClickListener {
-            val intent = Intent(this, AddTaskActivity::class.java)
+            val intent = Intent(this, AddTaskActivity::class.java).apply {
+                // Tambahkan timestamp dari tanggal yang sedang dipilih
+                putExtra(EXTRA_SELECTED_DATE_MILLIS, selectedDate.timeInMillis)
+            }
             addTaskLauncher.launch(intent)
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // Tombol kalender diperbaiki: sekarang menavigasi ke CalendarActivity
+        // Tombol Calendar (Tidak berubah)
         val btnCalendar = findViewById<ImageView?>(R.id.btn_calendar)
         btnCalendar?.setOnClickListener {
-            // PERBAIKAN: Meluncurkan CalendarActivity
             val intent = Intent(this, CalendarActivity::class.java)
             startActivity(intent)
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         } ?: Log.w(TAG, "btn_calendar tidak ditemukan di layout task.xml")
 
+        // Bottom Navigation (Tidak berubah)
         val bottomNav = findViewById<BottomNavigationView?>(R.id.bottomNav)
-        if (bottomNav == null) {
-            Log.w(TAG, "BottomNavigationView (id=bottomNav) tidak ditemukan di layout task.xml")
-            return
-        }
-
-        bottomNav.selectedItemId = R.id.nav_tasks
-
-        bottomNav.setOnItemSelectedListener { item ->
+        bottomNav?.selectedItemId = R.id.nav_tasks
+        bottomNav?.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
-                    val intent = Intent(this, HomeActivity::class.java)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                    startActivity(intent)
+                    startActivity(Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
                     true
                 }
-                R.id.nav_tasks -> {
-                    true
-                }
+                R.id.nav_tasks -> true
                 R.id.nav_profile -> {
-                    val intent = Intent(this, ProfileActivity::class.java)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                    startActivity(intent)
+                    startActivity(Intent(this, ProfileActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
                     true
                 }
                 else -> false
             }
         }
 
-        updateEmptyState()
+        loadTasksForSelectedDate()
     }
 
-    // Fungsi untuk menghitung dan menggulir ke tanggal hari ini/tanggal terpilih
+    override fun onResume() {
+        super.onResume()
+        loadTasksForSelectedDate()
+    }
+
+    /**
+     * Memuat tugas hanya untuk tanggal yang tersorot saat ini (selectedDate).
+     */
+    private fun loadTasksForSelectedDate() {
+        tasksContainer.removeAllViews()
+
+        val tasks = TaskRepository.getTasksByDate(selectedDate)
+
+        for (task in tasks) {
+            addNewTaskToUI(task.title, task.time, task.category)
+        }
+        updateEmptyState(tasks.size)
+    }
+
+    // --- Perbaikan Horizontal Scrolling (scrollToToday) ---
     private fun scrollToToday() {
         val today = Calendar.getInstance()
 
-        // Hanya gulir jika bulan yang dilihat adalah bulan saat ini
+        // Periksa apakah bulan kalender yang ditampilkan adalah bulan saat ini
         if (today.get(Calendar.MONTH) == currentCalendar.get(Calendar.MONTH) &&
             today.get(Calendar.YEAR) == currentCalendar.get(Calendar.YEAR)) {
 
             val todayDayOfMonth = today.get(Calendar.DAY_OF_MONTH)
-            val dayIndex = todayDayOfMonth - 1 // Indeks array dimulai dari 0
+            // Indeks dimulai dari 0, Day of month dimulai dari 1
+            val dayIndex = todayDayOfMonth - 1
 
-            // Hitung posisi scroll: (Indeks Hari * Lebar Item DP)
-            // Kurangi setengah lebar HorizontalScrollView agar hari ini berada di tengah (opsional, tapi lebih baik)
-            val offset = (dayIndex * ITEM_WIDTH_DP).dp - (calendarMain.width / 2) + (ITEM_WIDTH_DP.dp / 2)
+            // Hitung posisi horizontal (sumbu X)
+            val itemWidthPx = ITEM_WIDTH_DP.dp
 
-            calendarMain.smoothScrollTo(offset, 0)
+            // Hitung offset agar hari yang dipilih berada di tengah layar
+            val centerOffset = (calendarMain.width / 2) - (itemWidthPx / 2)
+            val scrollPosition = (dayIndex * itemWidthPx) - centerOffset
+
+            // Pastikan tidak scroll ke posisi negatif
+            calendarMain.smoothScrollTo(scrollPosition.coerceAtLeast(0), 0)
         }
     }
 
-    // Fungsi untuk mengatur Bulan dan Tahun di octoberText
     private fun setDynamicMonthYear() {
-        val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+        val sdf = SimpleDateFormat("MMMM yyyy", Locale("in", "ID"))
         octoberText.text = sdf.format(currentCalendar.time)
     }
 
-    // Fungsi untuk membuat rounded background
     private fun createRoundedBackground(color: Int): GradientDrawable {
         val cornerRadiusPx = CORNER_RADIUS_DP.dp.toFloat()
         return GradientDrawable().apply {
@@ -170,10 +188,10 @@ class TaskActivity : AppCompatActivity() {
         }
     }
 
-    // FUNGSI UTAMA KALENDER (1 Bulan Penuh)
     private fun updateCalendar() {
         dateItemsContainer.removeAllViews()
 
+        // Clone kalender untuk iterasi agar currentCalendar tidak berubah
         val cal = currentCalendar.clone() as Calendar
         cal.set(Calendar.DAY_OF_MONTH, 1)
 
@@ -182,20 +200,19 @@ class TaskActivity : AppCompatActivity() {
         for (i in 1..daysInMonth) {
             cal.set(Calendar.DAY_OF_MONTH, i)
 
-            val dayOfWeek = SimpleDateFormat("EEE", Locale.getDefault()).format(cal.time)
+            val dayOfWeek = SimpleDateFormat("EEE", Locale("en", "US")).format(cal.time)
             val day = i
 
             val isSelected = (cal.get(Calendar.YEAR) == selectedDate.get(Calendar.YEAR) &&
                     cal.get(Calendar.MONTH) == selectedDate.get(Calendar.MONTH) &&
                     cal.get(Calendar.DAY_OF_MONTH) == selectedDate.get(Calendar.DAY_OF_MONTH))
 
-            // Container untuk setiap item hari
             val dayItemContainer = LinearLayout(this).apply {
                 layoutParams = LinearLayout.LayoutParams(
-                    60.dp,
+                    ITEM_WIDTH_DP.dp,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 ).apply {
-                    setMargins(0, 0, 8.dp, 0) // Margin 8dp ditambahkan ke lebar item
+                    setMargins(0, 0, 8.dp, 0)
                 }
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -204,7 +221,6 @@ class TaskActivity : AppCompatActivity() {
                 setPadding(4.dp, 4.dp, 4.dp, 4.dp)
             }
 
-            // Text Hari (Contoh: Mon)
             val dayOfWeekText = TextView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -216,7 +232,6 @@ class TaskActivity : AppCompatActivity() {
             }
             dayItemContainer.addView(dayOfWeekText)
 
-            // Text Tanggal (Contoh: 27)
             val dayNumberText = TextView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -229,37 +244,24 @@ class TaskActivity : AppCompatActivity() {
             }
             dayItemContainer.addView(dayNumberText)
 
-            // Tambahkan OnClickListener
+            // Logika klik untuk memilih tanggal dan memuat tugas
             dayItemContainer.setOnClickListener {
                 val newSelectedDate = currentCalendar.clone() as Calendar
                 newSelectedDate.set(Calendar.DAY_OF_MONTH, i)
 
                 selectedDate = newSelectedDate
-                setDynamicMonthYear()
+
+                loadTasksForSelectedDate()
                 updateCalendar()
-                // TODO: Muat tugas berdasarkan tanggal yang dipilih
             }
 
             dateItemsContainer.addView(dayItemContainer)
         }
     }
 
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleIncomingTaskIntent(intent)
-    }
-
     private fun handleIncomingTaskIntent(intent: Intent?) {
         if (intent != null && intent.getBooleanExtra("SHOULD_ADD_TASK", false)) {
-            val title = intent.getStringExtra("EXTRA_TASK_TITLE") ?: "New Activity"
-            val time = intent.getStringExtra("EXTRA_TASK_TIME") ?: "00.00 - 00.00"
-            val category = intent.getStringExtra("EXTRA_TASK_CATEGORY") ?: "Other"
-
-            addNewTaskToUI(title, time, category)
-            updateEmptyState()
-
+            loadTasksForSelectedDate()
             intent.removeExtra("SHOULD_ADD_TASK")
         }
     }
@@ -291,7 +293,7 @@ class TaskActivity : AppCompatActivity() {
 
         val taskTitle = TextView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f).apply {
                 marginStart = 17.dp
             }
             text = title
@@ -301,16 +303,10 @@ class TaskActivity : AppCompatActivity() {
         }
         taskItem.addView(taskTitle)
 
-        val spacer = View(context).apply {
-            layoutParams = LinearLayout.LayoutParams(0, 0, 1.0f)
-        }
-        taskItem.addView(spacer)
-
-
         val taskTime = TextView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                marginStart = 35.dp
+                marginStart = 12.dp
             }
             text = time
             textSize = 14f
@@ -322,9 +318,9 @@ class TaskActivity : AppCompatActivity() {
         val taskCategory = TextView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                marginStart = 28.dp
+                marginStart = 12.dp
             }
-            text = category
+            text = " | $category"
             textSize = 14f
             setTextColor(Color.parseColor("#283F6D"))
             typeface = ResourcesCompat.getFont(context, R.font.lexend)
@@ -334,14 +330,8 @@ class TaskActivity : AppCompatActivity() {
         tasksContainer.addView(taskItem, 0)
     }
 
-    private fun updateEmptyState() {
-        val taskCount = tasksContainer.childCount - (if (tasksContainer.indexOfChild(tvNoActivity) != -1) 1 else 0)
-
-        if (taskCount == 0) {
-            tvNoActivity.visibility = View.VISIBLE
-        } else {
-            tvNoActivity.visibility = View.GONE
-        }
+    private fun updateEmptyState(taskCount: Int) {
+        tvNoActivity.visibility = if (taskCount == 0) View.VISIBLE else View.GONE
     }
 
     override fun finish() {

@@ -31,6 +31,9 @@ class CalendarActivity : AppCompatActivity() {
 
     private val CORNER_RADIUS_DP = 8
 
+    // Key untuk Intent Extra
+    private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
+
     // Tambahkan ActivityResultLauncher untuk menerima data task
     private val addTaskFromCalendarLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -84,8 +87,12 @@ class CalendarActivity : AppCompatActivity() {
         }
 
         // OnClickListener untuk tombol Add Reminder (Launch AddTaskActivity)
+        // PERUBAHAN UTAMA: Meneruskan tanggal yang dipilih
         addReminderButton.setOnClickListener {
-            val intent = Intent(this, AddTaskActivity::class.java)
+            val intent = Intent(this, AddTaskActivity::class.java).apply {
+                // Teruskan timestamp dari selectedDate
+                putExtra(EXTRA_SELECTED_DATE_MILLIS, selectedDate.timeInMillis)
+            }
             addTaskFromCalendarLauncher.launch(intent) // Gunakan launcher
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
@@ -186,6 +193,7 @@ class CalendarActivity : AppCompatActivity() {
                 // Tambahkan OnClickListener
                 dayView.setOnClickListener {
                     currentCalendar.set(Calendar.DAY_OF_MONTH, dayNumber)
+                    // selectedDate diperbarui di sini, siap untuk diteruskan ke AddTaskActivity
                     selectedDate = currentCalendar.clone() as Calendar
                     updateCalendar()
                 }

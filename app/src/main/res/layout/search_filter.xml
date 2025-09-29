@@ -1,28 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
     android:background="@android:color/white">
+
+    <ImageView
+        android:id="@+id/btn_back"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:padding="12dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginTop="12dp"
+        android:src="@drawable/ic_arrow_back"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        app:tint="@android:color/black"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <EditText
         android:id="@+id/input_search"
         android:layout_width="0dp"
-        android:layout_height="40dp"
+        android:layout_height="41dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="16dp"
         android:background="@drawable/bg_search_input"
+        android:drawableStart="@drawable/ic_search"
+        android:drawableEnd="@drawable/ic_cancel"
+        android:drawablePadding="8dp"
+        android:elevation="2dp"
         android:hint="Search"
         android:paddingStart="16dp"
         android:paddingEnd="12dp"
         android:textColor="@android:color/black"
-        android:drawableStart="@drawable/ic_search"
-        android:drawableEnd="@drawable/ic_cancel"
-        android:drawablePadding="8dp"
         android:textSize="16sp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:elevation="2dp" />
+        app:layout_constraintStart_toEndOf="@id/btn_back"
+        app:layout_constraintTop_toTopOf="@id/btn_back"
+        app:layout_constraintBottom_toBottomOf="@id/btn_back" />
 
     <HorizontalScrollView
         android:id="@+id/scroll_chips"
@@ -39,77 +57,52 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
 
             <TextView
-                android:id="@+id/chip_jan"
+                android:id="@+id/chip_all"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
-                android:text=" Jan "
+                android:text=" All "
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
                 android:gravity="center"
                 android:textColor="@android:color/white"
                 android:textSize="14sp"
                 android:background="@drawable/chip_selected"
-                android:drawableStart="@drawable/ic_check"
-                app:drawableTint="@color/white"
                 android:drawablePadding="4dp"
                 android:layout_marginEnd="8dp"/>
-
-            <TextView
-                android:id="@+id/chip_feb"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text=" Feb "
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:gravity="center"
-                android:textColor="@android:color/black"
-                android:textSize="14sp"
-                android:background="@drawable/chip_unselected"
-                android:layout_marginEnd="8dp"/>
-
-            <TextView
-                android:id="@+id/chip_mar"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text=" Mar "
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:gravity="center"
-                android:textColor="@android:color/black"
-                android:textSize="14sp"
-                android:background="@drawable/chip_unselected"
-                android:layout_marginEnd="8dp"/>
-
-            <TextView
-                android:id="@+id/chip_apr"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text=" Apr "
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:gravity="center"
-                android:textColor="@android:color/black"
-                android:textSize="14sp"
-                android:background="@drawable/chip_unselected"
-                android:layout_marginEnd="8dp"/>
-
-            <TextView
-                android:id="@+id/chip_projects"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text=" Projects "
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:gravity="center"
-                android:textColor="@android:color/black"
-                android:textSize="14sp"
-                android:background="@drawable/chip_unselected"
-                android:layout_marginEnd="8dp"/>
-
         </LinearLayout>
     </HorizontalScrollView>
+
+    <ScrollView
+        android:id="@+id/task_scrollview"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:paddingBottom="20dp"
+
+        app:layout_constraintTop_toBottomOf="@id/scroll_chips"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+
+        android:layout_marginTop="32dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginEnd="0dp">
+
+        <LinearLayout
+            android:id="@+id/task_results_container_xml"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="88dp"
+            android:paddingBottom="16dp" />
+
+    </ScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
