@@ -2,6 +2,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/settings"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -86,10 +87,10 @@
             />
 
         <TextView
-            android:id="@+id/tvAccount"
+            android:id="@+id/tvStreakBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Account"
+            android:text="Streak Badge"
             android:textAppearance="@style/settingsContent"
             app:layout_constraintStart_toStartOf="@id/rectangleSettings1"
             app:layout_constraintTop_toTopOf="@id/rectangleSettings1"
@@ -108,171 +109,29 @@
             android:layout_marginEnd="45dp"/>
 
         <!-- Rectangle 2 -->
-        <View
-            android:id="@+id/rectangleSettings2"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings1"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="6dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvStreakBadge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Streak Badge"
-            android:textAppearance="@style/settingsContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings2"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings2"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings2"
-            android:layout_marginStart="18dp"/>
-
-        <ImageView
-            android:id="@+id/ivArrowStreakBadge"
-            android:layout_width="15dp"
-            android:layout_height="15dp"
-            android:src="@drawable/ic_panah_kanan"
-            android:contentDescription="Next"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings2"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings2"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginEnd="45dp"/>
 
         <!-- Rectangle 3 -->
-        <View
-            android:id="@+id/rectangleSettings3"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings2"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="6dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvNotification"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Notification"
-            android:textAppearance="@style/settingsContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings3"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings3"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings3"
-            android:layout_marginStart="18dp"/>
-
-        <ImageView
-            android:id="@+id/ivArrowNotification"
-            android:layout_width="15dp"
-            android:layout_height="15dp"
-            android:src="@drawable/ic_panah_kanan"
-            android:contentDescription="Next"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings3"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings3"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginEnd="45dp"/>
 
         <!-- Rectangle 4 -->
-        <View
-            android:id="@+id/rectangleSettings4"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings3"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="6dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
 
-        <TextView
-            android:id="@+id/tvLanguage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Language"
-            android:textAppearance="@style/settingsContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings4"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings4"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings4"
-            android:layout_marginStart="18dp"/>
-
-        <ImageView
-            android:id="@+id/ivArrowLanguage"
-            android:layout_width="15dp"
-            android:layout_height="15dp"
-            android:src="@drawable/ic_panah_kanan"
-            android:contentDescription="Next"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings4"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings4"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginEnd="45dp"/>
 
         <!-- Rectangle 5 -->
-        <View
-            android:id="@+id/rectangleSettings5"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings4"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="6dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvAppearancee"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Appearance"
-            android:textAppearance="@style/settingsContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings5"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings5"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings5"
-            android:layout_marginStart="18dp"/>
-
-        <ImageView
-            android:id="@+id/ivArrowTheme"
-            android:layout_width="15dp"
-            android:layout_height="15dp"
-            android:src="@drawable/ic_panah_kanan"
-            android:contentDescription="Next"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings5"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings5"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginEnd="45dp"/>
 
         <!-- Label Account -->
+
+
+        <!-- Rectangle 6 : Privacy -->
+
         <TextView
             android:id="@+id/tvAccountLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
             android:text="Account"
             android:textAppearance="@style/settingsLabel"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings5"
             app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginStart="11dp"
-            android:layout_marginTop="5dp"/>
+            tools:layout_editor_absoluteY="77dp" />
 
-
-        <!-- Rectangle 6 : Privacy -->
         <View
             android:id="@+id/rectangleSettings6"
             android:layout_width="0dp"

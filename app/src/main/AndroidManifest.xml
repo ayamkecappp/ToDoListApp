@@ -70,6 +70,21 @@
         <activity
             android:name=".FlowTimerActivity"
             android:exported="false" />
+        <activity
+            android:name=".PrivacyPolicyActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AboutUsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SendFeedbackActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ReportBugActivity"
+            android:exported="false" />
+        <activity
+            android:name=".StreakBadgeActivity"
+            android:exported="false" />
 
     </application>
 
