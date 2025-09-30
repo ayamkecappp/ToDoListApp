@@ -5,7 +5,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Top blue background -->
     <View
         android:id="@+id/bgTop"
         android:layout_width="0dp"
@@ -15,7 +14,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Fire Icon -->
     <ImageView
         android:id="@+id/fire_icon"
         android:layout_width="34dp"
@@ -26,7 +24,6 @@
         android:layout_marginTop="144dp"
         android:layout_marginStart="326dp"/>
 
-    <!-- Fire Number -->
     <TextView
         android:id="@+id/some_id"
         app:layout_constraintTop_toTopOf="@id/bgTop"
@@ -43,7 +40,6 @@
         android:gravity="center_horizontal"
         />
 
-    <!-- Profile title -->
     <TextView
         android:id="@+id/tvProfile"
         android:layout_width="wrap_content"
@@ -58,7 +54,6 @@
         app:layout_constraintHorizontal_bias="0.5"
         android:layout_marginTop="80dp"/>
 
-    <!-- Settings icon -->
     <ImageView
         android:id="@+id/ivSettings"
         android:layout_width="28dp"
@@ -70,7 +65,6 @@
         app:layout_constraintBottom_toBottomOf="@id/tvProfile"
         android:layout_marginEnd="16dp"/>
 
-    <!-- Avatar with camera icon -->
     <FrameLayout
         android:id="@+id/avatarContainer"
         android:layout_width="80dp"
@@ -80,12 +74,14 @@
         android:layout_marginTop="24dp"
         android:layout_marginStart="16dp">
 
-        <ImageView
+        <de.hdodenhof.circleimageview.CircleImageView
             android:id="@+id/ivProfile"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:src="@drawable/ic_profile"
-            android:scaleType="centerInside"/>
+            android:scaleType="centerCrop"
+            app:civ_border_width="2dp"
+            app:civ_border_color="#ffffff"/>
 
         <ImageView
             android:id="@+id/ivCamera"
@@ -96,7 +92,6 @@
             android:layout_margin="4dp"/>
     </FrameLayout>
 
-    <!-- Username -->
     <TextView
         android:id="@+id/tvUsername"
         android:layout_width="0dp"
@@ -111,7 +106,6 @@
         android:layout_marginStart="12dp"
         android:layout_marginEnd="16dp"/>
 
-    <!-- Edit Profile button -->
     <TextView
         android:id="@+id/btnEditProfile"
         android:layout_width="149dp"
@@ -127,7 +121,6 @@
         app:layout_constraintStart_toStartOf="@id/tvUsername"
         android:layout_marginTop="8dp"/>
 
-    <!-- Fire & Streak -->
     <LinearLayout
         android:id="@+id/streakLayout"
         android:layout_width="wrap_content"
@@ -138,7 +131,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginEnd="16dp"/>
 
-    <!-- Tabs -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"
         android:layout_width="0dp"
@@ -168,7 +160,6 @@
         <com.google.android.material.tabs.TabItem android:text="@string/monthly"/>
     </com.google.android.material.tabs.TabLayout>
 
-    <!-- Bar chart background -->
     <View
         android:id="@+id/barchart_bg"
         android:layout_width="0dp"
@@ -183,7 +174,6 @@
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"/>
 
-    <!-- Daily Productivity label -->
     <TextView
         android:id="@+id/daily_productivity_statistics"
         android:layout_width="0dp"
@@ -198,7 +188,6 @@
         android:layout_marginEnd="16dp"
         android:layout_marginTop="16dp"/>
 
-    <!-- Fire Number 2 -->
     <TextView
         android:id="@+id/some_id2"
         android:layout_width="39dp"
@@ -211,7 +200,6 @@
         android:layout_marginTop="48dp"
         android:layout_marginStart="30dp"/>
 
-    <!-- Fire Icon 2 -->
     <ImageView
         android:id="@+id/fire_icon2"
         android:layout_width="19.39dp"
@@ -223,7 +211,6 @@
         android:layout_marginStart="19dp"/>
 
 
-    <!-- Hari labels -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -234,7 +221,6 @@
         app:layout_constraintStart_toStartOf="@id/barchart_bg">
 
 
-        <!-- Rectangle 1 -->
         <View
             android:id="@+id/rectangle_1"
             android:layout_width="33dp"
@@ -244,20 +230,16 @@
             app:layout_constraintEnd_toStartOf="@id/rectangle_2"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth_percent="0.14" /> <!-- sekitar 1/7 -->
+            app:layout_constraintWidth_percent="0.14" /> <View
+        android:id="@+id/rectangle_2"
+        android:layout_width="33dp"
+        android:layout_height="91dp"
+        android:background="@drawable/rectangle_2"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/rectangle_3"
+        app:layout_constraintStart_toEndOf="@id/rectangle_1"
+        app:layout_constraintWidth_percent="0.14" />
 
-        <!-- Rectangle 2 -->
-        <View
-            android:id="@+id/rectangle_2"
-            android:layout_width="33dp"
-            android:layout_height="91dp"
-            android:background="@drawable/rectangle_2"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/rectangle_3"
-            app:layout_constraintStart_toEndOf="@id/rectangle_1"
-            app:layout_constraintWidth_percent="0.14" />
-
-        <!-- Rectangle 3 -->
         <View
             android:id="@+id/rectangle_3"
             android:layout_width="33dp"
@@ -268,7 +250,6 @@
             app:layout_constraintStart_toEndOf="@id/rectangle_2"
             app:layout_constraintWidth_percent="0.14" />
 
-        <!-- Rectangle 4 -->
         <View
             android:id="@+id/rectangle_4"
             android:layout_width="33dp"
@@ -279,7 +260,6 @@
             app:layout_constraintStart_toEndOf="@id/rectangle_3"
             app:layout_constraintWidth_percent="0.14" />
 
-        <!-- Rectangle 5 -->
         <View
             android:id="@+id/rectangle_5"
             android:layout_width="33dp"
@@ -290,7 +270,6 @@
             app:layout_constraintStart_toEndOf="@id/rectangle_4"
             app:layout_constraintWidth_percent="0.14" />
 
-        <!-- Rectangle 6 -->
         <View
             android:id="@+id/rectangle_6"
             android:layout_width="33dp"
@@ -301,7 +280,6 @@
             app:layout_constraintStart_toEndOf="@id/rectangle_5"
             app:layout_constraintWidth_percent="0.1" />
 
-        <!-- Rectangle 7 -->
         <View
             android:id="@+id/rectangle_7"
             android:layout_width="33dp"
@@ -373,7 +351,6 @@
             style="@style/labelHari"/>
     </LinearLayout>
 
-    <!-- Bottom stats -->
     <LinearLayout
         android:id="@+id/bottomStats"
         android:layout_width="0dp"
@@ -387,7 +364,6 @@
         app:layout_constraintBottom_toTopOf="@id/bottomNav"
         android:layout_marginBottom="0dp">
 
-        <!-- Completed -->
         <LinearLayout
             android:id="@+id/CompletedTasks"
             android:layout_width="0dp"
@@ -410,10 +386,9 @@
                 android:layout_marginTop="7dp"
                 android:layout_marginStart="22dp"
                 android:src="@drawable/ic_completed"
-                android:tint="@color/white"/>
+                app:tint="@color/white"/>
         </LinearLayout>
 
-        <!-- Missed -->
         <LinearLayout
             android:id="@+id/MissedTasks"
             android:layout_width="0dp"
@@ -439,10 +414,9 @@
                 android:layout_marginTop="7dp"
                 android:layout_marginStart="22dp"
                 android:src="@drawable/ic_missed"
-                android:tint="@color/white"/>
+                app:tint="@color/white"/>
         </LinearLayout>
 
-        <!-- Deleted -->
         <LinearLayout
             android:id="@+id/DeletedTasks"
             android:layout_width="0dp"
@@ -465,11 +439,10 @@
                 android:layout_marginTop="7dp"
                 android:layout_marginStart="22dp"
                 android:src="@drawable/ic_deleted"
-                android:tint="@color/white"/>
+                app:tint="@color/white"/>
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Bottom navigation include -->
     <include
         layout="@layout/include_bottom_nav"
         android:id="@+id/bottomNav"

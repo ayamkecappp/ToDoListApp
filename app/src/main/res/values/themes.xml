@@ -6,6 +6,10 @@
         <item name="colorPrimaryVariant">@color/purple_700</item>
         <item name="colorSecondary">@color/teal_200</item>
     </style>
+    <style name="NumberPickerStyle" parent="Theme.AppCompat.Light">
+        <item name="android:textColorPrimary">@color/dark_blue</item>
+        <item name="android:textSize">28sp</item>
+    </style>
 
     <style name="Theme.ToDoListApp" parent="Base.Theme.ToDoListApp" />
 </resources>
