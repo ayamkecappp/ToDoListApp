@@ -6,14 +6,38 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import android.widget.Toast
+import android.app.Activity
+import de.hdodenhof.circleimageview.CircleImageView // PENTING: Import CircleImageView
 
 class ProfileActivity : AppCompatActivity() {
+
+    private lateinit var ivProfile: CircleImageView // UBAH TIPE DATA
+
+    // Activity Result Launcher untuk CameraActivity
+    private val cameraLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uriString = result.data?.getStringExtra("PROFILE_PHOTO_URI")
+            if (uriString != null) {
+                val imageUri = Uri.parse(uriString)
+                setProfileImage(imageUri)
+            } else {
+                Toast.makeText(this, "Gagal mendapatkan foto profil.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile)
 
         // Ambil BottomNavigationView
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
+        ivProfile = findViewById(R.id.ivProfile) as CircleImageView // Inisialisasi ivProfile sebagai CircleImageView
 
         // Set item default yang dipilih Profile
         bottomNav.selectedItemId = R.id.nav_profile
@@ -45,11 +69,11 @@ class ProfileActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        //Cam
+        // Klik ivCamera untuk membuka CameraActivity
         val ivCamera = findViewById<ImageView>(R.id.ivCamera)
         ivCamera.setOnClickListener {
             val intent = Intent(this, CameraActivity::class.java)
-            startActivity(intent)
+            cameraLauncher.launch(intent) // Gunakan launcher
         }
 
         // Klik Completed Tasks
@@ -71,6 +95,17 @@ class ProfileActivity : AppCompatActivity() {
         DeletedTasks.setOnClickListener {
             val intent = Intent(this, DeletedTasksActivity::class.java)
             startActivity(intent)
+        }
+    }
+
+    private fun setProfileImage(uri: Uri) {
+        try {
+            // Karena URI berasal dari Intent dengan FLAG_GRANT_READ_URI_PERMISSION,
+            // kita bisa langsung set ImageURI
+            ivProfile.setImageURI(uri)
+            Toast.makeText(this, "Foto profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error menampilkan foto: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 }
