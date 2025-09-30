@@ -389,6 +389,7 @@
 
         <!-- Completed -->
         <LinearLayout
+            android:id="@+id/CompletedTasks"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -404,15 +405,17 @@
                 android:textColor="@color/white"
                 android:textSize="14sp"/>
             <ImageView
-                android:layout_width="45dp"
-                android:layout_height="45dp"
-                android:layout_marginTop="8dp"
+                android:layout_width="37dp"
+                android:layout_height="37dp"
+                android:layout_marginTop="7dp"
+                android:layout_marginStart="22dp"
                 android:src="@drawable/ic_completed"
                 android:tint="@color/white"/>
         </LinearLayout>
 
         <!-- Missed -->
         <LinearLayout
+            android:id="@+id/MissedTasks"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -431,15 +434,17 @@
                 android:textSize="14sp"
                 android:textStyle="bold"/>
             <ImageView
-                android:layout_width="45dp"
-                android:layout_height="45dp"
-                android:layout_marginTop="8dp"
+                android:layout_width="37dp"
+                android:layout_height="37dp"
+                android:layout_marginTop="7dp"
+                android:layout_marginStart="22dp"
                 android:src="@drawable/ic_missed"
                 android:tint="@color/white"/>
         </LinearLayout>
 
         <!-- Deleted -->
         <LinearLayout
+            android:id="@+id/DeletedTasks"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -455,9 +460,10 @@
                 android:textColor="@color/white"
                 android:textSize="14sp"/>
             <ImageView
-                android:layout_width="45dp"
-                android:layout_height="45dp"
-                android:layout_marginTop="8dp"
+                android:layout_width="37dp"
+                android:layout_height="37dp"
+                android:layout_marginTop="7dp"
+                android:layout_marginStart="22dp"
                 android:src="@drawable/ic_deleted"
                 android:tint="@color/white"/>
         </LinearLayout>

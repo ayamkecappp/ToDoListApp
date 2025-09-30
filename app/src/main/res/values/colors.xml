@@ -9,7 +9,7 @@
     <color name="purple_tab_text">#FFFFFF</color>
     <color name="gray_tab_text">#888888</color>
     <color name="purple_tab_background">#2B0A2B</color>
-
+    <color name="very_dark_blue">#14142A</color>
     <!-- Tambahan untuk theme MaterialComponents -->
     <color name="purple_500">#6200EE</color>
     <color name="purple_700">#3700B3</color>
