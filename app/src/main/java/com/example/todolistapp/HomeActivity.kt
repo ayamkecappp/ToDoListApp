@@ -23,12 +23,12 @@ class HomeActivity : AppCompatActivity() {
         tvTitle = findViewById(R.id.tvTitle)
         tvSpeech = findViewById(R.id.tvSpeech)
         tvStreak = findViewById(R.id.tvStreak)
-        progressStreak = findViewById(R.id.progressStreak)
+        // progressStreak = findViewById(R.id.vectorBar)
         bottomNav = findViewById(R.id.bottomNav)
 
 
         // Contoh update progress streak
-        progressStreak.progress = 90
+        // progressStreak.progress = 90
         tvStreak.text = "131" // contoh update daily streak
 
         // Setup bottom navigation

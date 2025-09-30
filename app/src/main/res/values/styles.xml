@@ -164,4 +164,18 @@
         <item name="android:textColor">#14142A</item>
     </style>
 
+    <style name="homeBar">
+        <!-- Font -->
+        <item name="android:fontFamily">@font/lexend</item>
+        <item name="android:textStyle">normal</item> <!-- Regular / 400 -->
+        <item name="android:textSize">12sp</item>
+        <item name="android:lineSpacingExtra">0dp</item>
+        <item name="android:lineSpacingMultiplier">1.0</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:gravity">center</item>
+
+        <!-- Warna -->
+        <item name="android:textColor">#14142A</item>
+    </style>
+
 </resources>
