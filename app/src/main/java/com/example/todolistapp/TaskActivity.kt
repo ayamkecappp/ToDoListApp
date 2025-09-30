@@ -22,6 +22,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.appcompat.app.AlertDialog
 import android.view.LayoutInflater
+import androidx.core.content.ContextCompat
 
 class TaskActivity : AppCompatActivity() {
 
@@ -52,6 +53,12 @@ class TaskActivity : AppCompatActivity() {
         }
     }
 
+    // Map untuk memetakan Priority ke Resource Color ID
+    private val priorityColorMap = mapOf(
+        "Low" to R.color.low_priority,
+        "Medium" to R.color.medium_priority,
+        "High" to R.color.high_priority
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -290,13 +297,21 @@ class TaskActivity : AppCompatActivity() {
 
         // Ikon Status/Prioritas (tanda seru) - Hanya tampil jika Priority bukan "None"
         if (task.priority != "None") {
+            val colorResId = priorityColorMap[task.priority] ?: R.color.dark_blue
+            val colorInt = ContextCompat.getColor(context, colorResId)
+
             val exclamationIcon = ImageView(context).apply {
                 layoutParams = LinearLayout.LayoutParams(16.dp, 16.dp).apply {
                     marginStart = 8.dp
                     gravity = Gravity.CENTER_VERTICAL
                 }
                 setImageResource(R.drawable.ic_exclamation_circle) // Menggunakan ikon yang tersedia
-                contentDescription = "Priority"
+                contentDescription = "${task.priority} Priority"
+
+                // --- LOGIKA BARU UNTUK WARNA ---
+                // Menerapkan tint warna berdasarkan level prioritas
+                setColorFilter(colorInt)
+                // --- END LOGIKA BARU ---
             }
             titleAndPriorityContainer.addView(exclamationIcon)
         }
