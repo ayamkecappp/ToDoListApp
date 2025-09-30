@@ -2,6 +2,7 @@ package com.example.todolistapp
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
@@ -37,6 +38,12 @@ class ProfileActivity : AppCompatActivity() {
                 }
                 else -> false
             }
+        }
+        // Tambahkan click listener ke ikon settings
+        val ivSettings = findViewById<ImageView>(R.id.ivSettings)
+        ivSettings.setOnClickListener {
+            val intent = Intent(this, SettingsActivity::class.java)
+            startActivity(intent)
         }
     }
 }
