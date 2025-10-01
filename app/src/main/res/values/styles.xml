@@ -178,4 +178,10 @@
         <item name="android:textColor">#14142A</item>
     </style>
 
+    <style name="timy_time">
+        <item name="android:textSize">42sp</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:fontFamily">@font/lexend</item>
+    </style>
+
 </resources>
