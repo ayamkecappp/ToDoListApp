@@ -305,7 +305,7 @@ class TaskActivity : AppCompatActivity() {
                     marginStart = 8.dp
                     gravity = Gravity.CENTER_VERTICAL
                 }
-                setImageResource(R.drawable.ic_exclamation_circle) // Menggunakan ikon yang tersedia
+                setImageResource(R.drawable.ic_missed) // Menggunakan ikon yang tersedia
                 contentDescription = "${task.priority} Priority"
 
                 // --- LOGIKA BARU UNTUK WARNA ---
@@ -420,7 +420,7 @@ class TaskActivity : AppCompatActivity() {
 
         // Flow Timer Button
         val flowTimerButton = createActionButton(
-            R.drawable.ic_home, "Flow Timer") {
+            R.drawable.ic_alarm, "Flow Timer") {
             // LOGIKA BARU: BUKA FlowTimerActivity
             val intent = Intent(context, FlowTimerActivity::class.java).apply {
                 putExtra(FlowTimerActivity.EXTRA_TASK_NAME, task.title)
@@ -429,13 +429,13 @@ class TaskActivity : AppCompatActivity() {
         }
 
         val editButton = createActionButton(
-            R.drawable.ic_camera, "Edit") {
+            R.drawable.ic_edit, "Edit") {
             Toast.makeText(context, "Edit clicked for ${task.title}", Toast.LENGTH_SHORT).show()
         }
 
         // LOGIKA DELETE
         val deleteButton = createActionButton(
-            R.drawable.ic_cancel, "Delete") {
+            R.drawable.ic_trash, "Delete") {
             val success = TaskRepository.deleteTask(task.id)
             if (success) {
                 showConfirmationDialog(task.title, "dihapus")

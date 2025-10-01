@@ -68,11 +68,55 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginBottom="32dp">
 
-            <TextView android:text="★" android:textSize="40sp" android:textColor="#FFC107" android:layout_marginEnd="8dp"/>
-            <TextView android:text="★" android:textSize="40sp" android:textColor="#FFC107" android:layout_marginEnd="8dp"/>
-            <TextView android:text="★" android:textSize="40sp" android:textColor="#FFC107" android:layout_marginEnd="8dp"/>
-            <TextView android:text="★" android:textSize="40sp" android:textColor="#DDDDDD" android:layout_marginEnd="8dp"/>
-            <TextView android:text="★" android:textSize="40sp" android:textColor="#DDDDDD"/>
+            <ImageView
+                android:id="@+id/ivStar1"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_star"
+                app:tint="@color/gray"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="Rating Star 1"
+                android:clickable="true"
+                android:focusable="true"/>
+            <ImageView
+                android:id="@+id/ivStar2"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_star"
+                app:tint="@color/gray"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="Rating Star 2"
+                android:clickable="true"
+                android:focusable="true"/>
+            <ImageView
+                android:id="@+id/ivStar3"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_star"
+                app:tint="@color/gray"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="Rating Star 3"
+                android:clickable="true"
+                android:focusable="true"/>
+            <ImageView
+                android:id="@+id/ivStar4"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_star"
+                app:tint="@color/gray"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="Rating Star 4"
+                android:clickable="true"
+                android:focusable="true"/>
+            <ImageView
+                android:id="@+id/ivStar5"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_star"
+                app:tint="@color/gray"
+                android:contentDescription="Rating Star 5"
+                android:clickable="true"
+                android:focusable="true"/>
 
         </LinearLayout>
 
