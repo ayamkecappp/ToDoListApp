@@ -367,7 +367,7 @@
         <LinearLayout
             android:id="@+id/CompletedTasks"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="110dp"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -392,7 +392,7 @@
         <LinearLayout
             android:id="@+id/MissedTasks"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="110dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
@@ -420,7 +420,7 @@
         <LinearLayout
             android:id="@+id/DeletedTasks"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="110dp"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
