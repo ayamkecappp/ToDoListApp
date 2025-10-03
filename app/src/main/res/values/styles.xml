@@ -184,4 +184,64 @@
         <item name="android:fontFamily">@font/lexend</item>
     </style>
 
+    <style name="DayContainer">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+    </style>
+
+    <style name="DayText">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_alignParentTop">true</item>
+        <item name="android:layout_centerHorizontal">true</item>
+        <item name="android:paddingTop">5dp</item>
+        <item name="android:fontFamily">@font/lexend</item>
+        <item name="android:textColor">@color/black</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="DayEllipse">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_alignParentBottom">true</item>
+        <item name="android:layout_centerHorizontal">true</item>
+        <item name="android:paddingBottom">40dp</item>
+        <item name="android:drawableBottom">@drawable/ellipse_bar_home</item>
+    </style>
+
+    <style name="RunnerLayout">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_alignParentBottom">true</item>
+        <item name="android:layout_centerHorizontal">true</item>
+        <item name="android:paddingBottom">40dp</item>
+    </style>
+
+    <style name="VectorBar">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:src">@drawable/vector_home_bar</item>
+    </style>
+
+    <style name="RunnerIcon">
+        <item name="android:layout_width">24dp</item>
+        <item name="android:layout_height">24dp</item>
+        <item name="android:src">@drawable/run_bar_home</item>
+    </style>
+
+    <style name="DailyProgressBar">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">4dp</item>
+        <item name="android:layout_centerVertical">true</item>
+        <item name="android:progressDrawable">@drawable/custom_progress_bar</item>
+        <item name="android:max">100</item>
+        <item name="android:indeterminate">false</item>
+    </style>
+
+    <!-- Style untuk BottomNavigationView -->
+    <style name="CustomBottomNav" parent="Widget.MaterialComponents.BottomNavigationView">
+        <item name="android:background">@drawable/bg_bottom_nav</item>
+    </style>
+
 </resources>

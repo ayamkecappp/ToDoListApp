@@ -15,7 +15,7 @@ import de.hdodenhof.circleimageview.CircleImageView // PENTING: Import CircleIma
 class ProfileActivity : AppCompatActivity() {
 
     private lateinit var ivProfile: CircleImageView // UBAH TIPE DATA
-
+    private lateinit var bottomNav: BottomNavigationView // Dipertahankan untuk Bottom Nav
     // Activity Result Launcher untuk CameraActivity
     private val cameraLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -36,28 +36,25 @@ class ProfileActivity : AppCompatActivity() {
         setContentView(R.layout.profile)
 
         // Ambil BottomNavigationView
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
+        bottomNav = findViewById(R.id.bottomNav)
+
+        bottomNav.itemIconTintList = null
+
         ivProfile = findViewById(R.id.ivProfile) as CircleImageView // Inisialisasi ivProfile sebagai CircleImageView
 
-        // Set item default yang dipilih Profile
-        bottomNav.selectedItemId = R.id.nav_profile
 
         // Listener navigasi navbar
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
-                    val intent = Intent(this, HomeActivity::class.java)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                    startActivity(intent)
+                    startActivity(Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION))
                     true
                 }
                 R.id.nav_tasks -> {
-                    val intent = Intent(this, TaskActivity::class.java)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                    startActivity(intent)
+                    startActivity(Intent(this, TaskActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION))
                     true
                 }
-                R.id.nav_profile -> true
+                R.id.nav_profile -> true // Sudah di ProfileActivity
                 else -> false
             }
         }
@@ -96,6 +93,16 @@ class ProfileActivity : AppCompatActivity() {
             val intent = Intent(this, DeletedTasksActivity::class.java)
             startActivity(intent)
         }
+    }
+
+
+    /**
+     * Kunci Perbaikan: Set status item setiap kali Activity terlihat.
+     */
+    override fun onStart() {
+        super.onStart()
+        // Pastikan ikon Profile ditandai sebagai aktif
+        bottomNav.selectedItemId = R.id.nav_profile
     }
 
     private fun setProfileImage(uri: Uri) {

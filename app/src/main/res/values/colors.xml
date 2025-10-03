@@ -11,7 +11,13 @@
     <color name="gray_tab_text">#888888</color>
     <color name="purple_tab_background">#2B0A2B</color>
     <color name="very_dark_blue">#14142A</color>
-    <color name="low_priority">#4CAF50</color>    <color name="medium_priority">#FFC107</color> <color name="high_priority">#F44336</color>   <color name="purple_500">#6200EE</color>
+    <color name="low_priority">#4CAF50</color>
+    <color name="medium_priority">#FFC107</color>
+    <color name="high_priority">#F44336</color>
+    <color name="purple_500">#6200EE</color>
     <color name="purple_700">#3700B3</color>
     <color name="teal_200">#03DAC5</color>
+    <color name="blue_primary">#FF007AFF</color>
+    <!-- WARNA TIDAK AKTIF BOTTOM NAV (Gunakan nilai Abu-abu Netral) -->
+    <color name="gray_inactive">#808080</color>
 </resources>

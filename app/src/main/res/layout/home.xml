@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -6,9 +7,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
-    tools:context=".MainActivity">
+    tools:context=".HomeActivity">
 
-    <!-- Background biru -->
     <View
         android:id="@+id/bgTop"
         android:layout_width="0dp"
@@ -20,7 +20,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Title -->
     <TextView
         android:id="@+id/tvTitle"
         android:layout_width="wrap_content"
@@ -35,7 +34,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Ellipse Shadow di bawah Timy -->
     <View
         android:id="@+id/ellipse_7"
         android:layout_width="364dp"
@@ -46,7 +44,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Timy -->
     <ImageView
         android:id="@+id/imgTimy"
         android:layout_width="264dp"
@@ -59,7 +56,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Speech Bubble -->
     <TextView
         android:id="@+id/tvSpeech"
         android:layout_width="wrap_content"
@@ -75,7 +71,6 @@
         app:layout_constraintEnd_toEndOf="@id/imgTimy"
         android:layout_marginBottom="16dp"/>
 
-    <!-- Daily Streak Icon di atas bgTop -->
     <ImageView
         android:id="@+id/icFire"
         android:layout_width="120dp"
@@ -88,7 +83,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:translationY="500dp"/>
 
-    <!-- Daily Streak Text -->
     <LinearLayout
         android:id="@+id/layoutStreak"
         android:layout_width="wrap_content"
@@ -106,7 +100,7 @@
             android:id="@+id/tvStreak"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="130"
+            android:text="0"
             android:textSize="22sp"
             android:textStyle="bold"
             android:textColor="@color/black"
@@ -120,9 +114,9 @@
             android:textSize="14sp"
             android:textColor="@color/black"
             android:gravity="center"/>
+
     </LinearLayout>
 
-    <!-- Days card -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/layoutDays"
         android:layout_width="match_parent"
@@ -136,77 +130,199 @@
         app:layout_constraintTop_toBottomOf="@id/layoutStreak"
         android:layout_marginTop="450dp">
 
-
-        <!-- Days row -->
         <LinearLayout
             android:id="@+id/daysRow"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:orientation="horizontal"
             android:gravity="center"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <!-- Hari M dengan vectorBar -->
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center">
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
 
-                <TextView
-                    android:id="@+id/tvM"
-                    android:layout_width="wrap_content"
+                <ProgressBar
+                    android:id="@+id/full_week_progress_bar"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="13dp"
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:progressDrawable="@drawable/custom_progress_bar"
+                    android:progress="0"
+                    android:max="700"
+                    android:visibility="invisible"/>
+
+                <LinearLayout
+                    android:id="@+id/day_markers_container"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="M"
-                    style="@style/homeBar"
-                    android:gravity="center"/>
+                    android:layout_alignBottom="@id/full_week_progress_bar"
+                    android:layout_centerHorizontal="true"
+                    android:orientation="horizontal"
+                    android:paddingBottom="5dp"
+                    android:paddingTop="5dp"
+                    android:weightSum="7">
 
-                <RelativeLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp">
-
-                    <ImageView
-                        android:id="@+id/vectorBar"
-                        android:layout_width="wrap_content"
+                    <RelativeLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:src="@drawable/vector_home_bar"/>
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal">
 
-                    <ImageView
-                        android:layout_width="wrap_content"
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="M"
+                            android:layout_alignParentTop="true"/>
+
+                        <ImageView
+                            android:id="@+id/day_marker_0"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:layout_alignParentBottom="true"
+                            android:src="@drawable/ellipse_bar_home"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_toEndOf="@id/vectorBar"
-                        android:layout_alignBottom="@id/vectorBar"
-                        android:layout_marginStart="-13dp"
-                        android:src="@drawable/run_bar_home"/>
-                </RelativeLayout>
-            </LinearLayout>
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal">
 
-            <!-- Hari lainnya -->
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center" android:text="T" style="@style/homeBar"
-                android:drawableBottom="@drawable/ellipse_bar_home" android:drawablePadding="4dp"/>
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center" android:text="W" style="@style/homeBar"
-                android:drawableBottom="@drawable/ellipse_bar_home" android:drawablePadding="4dp"/>
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center" android:text="T" style="@style/homeBar"
-                android:drawableBottom="@drawable/ellipse_bar_home" android:drawablePadding="4dp"/>
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center" android:text="F" style="@style/homeBar"
-                android:drawableBottom="@drawable/ellipse_bar_home" android:drawablePadding="4dp"/>
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center" android:text="S" style="@style/homeBar"
-                android:drawableBottom="@drawable/ellipse_bar_home" android:drawablePadding="4dp"/>
-            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:gravity="center" android:text="S" style="@style/homeBar"
-                android:drawableBottom="@drawable/ellipse_bar_home" android:drawablePadding="4dp"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="T"
+                            android:layout_alignParentTop="true"/>
+
+                        <ImageView
+                            android:id="@+id/day_marker_1"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:layout_alignParentBottom="true"
+                            android:src="@drawable/ellipse_bar_home"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="W"
+                            android:layout_alignParentTop="true"/>
+
+                        <ImageView
+                            android:id="@+id/day_marker_2"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:layout_alignParentBottom="true"
+                            android:src="@drawable/ellipse_bar_home"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="T"
+                            android:layout_alignParentTop="true"/>
+
+                        <ImageView
+                            android:id="@+id/day_marker_3"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:layout_alignParentBottom="true"
+                            android:src="@drawable/ellipse_bar_home"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="F"
+                            android:layout_alignParentTop="true"/>
+
+                        <ImageView
+                            android:id="@+id/day_marker_4"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:layout_alignParentBottom="true"
+                            android:src="@drawable/ellipse_bar_home"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="S"
+                            android:layout_alignParentTop="true"/>
+
+                        <ImageView
+                            android:id="@+id/day_marker_5"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:layout_alignParentBottom="true"
+                            android:src="@drawable/ellipse_bar_home"/>
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="S"
+                            android:layout_alignParentTop="true"/>
+
+                        <ImageView
+                            android:id="@+id/day_marker_6"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:layout_alignParentBottom="true"
+                            android:src="@drawable/ellipse_bar_home"/>
+                    </RelativeLayout>
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/runner_icon"
+                    android:layout_width="16dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/run_bar_home"
+                    android:layout_alignTop="@id/full_week_progress_bar"
+                    android:layout_marginStart="10dp"
+                    android:translationY="-10dp"
+                    android:visibility="gone"/>
+
+            </RelativeLayout>
+
         </LinearLayout>
 
-        <!-- Garis horizontal -->
         <View
             android:id="@+id/line_1"
             android:layout_width="0dp"
@@ -217,7 +333,6 @@
             app:layout_constraintBottom_toBottomOf="parent"
             android:translationY="-30dp"/>
 
-        <!-- Well Done -->
         <TextView
             android:id="@+id/tvWellDone"
             android:layout_width="wrap_content"
@@ -232,13 +347,19 @@
             android:layout_marginTop="-25dp"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- Bottom navigation -->
-    <include
-        layout="@layout/include_bottom_nav"
+    <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="93dp"
+        app:itemIconSize="40dp"
+        android:layout_gravity="bottom"
+        style="@style/CustomBottomNav"
+        android:background="@drawable/bg_bottom_nav"
+        app:menu="@menu/menu_bottom"
+        app:labelVisibilityMode="unlabeled"
+        app:itemRippleColor="@android:color/transparent"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"/>
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

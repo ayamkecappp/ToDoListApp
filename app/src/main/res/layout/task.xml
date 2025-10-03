@@ -165,14 +165,21 @@
         android:visibility="gone"
         />
 
-    <include
-        layout="@layout/include_bottom_nav"
+    <!-- Bottom navigation -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="93dp"
+        app:itemIconSize="40dp"
+        android:layout_gravity="bottom"
+        style="@style/CustomBottomNav"
+        android:background="@drawable/bg_bottom_nav"
+        app:menu="@menu/menu_bottom"
+        app:labelVisibilityMode="unlabeled"
+        app:itemRippleColor="@android:color/transparent"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
