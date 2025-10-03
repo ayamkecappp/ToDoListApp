@@ -85,6 +85,13 @@
         <activity
             android:name=".StreakBadgeActivity"
             android:exported="false" />
+        <activity
+            android:name=".EditProfileActivity"
+            android:exported="false" />
+        <activity
+            android:name=".EditTaskActivity"
+            android:exported="false" />
+
 
     </application>
 

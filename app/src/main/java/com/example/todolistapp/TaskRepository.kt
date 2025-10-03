@@ -22,6 +22,22 @@ object TaskRepository {
     fun addTask(task: Task) {
         tasks.add(0, task)
     }
+    fun getTaskById(taskId: Long): Task? {
+        // Cari di daftar tugas aktif
+        return tasks.find { it.id == taskId }
+    }
+
+    // --- FUNGSI BARU: MEMPERBARUI TUGAS ---
+    fun updateTask(updatedTask: Task): Boolean {
+        val index = tasks.indexOfFirst { it.id == updatedTask.id }
+        return if (index != -1) {
+            tasks[index] = updatedTask
+            true
+        } else {
+            false
+        }
+    }
+
 
     fun completeTask(taskId: Long): Boolean {
         val taskToRemove = tasks.find { it.id == taskId }
