@@ -26,6 +26,8 @@ import java.util.Locale
 import java.text.SimpleDateFormat
 import android.content.DialogInterface
 import android.app.TimePickerDialog
+import android.widget.NumberPicker
+import android.graphics.drawable.ColorDrawable
 
 class AddTaskActivity : AppCompatActivity() {
 
@@ -33,6 +35,7 @@ class AddTaskActivity : AppCompatActivity() {
     private lateinit var inputActivity: EditText
     private lateinit var inputTime: EditText
     private lateinit var inputLocation: EditText
+    private lateinit var tvAddFlowTimer: TextView
 
     private var taskDateMillis: Long = System.currentTimeMillis()
     private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
@@ -40,6 +43,19 @@ class AddTaskActivity : AppCompatActivity() {
 
     private var currentSelectedPriority: String = "None"
     private val priorities = arrayOf("None", "Low", "Medium", "High")
+
+    // Konstanta untuk SharedPreferences
+    companion object {
+        const val PREFS_NAME = "TimerPrefs"
+        const val KEY_FLOW_TIMER_DURATION = "flow_timer_duration"
+    }
+
+    // Konstanta untuk menyimpan durasi Flow Timer yang dipilih
+    private var flowTimerDurationMillis: Long = 0L
+
+    // Konstanta untuk konversi waktu
+    private val MILLIS_IN_HOUR = 60 * 60 * 1000L
+    private val MILLIS_IN_MINUTE = 60 * 1000L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +68,12 @@ class AddTaskActivity : AppCompatActivity() {
         inputTime = findViewById(R.id.inputTime)
         inputLocation = findViewById(R.id.inputLocation)
         inputPriority = findViewById(R.id.inputPriority)
+        tvAddFlowTimer = findViewById(R.id.tvAddFlowTimer)
+
+        // Dapatkan durasi Flow Timer yang terakhir disimpan (digunakan untuk pra-isi dialog)
+        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        flowTimerDurationMillis = sharedPrefs.getLong(KEY_FLOW_TIMER_DURATION, 0L)
+
 
         // 1. Periksa Intent untuk tanggal yang dipilih
         val selectedMillis = intent.getLongExtra(EXTRA_SELECTED_DATE_MILLIS, -1L)
@@ -74,13 +96,35 @@ class AddTaskActivity : AppCompatActivity() {
 
         btnSave.setOnClickListener {
             val title = inputActivity.text.toString().trim()
-            val time = inputTime.text.toString().trim()
+            var time = inputTime.text.toString().trim()
             val location = inputLocation.text.toString().trim()
             val priority = currentSelectedPriority
 
-            // --- Mengambil endTimeMillis dari tag EditText ---
-            val taskEndTimeMillis = inputTime.tag as? Long ?: 0L
-            // ----------------------------------------------------
+            val taskEndTimeMillis: Long
+
+            // LOGIKA UNTUK MENENTUKAN JIKA MENGGUNAKAN FLOW TIMER
+            if (flowTimerDurationMillis > 0L) {
+                // Flow Timer aktif: Hitung waktu selesai relatif dari waktu sekarang
+                taskEndTimeMillis = System.currentTimeMillis() + flowTimerDurationMillis
+
+                // Format durasi Flow Timer untuk disimpan di field waktu (untuk ditampilkan di TaskActivity)
+                val durationHours = (flowTimerDurationMillis / MILLIS_IN_HOUR).toInt()
+                val durationMinutes = ((flowTimerDurationMillis % MILLIS_IN_HOUR) / MILLIS_IN_MINUTE).toInt()
+
+                val timeDisplay = when {
+                    durationHours > 0 && durationMinutes > 0 -> "${durationHours}h ${durationMinutes}m (Flow)"
+                    durationHours > 0 -> "${durationHours}h (Flow)"
+                    durationMinutes > 0 -> "${durationMinutes}m (Flow)"
+                    else -> "Durasi Flow Timer Tidak Valid"
+                }
+
+                time = timeDisplay
+            } else {
+                // Flow Timer tidak aktif: Gunakan endTimeMillis dari TimePicker
+                taskEndTimeMillis = inputTime.tag as? Long ?: 0L
+                if (time.isEmpty()) time = "Waktu tidak disetel"
+            }
+            // END LOGIKA
 
             if (title.isEmpty()) {
                 Toast.makeText(this, "Nama Aktivitas tidak boleh kosong!", Toast.LENGTH_SHORT).show()
@@ -90,10 +134,10 @@ class AddTaskActivity : AppCompatActivity() {
             val newTask = Task(
                 id = taskDateMillis,
                 title = title,
-                time = if (time.isEmpty()) "Waktu tidak disetel" else time,
+                time = time, // Gunakan waktu dari Time Picker atau Flow Timer
                 category = if (location.isEmpty()) "Uncategorized" else location,
                 priority = priority,
-                endTimeMillis = taskEndTimeMillis // Menyimpan endTimeMillis
+                endTimeMillis = taskEndTimeMillis // Menyimpan endTimeMillis (atau waktu selesai Flow Timer)
             )
             TaskRepository.addTask(newTask)
 
@@ -104,13 +148,18 @@ class AddTaskActivity : AppCompatActivity() {
             showPriorityDialog()
         }
 
-        // MODIFIKASI: Menggunakan Time Range Picker (24 jam)
+        // Menggunakan Time Range Picker (24 jam)
         inputTime.setOnClickListener {
             showTimeRangePicker()
         }
         // Pastikan inputTime tidak fokus
         inputTime.isFocusable = false
         inputTime.isFocusableInTouchMode = false
+
+        // Listener untuk Flow Timer
+        tvAddFlowTimer.setOnClickListener {
+            showFlowTimerDialog()
+        }
     }
 
     override fun finish() {
@@ -118,8 +167,97 @@ class AddTaskActivity : AppCompatActivity() {
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
 
-    // FUNGSI TIME RANGE PICKER 24 JAM
+    // FUNGSI BARU: DIALOG FLOW TIMER
+    private fun showFlowTimerDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_flow_timer, null)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        // Dapatkan NumberPicker (ID harus sesuai dengan dialog_add_flow_timer.xml)
+        val npHour = dialogView.findViewById<NumberPicker>(R.id.npHour)
+        val npMinute = dialogView.findViewById<NumberPicker>(R.id.npMinute)
+        val btnCancel = dialogView.findViewById<TextView>(R.id.btnCancel)
+        val btnSave = dialogView.findViewById<TextView>(R.id.btnSave)
+
+        // Dapatkan durasi terakhir dari SharedPreferences
+        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val currentDuration = sharedPrefs.getLong(KEY_FLOW_TIMER_DURATION, 30 * MILLIS_IN_MINUTE) // Default 30 menit
+
+        // Hitung nilai awal untuk NumberPicker
+        var initialHours = 0
+        var initialMinutes = 0
+
+        if (currentDuration > 0L) {
+            initialHours = (currentDuration / MILLIS_IN_HOUR).toInt()
+            initialMinutes = ((currentDuration % MILLIS_IN_HOUR) / MILLIS_IN_MINUTE).toInt()
+        }
+
+
+        // Setup Number Picker Hour
+        npHour.minValue = 0
+        npHour.maxValue = 24
+        npHour.value = initialHours
+
+        // Setup Number Picker Minute
+        npMinute.minValue = 0
+        npMinute.maxValue = 59
+        npMinute.value = initialMinutes
+
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        btnSave.setOnClickListener {
+            val hours = npHour.value
+            val minutes = npMinute.value
+
+            // Hitung total durasi dalam milidetik
+            val totalMillis = (hours * MILLIS_IN_HOUR) + (minutes * MILLIS_IN_MINUTE)
+
+            if (totalMillis <= 0L) {
+                Toast.makeText(this, "Durasi Flow Timer harus lebih dari 0.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            flowTimerDurationMillis = totalMillis
+
+            // BARU: Simpan durasi Flow Timer ke SharedPreferences
+            sharedPrefs.edit().putLong(KEY_FLOW_TIMER_DURATION, flowTimerDurationMillis).apply()
+
+            // BARU: HANYA TAMPILKAN TOAST & UPDATE TEKS TOMBOL
+            val timeDisplayString = when {
+                hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
+                hours > 0 -> "${hours}h"
+                minutes > 0 -> "${minutes}m"
+                else -> "0m"
+            }
+
+            // Update teks tombol agar pengguna tahu durasi telah disetel
+            tvAddFlowTimer.text = "Flow Timer Set (${timeDisplayString})"
+
+            // JANGAN SET inputTime.setText(timeDisplay)
+            inputTime.setText("") // Clear inputTime agar tidak bentrok dengan Flow Timer
+            inputTime.tag = null // Reset Time Picker tag
+
+            Toast.makeText(this, "Flow Timer berhasil disetel: ${timeDisplayString}.", Toast.LENGTH_SHORT).show()
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+    // END BARU
+
+    // FUNGSI TIME RANGE PICKER 24 JAM (Diubah untuk mereset Flow Timer)
     private fun showTimeRangePicker() {
+        // Reset Flow Timer ketika Time Picker digunakan
+        flowTimerDurationMillis = 0L
+        tvAddFlowTimer.text = "+ Add Flow Timer" // Reset teks tombol
+        inputTime.setText("") // Clear input field
+
         val calendar = Calendar.getInstance()
         val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
         val currentMinute = calendar.get(Calendar.MINUTE)
@@ -225,6 +363,8 @@ class AddTaskActivity : AppCompatActivity() {
             inputPriority.setText(currentSelectedPriority)
             inputTime.tag = null // Reset tag
             taskDateMillis = System.currentTimeMillis()
+            flowTimerDurationMillis = 0L // Reset Flow Timer duration
+            tvAddFlowTimer.text = "+ Add Flow Timer" // Reset teks tombol
 
             dialog.dismiss()
         }

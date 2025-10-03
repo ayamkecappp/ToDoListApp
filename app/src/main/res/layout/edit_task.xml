@@ -30,7 +30,7 @@
         android:id="@+id/tvNewReminderTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="New Reminder"
+        android:text="Edit Reminder"
         android:textColor="@color/black"
         android:textSize="22sp"
         android:fontFamily="@font/lexend"
@@ -100,23 +100,9 @@
                 android:textColorHint="#98A8C8"
                 android:padding="12dp"
                 android:fontFamily="@font/lexend"
-                android:layout_marginBottom="8dp"
+                android:layout_marginBottom="24dp"
                 android:inputType="text"
                 android:textSize="16sp"/>
-
-            <TextView
-                android:id="@+id/tvAddFlowTimer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="+ Add Flow Timer"
-                android:textColor="@color/dark_blue"
-                android:fontFamily="@font/lexend"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="24dp"
-                android:layout_gravity="end"
-                android:clickable="true"
-                android:focusable="true"/>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -230,7 +216,7 @@
                 android:layout_height="50dp"
                 android:backgroundTint="#183351"
                 android:fontFamily="@font/lexend"
-                android:text="Save"
+                android:text="Update"
                 android:textColor="@android:color/white"
                 android:textSize="18sp"
                 android:textStyle="bold"

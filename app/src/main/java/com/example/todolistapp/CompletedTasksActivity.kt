@@ -36,6 +36,7 @@ class CompletedTasksActivity : AppCompatActivity() {
         val scrollView = findViewById<androidx.core.widget.NestedScrollView>(R.id.bgCompletedTasks)
         val innerConstraintLayout = scrollView.getChildAt(0) as ConstraintLayout
 
+        // Hapus semua tampilan hardcoded di dalam ConstraintLayout (kecuali jika ada yang perlu dipertahankan)
         innerConstraintLayout.removeAllViews()
 
         // Buat LinearLayout baru untuk menampung daftar tugas yang telah selesai
@@ -58,13 +59,46 @@ class CompletedTasksActivity : AppCompatActivity() {
         val completedTasks = TaskRepository.getCompletedTasks()
 
         if (completedTasks.isEmpty()) {
-            val noTasksText = TextView(this).apply {
-                text = "Tidak ada tugas yang telah selesai."
-                gravity = android.view.Gravity.CENTER_HORIZONTAL
-                setPadding(0, 50.dp, 0, 50.dp)
-                typeface = ResourcesCompat.getFont(context, R.font.lexend)
+            // =======================================================
+            // BARU: Tampilan Kosong (Empty State) dengan Gambar Timy
+            // =======================================================
+
+            val emptyStateContainer = LinearLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    // Berikan padding agar berada di tengah layar scrollable
+                    setMargins(0, 100.dp, 0, 100.dp)
+                }
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
             }
-            tasksContainer.addView(noTasksText)
+
+            // 1. Gambar Timy
+            val ivTimyHappy = ImageView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    220.dp, 220.dp
+                )
+                setImageResource(R.drawable.timy_complete_task) // Menggunakan gambar Timy
+                contentDescription = "Timy Happy"
+                setPadding(0, 0, 0, 16.dp)
+            }
+            emptyStateContainer.addView(ivTimyHappy)
+
+            // 2. Teks "Yay, all tasks completed!"
+            val tvMessage = TextView(this).apply {
+                text = "Yay, all tasks completed!"
+                textSize = 16f
+                setTextColor(resources.getColor(R.color.very_dark_blue, theme))
+                typeface = ResourcesCompat.getFont(context, R.font.lexend)
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+            }
+            emptyStateContainer.addView(tvMessage)
+
+            tasksContainer.addView(emptyStateContainer)
+
+            // =======================================================
         } else {
             // Kelompokkan tugas berdasarkan tanggal penyelesaian (tanggal ID tugas)
             val groupedTasks = completedTasks.groupBy {

@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="@drawable/bg_flow_timer">
 
     <ImageView
         android:id="@+id/btnBack"
@@ -124,13 +124,5 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvTimerDisplay"
         android:contentDescription="Play/Pause" />
-
-    <View
-        android:layout_width="0dp"
-        android:layout_height="150dp"
-        android:background="#CCE2F9"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

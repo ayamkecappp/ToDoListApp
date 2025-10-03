@@ -14,6 +14,7 @@ import androidx.core.content.res.ResourcesCompat
 import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.*
+import android.graphics.Color // Import Color
 
 class DeletedTasksActivity : AppCompatActivity() {
 
@@ -63,13 +64,47 @@ class DeletedTasksActivity : AppCompatActivity() {
         val deletedTasks = TaskRepository.getDeletedTasks()
 
         if (deletedTasks.isEmpty()) {
-            val noTasksText = TextView(this).apply {
-                text = "Tidak ada tugas yang dihapus."
-                gravity = android.view.Gravity.CENTER_HORIZONTAL
-                setPadding(0, 50.dp, 0, 50.dp)
-                typeface = ResourcesCompat.getFont(context, R.font.lexend)
+            // =======================================================
+            // BARU: Tampilan Kosong (Empty State) dengan Gambar Timy
+            // =======================================================
+
+            val emptyStateContainer = LinearLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    // Berikan padding agar berada di tengah layar scrollable
+                    setMargins(0, 100.dp, 0, 100.dp)
+                }
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
             }
-            tasksContainer.addView(noTasksText)
+
+            // 1. Gambar Timy
+            val ivTimyHappy = ImageView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    220.dp, 220.dp
+                )
+                // Menggunakan drawable yang serupa
+                setImageResource(R.drawable.timy_complete_task)
+                contentDescription = "Timy Happy"
+                setPadding(0, 0, 0, 16.dp)
+            }
+            emptyStateContainer.addView(ivTimyHappy)
+
+            // 2. Teks "Yay, trash is empty!"
+            val tvMessage = TextView(this).apply {
+                text = "Yay, trash is empty!"
+                textSize = 16f
+                setTextColor(resources.getColor(R.color.very_dark_blue, theme))
+                typeface = ResourcesCompat.getFont(context, R.font.lexend)
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+            }
+            emptyStateContainer.addView(tvMessage)
+
+            tasksContainer.addView(emptyStateContainer)
+
+            // =======================================================
         } else {
             // Kelompokkan tugas berdasarkan tanggal pembuatan (Day of Year)
             val groupedTasks = deletedTasks.groupBy {

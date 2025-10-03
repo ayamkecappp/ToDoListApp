@@ -59,13 +59,47 @@ class MissedTasksActivity : AppCompatActivity() {
         val missedTasks = TaskRepository.getMissedTasks()
 
         if (missedTasks.isEmpty()) {
-            val noTasksText = TextView(this).apply {
-                text = "Tidak ada tugas yang terlewat."
-                gravity = android.view.Gravity.CENTER_HORIZONTAL
-                setPadding(0, 50.dp, 0, 50.dp)
-                typeface = ResourcesCompat.getFont(context, R.font.lexend)
+            // =======================================================
+            // BARU: Tampilan Kosong (Empty State) dengan Gambar Timy
+            // =======================================================
+
+            val emptyStateContainer = LinearLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    // Berikan padding agar berada di tengah layar scrollable
+                    setMargins(0, 100.dp, 0, 100.dp)
+                }
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
             }
-            tasksContainer.addView(noTasksText)
+
+            // 1. Gambar Timy
+            val ivTimyHappy = ImageView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    220.dp, 220.dp
+                )
+                // Menggunakan drawable yang serupa (asumsi timy_complete_task dapat digunakan sebagai placeholder)
+                setImageResource(R.drawable.timy_complete_task)
+                contentDescription = "Timy Happy"
+                setPadding(0, 0, 0, 16.dp)
+            }
+            emptyStateContainer.addView(ivTimyHappy)
+
+            // 2. Teks "Yay, no missed tasks!"
+            val tvMessage = TextView(this).apply {
+                text = "Yay, no missed tasks!"
+                textSize = 16f
+                setTextColor(resources.getColor(R.color.very_dark_blue, theme))
+                typeface = ResourcesCompat.getFont(context, R.font.lexend)
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+            }
+            emptyStateContainer.addView(tvMessage)
+
+            tasksContainer.addView(emptyStateContainer)
+
+            // =======================================================
         } else {
             // Kelompokkan tugas berdasarkan tanggal berakhir (Day of Year dari endTimeMillis)
             val groupedTasks = missedTasks.groupBy {

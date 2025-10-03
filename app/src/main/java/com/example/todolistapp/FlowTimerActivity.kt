@@ -17,7 +17,9 @@ import androidx.appcompat.app.AlertDialog
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.graphics.drawable.ColorDrawable
-import android.widget.Button // FIX: Import Button
+import android.widget.Button
+import android.view.Gravity
+import android.content.SharedPreferences
 
 class FlowTimerActivity : AppCompatActivity() {
 
@@ -28,23 +30,42 @@ class FlowTimerActivity : AppCompatActivity() {
     private lateinit var npSeconds: NumberPicker
     private lateinit var layoutSetDuration: LinearLayout
     private lateinit var btnBack: ImageView
-    private lateinit var btnSetDurationOK: Button // Variabel untuk tombol OK
+    private lateinit var btnSetDurationOK: Button
 
     private var countDownTimer: CountDownTimer? = null
     private var isTimerRunning = false
-    private var totalDurationMillis: Long = 30 * 60 * 1000L // Default 30 minutes
+
+    // Durasi awal akan diisi dari SharedPreferences
+    private var totalDurationMillis: Long = 30 * 60 * 1000L
     private var timeRemainingMillis: Long = totalDurationMillis
 
     // Warna untuk dialog
     private val COLOR_DARK_BLUE = Color.parseColor("#283F6D")
 
+    // Konstanta untuk konversi waktu
+    private val MILLIS_IN_MINUTE = 60 * 1000L
+
+
     companion object {
         const val EXTRA_TASK_NAME = "EXTRA_TASK_NAME"
+        // Constants untuk SharedPreferences (HARUS SAMA DENGAN AddTaskActivity.kt)
+        const val PREFS_NAME = "TimerPrefs"
+        const val KEY_FLOW_TIMER_DURATION = "flow_timer_duration"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_flow_timer)
+
+        // BARU: Load durasi dari SharedPreferences
+        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // Default 30 menit jika belum pernah diset
+        val defaultDuration = 30 * MILLIS_IN_MINUTE
+        val storedDuration = sharedPrefs.getLong(KEY_FLOW_TIMER_DURATION, defaultDuration)
+
+        // Set durasi awal
+        totalDurationMillis = storedDuration.coerceAtLeast(1000L) // Pastikan minimal 1 detik
+        timeRemainingMillis = totalDurationMillis
 
         // Hubungkan Views
         tvTaskName = findViewById(R.id.tvTaskName)
@@ -142,13 +163,13 @@ class FlowTimerActivity : AppCompatActivity() {
         }.start()
 
         isTimerRunning = true
-        btnPlayPause.setImageResource(R.drawable.ic_cancel) // Ikon Pause placeholder
+        btnPlayPause.setImageResource(R.drawable.ic_pause) // Ikon Pause placeholder
     }
 
     private fun pauseTimer() {
         countDownTimer?.cancel()
         isTimerRunning = false
-        btnPlayPause.setImageResource(R.drawable.baseline_arrow_forward_ios_24) // Ikon Play
+        btnPlayPause.setImageResource(R.drawable.ic_play) // Ikon Play
     }
 
     private fun updateTimerDisplay() {
@@ -179,7 +200,7 @@ class FlowTimerActivity : AppCompatActivity() {
     private fun timerFinishedFlow() {
         // Hentikan state dan reset tombol visual
         isTimerRunning = false
-        btnPlayPause.setImageResource(R.drawable.baseline_arrow_forward_ios_24) // Reset ke Play
+        btnPlayPause.setImageResource(R.drawable.ic_play) // Reset ke Play
 
         // Atur display ke 00:00
         timeRemainingMillis = 0
@@ -192,18 +213,25 @@ class FlowTimerActivity : AppCompatActivity() {
     private fun buildCustomDialog(context: Context, message: String, positiveText: String, negativeText: String, onPositive: () -> Unit, onNegative: () -> Unit): AlertDialog {
         val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_save_success, null)
 
-        val tvMessage = dialogView.findViewById<TextView>(R.id.tvAddReminder)
+        val tvMessage = dialogView.findViewById<TextView>(R.id.tvMessageTitle)
         val btnNo = dialogView.findViewById<TextView>(R.id.btnIgnore)
         val btnYes = dialogView.findViewById<TextView>(R.id.btnView)
 
         tvMessage.text = message
         tvMessage.setTextColor(COLOR_DARK_BLUE)
         tvMessage.textSize = 18f
+        tvMessage.gravity = Gravity.CENTER
 
         btnNo.text = negativeText
         btnYes.text = positiveText
 
+        // Atur warna teks tombol
+        btnNo.setTextColor(COLOR_DARK_BLUE)
+        btnYes.setTextColor(COLOR_DARK_BLUE)
+
+
         val dialog = AlertDialog.Builder(context).setView(dialogView).create()
+        // PERBAIKAN: Hapus 'new' yang tidak diperlukan di Kotlin
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.setCancelable(false)
 
