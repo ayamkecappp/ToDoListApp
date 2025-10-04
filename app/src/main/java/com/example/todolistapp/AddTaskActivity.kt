@@ -56,6 +56,7 @@ class AddTaskActivity : AppCompatActivity() {
     // Konstanta untuk konversi waktu
     private val MILLIS_IN_HOUR = 60 * 60 * 1000L
     private val MILLIS_IN_MINUTE = 60 * 1000L
+    private val MILLIS_IN_SECOND = 1000L // NEW
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -110,14 +111,17 @@ class AddTaskActivity : AppCompatActivity() {
 
                 // Format durasi Flow Timer untuk disimpan di field waktu (untuk ditampilkan di TaskActivity)
                 val durationHours = (flowTimerDurationMillis / MILLIS_IN_HOUR).toInt()
-                val durationMinutes = ((flowTimerDurationMillis % MILLIS_IN_HOUR) / MILLIS_IN_MINUTE).toInt()
+                val remainingAfterHours = flowTimerDurationMillis % MILLIS_IN_HOUR // NEW
+                val durationMinutes = (remainingAfterHours / MILLIS_IN_MINUTE).toInt() // UPDATED
+                val durationSeconds = ((remainingAfterHours % MILLIS_IN_MINUTE) / MILLIS_IN_SECOND).toInt() // NEW
 
                 val timeDisplay = when {
-                    durationHours > 0 && durationMinutes > 0 -> "${durationHours}h ${durationMinutes}m (Flow)"
-                    durationHours > 0 -> "${durationHours}h (Flow)"
-                    durationMinutes > 0 -> "${durationMinutes}m (Flow)"
+                    durationHours > 0 -> "${durationHours}h ${durationMinutes}m ${durationSeconds}s (Flow)"
+                    durationMinutes > 0 -> "${durationMinutes}m ${durationSeconds}s (Flow)"
+                    durationSeconds > 0 -> "${durationSeconds}s (Flow)"
                     else -> "Durasi Flow Timer Tidak Valid"
                 }
+
 
                 time = timeDisplay
             } else {
@@ -181,6 +185,7 @@ class AddTaskActivity : AppCompatActivity() {
         // Dapatkan NumberPicker (ID harus sesuai dengan dialog_add_flow_timer.xml)
         val npHour = dialogView.findViewById<NumberPicker>(R.id.npHour)
         val npMinute = dialogView.findViewById<NumberPicker>(R.id.npMinute)
+        val npSecond = dialogView.findViewById<NumberPicker>(R.id.npSecond) // NEW
         val btnCancel = dialogView.findViewById<TextView>(R.id.btnCancel)
         val btnSave = dialogView.findViewById<TextView>(R.id.btnSave)
 
@@ -191,10 +196,13 @@ class AddTaskActivity : AppCompatActivity() {
         // Hitung nilai awal untuk NumberPicker
         var initialHours = 0
         var initialMinutes = 0
+        var initialSeconds = 0 // NEW
 
         if (currentDuration > 0L) {
             initialHours = (currentDuration / MILLIS_IN_HOUR).toInt()
-            initialMinutes = ((currentDuration % MILLIS_IN_HOUR) / MILLIS_IN_MINUTE).toInt()
+            val remainingMillisAfterHours = currentDuration % MILLIS_IN_HOUR // NEW
+            initialMinutes = (remainingMillisAfterHours / MILLIS_IN_MINUTE).toInt() // UPDATED
+            initialSeconds = ((remainingMillisAfterHours % MILLIS_IN_MINUTE) / MILLIS_IN_SECOND).toInt() // NEW
         }
 
 
@@ -208,6 +216,12 @@ class AddTaskActivity : AppCompatActivity() {
         npMinute.maxValue = 59
         npMinute.value = initialMinutes
 
+        // Setup Number Picker Second // NEW
+        npSecond.minValue = 0
+        npSecond.maxValue = 59
+        npSecond.value = initialSeconds
+
+
         btnCancel.setOnClickListener {
             dialog.dismiss()
         }
@@ -215,9 +229,10 @@ class AddTaskActivity : AppCompatActivity() {
         btnSave.setOnClickListener {
             val hours = npHour.value
             val minutes = npMinute.value
+            val seconds = npSecond.value // NEW
 
             // Hitung total durasi dalam milidetik
-            val totalMillis = (hours * MILLIS_IN_HOUR) + (minutes * MILLIS_IN_MINUTE)
+            val totalMillis = (hours * MILLIS_IN_HOUR) + (minutes * MILLIS_IN_MINUTE) + (seconds * MILLIS_IN_SECOND) // UPDATED
 
             if (totalMillis <= 0L) {
                 Toast.makeText(this, "Durasi Flow Timer harus lebih dari 0.", Toast.LENGTH_SHORT).show()
@@ -231,10 +246,10 @@ class AddTaskActivity : AppCompatActivity() {
 
             // BARU: HANYA TAMPILKAN TOAST & UPDATE TEKS TOMBOL
             val timeDisplayString = when {
-                hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
-                hours > 0 -> "${hours}h"
-                minutes > 0 -> "${minutes}m"
-                else -> "0m"
+                hours > 0 -> "${hours}h ${minutes}m ${seconds}s"
+                minutes > 0 -> "${minutes}m ${seconds}s"
+                seconds > 0 -> "${seconds}s"
+                else -> "0s"
             }
 
             // Update teks tombol agar pengguna tahu durasi telah disetel

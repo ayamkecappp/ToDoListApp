@@ -142,7 +142,12 @@ class MissedTasksActivity : AppCompatActivity() {
             setBackgroundResource(R.drawable.rectangle_5)
             contentDescription = "Reschedule Button"
             setOnClickListener {
-                Toast.makeText(context, "Reschedule ${task.title} clicked", Toast.LENGTH_SHORT).show()
+                // LOGIKA BARU: BUKA EDIT TASK UNTUK RESCHEDULE
+                val intent = Intent(context, EditTaskActivity::class.java).apply {
+                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
+                    putExtra(EditTaskActivity.EXTRA_TASK_TYPE, "missed")
+                }
+                startActivity(intent)
             }
         }
         taskItemContainer.addView(ivRescheduleBg)

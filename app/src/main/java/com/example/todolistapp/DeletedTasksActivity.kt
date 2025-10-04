@@ -141,8 +141,12 @@ class DeletedTasksActivity : AppCompatActivity() {
             contentDescription = "Reschedule Button"
             // Tambahkan OnClickListener untuk Reschedule (opsional)
             setOnClickListener {
-                Toast.makeText(context, "Reschedule ${task.title} clicked", Toast.LENGTH_SHORT).show()
-                // Jika ingin mengimplementasikan reschedule, Anda perlu memindahkan kembali tugas dari deletedTasks ke tasks.
+                // LOGIKA BARU: BUKA EDIT TASK UNTUK RESCHEDULE
+                val intent = Intent(context, EditTaskActivity::class.java).apply {
+                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
+                    putExtra(EditTaskActivity.EXTRA_TASK_TYPE, "deleted")
+                }
+                startActivity(intent)
             }
         }
         taskItemContainer.addView(ivRescheduleBg)
