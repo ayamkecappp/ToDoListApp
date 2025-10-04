@@ -59,4 +59,7 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:1.2.0-alpha02")
 
+    // BARU: Tambahkan baris ini untuk SwipeRefreshLayout
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+
 }

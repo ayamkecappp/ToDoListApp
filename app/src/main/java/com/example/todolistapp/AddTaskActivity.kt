@@ -79,6 +79,7 @@ class AddTaskActivity : AppCompatActivity() {
         val selectedMillis = intent.getLongExtra(EXTRA_SELECTED_DATE_MILLIS, -1L)
         if (selectedMillis != -1L) {
             taskDateMillis = selectedMillis
+
             val selectedDate = Date(taskDateMillis)
             Toast.makeText(this, "Aktivitas akan ditambahkan pada: ${uiDateFormat.format(selectedDate)}", Toast.LENGTH_LONG).show()
         } else {

@@ -15,47 +15,35 @@ import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.*
 import android.graphics.Color // Import Color
+import android.view.animation.AnimationUtils
 
 class DeletedTasksActivity : AppCompatActivity() {
 
-    private lateinit var tasksContainer: LinearLayout // Container untuk list tugas
+    // Deklarasi semua view yang akan kita kontrol
+    private lateinit var contentContainer: ConstraintLayout
+    private lateinit var tasksContainer: LinearLayout
+    private lateinit var scrollView: androidx.core.widget.NestedScrollView
+    private lateinit var emptyStateContainer: LinearLayout
     private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.deleted_tasks)
 
-        // Ambil ImageView panah kiri (back arrow)
-        val ivBackArrow = findViewById<ImageView>(R.id.ivBackArrow)
-        ivBackArrow.setOnClickListener {
-            // Kembali ke ProfileActivity
+        // Inisialisasi semua view dari XML
+        contentContainer = findViewById(R.id.content_container)
+        tasksContainer = findViewById(R.id.tasks_container) // Pastikan ID ini ada di XML
+        scrollView = findViewById(R.id.tasks_scroll_view) // Pastikan ID ini ada di XML
+        emptyStateContainer = findViewById(R.id.empty_state_container) // Pastikan ID ini ada di XML
+
+        findViewById<ImageView>(R.id.ivBackArrow).setOnClickListener {
             val intent = Intent(this, ProfileActivity::class.java)
-            // Optional: mencegah multiple instance
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
-            finish() // optional, menutup DeletedTasksActivity
+            finish()
         }
 
-        // --- Inisialisasi dan Muat Data ---
-        // Dapatkan ConstraintLayout di dalam NestedScrollView (yang menampung item hardcoded)
-        val scrollView = findViewById<androidx.core.widget.NestedScrollView>(R.id.bgCompletedTasks)
-        val innerConstraintLayout = scrollView.getChildAt(0) as ConstraintLayout
-
-        // Hapus semua tampilan hardcoded di dalam ConstraintLayout
-        innerConstraintLayout.removeAllViews()
-
-        // Buat LinearLayout baru untuk menampung daftar tugas yang dihapus
-        tasksContainer = LinearLayout(this).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            orientation = LinearLayout.VERTICAL
-        }
-
-        // Tambahkan LinearLayout baru ke ConstraintLayout
-        innerConstraintLayout.addView(tasksContainer)
-
+        // Langsung muat data (Blok kode lama yang membuat LinearLayout sudah dihapus)
         loadDeletedTasks()
     }
 
@@ -64,68 +52,33 @@ class DeletedTasksActivity : AppCompatActivity() {
         val deletedTasks = TaskRepository.getDeletedTasks()
 
         if (deletedTasks.isEmpty()) {
-            // =======================================================
-            // BARU: Tampilan Kosong (Empty State) dengan Gambar Timy
-            // =======================================================
-
-            val emptyStateContainer = LinearLayout(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    // Berikan padding agar berada di tengah layar scrollable
-                    setMargins(0, 100.dp, 0, 100.dp)
-                }
-                orientation = LinearLayout.VERTICAL
-                gravity = android.view.Gravity.CENTER
-            }
-
-            // 1. Gambar Timy
-            val ivTimyHappy = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    220.dp, 220.dp
-                )
-                // Menggunakan drawable yang serupa
-                setImageResource(R.drawable.timy_complete_task)
-                contentDescription = "Timy Happy"
-                setPadding(0, 0, 0, 16.dp)
-            }
-            emptyStateContainer.addView(ivTimyHappy)
-
-            // 2. Teks "Yay, trash is empty!"
-            val tvMessage = TextView(this).apply {
-                text = "Yay, trash is empty!"
-                textSize = 16f
-                setTextColor(resources.getColor(R.color.very_dark_blue, theme))
-                typeface = ResourcesCompat.getFont(context, R.font.lexend)
-                gravity = android.view.Gravity.CENTER_HORIZONTAL
-            }
-            emptyStateContainer.addView(tvMessage)
-
-            tasksContainer.addView(emptyStateContainer)
-
-            // =======================================================
+            // ---- KONDISI KOSONG ----
+            scrollView.visibility = View.GONE
+            emptyStateContainer.visibility = View.VISIBLE
         } else {
-            // Kelompokkan tugas berdasarkan tanggal pembuatan (Day of Year)
+            // ---- KONDISI ADA TUGAS ----
+            scrollView.visibility = View.VISIBLE
+            emptyStateContainer.visibility = View.GONE
+
+            // Isi daftar tugas
             val groupedTasks = deletedTasks.groupBy {
                 Calendar.getInstance().apply { timeInMillis = it.id }.get(Calendar.DAY_OF_YEAR)
             }
-
-            // Urutkan grup berdasarkan tanggal (terbaru di atas)
             val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
-
             for ((_, tasks) in sortedGroups) {
-                // Tambahkan Label Tanggal
                 val dateLabel = Calendar.getInstance().apply { timeInMillis = tasks.first().id }
                 addDateHeader(dateLabel)
-
-                // Tambahkan tugas
                 for (task in tasks) {
                     createDeletedTaskItem(task)
                 }
             }
+
+            // PINDAHKAN ANIMASI KE DALAM BLOK 'ELSE' INI
+            val slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_bounce)
+            contentContainer.startAnimation(slideDown)
         }
     }
+
 
     private fun addDateHeader(date: Calendar) {
         val dateText = TextView(this).apply {

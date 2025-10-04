@@ -14,42 +14,35 @@ import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.*
 import android.graphics.Color
+import android.view.animation.AnimationUtils
 
 class MissedTasksActivity : AppCompatActivity() {
 
+    // Deklarasi semua view yang akan kita kontrol
+    private lateinit var contentContainer: ConstraintLayout
     private lateinit var tasksContainer: LinearLayout
+    private lateinit var scrollView: androidx.core.widget.NestedScrollView
+    private lateinit var emptyStateContainer: LinearLayout
     private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.missed_tasks)
 
-        val ivBackArrow = findViewById<ImageView>(R.id.ivBackArrow)
-        ivBackArrow.setOnClickListener {
+        // Inisialisasi semua view dari XML
+        contentContainer = findViewById(R.id.content_container)
+        tasksContainer = findViewById(R.id.tasks_container)
+        scrollView = findViewById(R.id.tasks_scroll_view)
+        emptyStateContainer = findViewById(R.id.empty_state_container)
+
+        findViewById<ImageView>(R.id.ivBackArrow).setOnClickListener {
             val intent = Intent(this, ProfileActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
             finish()
         }
 
-        // --- Inisialisasi dan Muat Data ---
-        val scrollView = findViewById<androidx.core.widget.NestedScrollView>(R.id.bgCompletedTasks)
-        val innerConstraintLayout = scrollView.getChildAt(0) as ConstraintLayout
-
-        innerConstraintLayout.removeAllViews()
-
-        // Buat LinearLayout baru untuk menampung daftar tugas yang terlewat
-        tasksContainer = LinearLayout(this).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            orientation = LinearLayout.VERTICAL
-        }
-
-        innerConstraintLayout.addView(tasksContainer)
-
-        // PENTING: Proses missed tasks sebelum memuat
+        // Proses missed tasks sebelum memuat
         TaskRepository.processTasksForMissed()
         loadMissedTasks()
     }
@@ -59,66 +52,35 @@ class MissedTasksActivity : AppCompatActivity() {
         val missedTasks = TaskRepository.getMissedTasks()
 
         if (missedTasks.isEmpty()) {
-            // =======================================================
-            // BARU: Tampilan Kosong (Empty State) dengan Gambar Timy
-            // =======================================================
-
-            val emptyStateContainer = LinearLayout(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    // Berikan padding agar berada di tengah layar scrollable
-                    setMargins(0, 100.dp, 0, 100.dp)
-                }
-                orientation = LinearLayout.VERTICAL
-                gravity = android.view.Gravity.CENTER
-            }
-
-            // 1. Gambar Timy
-            val ivTimyHappy = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    220.dp, 220.dp
-                )
-                // Menggunakan drawable yang serupa (asumsi timy_complete_task dapat digunakan sebagai placeholder)
-                setImageResource(R.drawable.timy_complete_task)
-                contentDescription = "Timy Happy"
-                setPadding(0, 0, 0, 16.dp)
-            }
-            emptyStateContainer.addView(ivTimyHappy)
-
-            // 2. Teks "Yay, no missed tasks!"
-            val tvMessage = TextView(this).apply {
-                text = "Yay, no missed tasks!"
-                textSize = 16f
-                setTextColor(resources.getColor(R.color.very_dark_blue, theme))
-                typeface = ResourcesCompat.getFont(context, R.font.lexend)
-                gravity = android.view.Gravity.CENTER_HORIZONTAL
-            }
-            emptyStateContainer.addView(tvMessage)
-
-            tasksContainer.addView(emptyStateContainer)
-
-            // =======================================================
+            // ---- KONDISI KOSONG ----
+            // Sembunyikan background kartu dan tampilkan tampilan kosong
+            scrollView.visibility = View.GONE
+            emptyStateContainer.visibility = View.VISIBLE
         } else {
-            // Kelompokkan tugas berdasarkan tanggal berakhir (Day of Year dari endTimeMillis)
+            // ---- KONDISI ADA TUGAS ----
+            // Tampilkan background kartu dan sembunyikan tampilan kosong
+            scrollView.visibility = View.VISIBLE
+            emptyStateContainer.visibility = View.GONE
+
+            // Kelompokkan tugas berdasarkan tanggal berakhir
             val groupedTasks = missedTasks.groupBy {
                 Calendar.getInstance().apply { timeInMillis = it.endTimeMillis }.get(Calendar.DAY_OF_YEAR)
             }
 
-            // Urutkan grup berdasarkan tanggal (terbaru di atas)
             val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
 
             for ((_, tasks) in sortedGroups) {
-                // Gunakan endTimeMillis untuk header tanggal
                 val dateLabel = Calendar.getInstance().apply { timeInMillis = tasks.first().endTimeMillis }
                 addDateHeader(dateLabel)
 
-                // Tambahkan tugas
                 for (task in tasks) {
                     createMissedTaskItem(task)
                 }
             }
+
+            // Jalankan animasi
+            val slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_bounce)
+            contentContainer.startAnimation(slideDown)
         }
     }
 

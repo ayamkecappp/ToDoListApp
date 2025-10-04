@@ -5,9 +5,10 @@
     android:id="@+id/settings"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF">
+    android:background="#FFFFFF"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
-    <!-- Top background -->
     <View
         android:id="@+id/bgTop"
         android:layout_width="0dp"
@@ -16,9 +17,9 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.157"/>
+        app:layout_constraintHeight_percent="0.157"
+        android:elevation="8dp" />
 
-    <!-- Settings title -->
     <TextView
         android:id="@+id/tvCompletedTasksTitle"
         android:layout_width="wrap_content"
@@ -28,9 +29,9 @@
         app:layout_constraintBottom_toBottomOf="@id/bgTop"
         app:layout_constraintStart_toStartOf="@id/bgTop"
         app:layout_constraintEnd_toEndOf="@id/bgTop"
-        android:layout_marginBottom="40dp"/>
+        android:layout_marginBottom="40dp"
+        android:elevation="8dp"/>
 
-    <!-- Back Arrow -->
     <ImageView
         android:id="@+id/ivBackArrow"
         android:layout_width="24dp"
@@ -40,365 +41,79 @@
         app:layout_constraintStart_toStartOf="@id/bgTop"
         app:layout_constraintBottom_toBottomOf="@id/bgTop"
         android:layout_marginStart="36dp"
-        android:layout_marginBottom="47dp"/>
-
-    <!-- Background bawah -->
-    <!-- Scrollable area for rectangles -->
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/bgCompletedTasks"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/bg_settings"
-        app:layout_constraintTop_toBottomOf="@id/bgTop"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:layout_marginBottom="47dp"
+        android:elevation="8dp"/>
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <!-- Section Wednesday -->
-        <TextView
-            android:id="@+id/tvWednesday"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Wednesday, 22 October 2025"
-            android:textAppearance="@style/completedTasksLabel"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginStart="11dp"
-            android:layout_marginTop="12dp"/>
-
-        <!-- Rectangle 1 -->
-        <View
-            android:id="@+id/rectangleSettings1"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/tvWednesday"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvDinnerDate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Dinner Date"
-            android:textAppearance="@style/completedTasksContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings1"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings1"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings1"
-            android:layout_marginStart="18dp"/>
-
-        <!-- Rectangle 2 -->
-        <View
-            android:id="@+id/rectangleSettings2"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings1"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvMovieNight"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Movie Night"
-            android:textAppearance="@style/completedTasksContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings2"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings2"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings2"
-            android:layout_marginStart="18dp"/>
-
-
-        <!-- Rectangle 3 -->
-        <View
-            android:id="@+id/rectangleSettings3"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings2"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvZoomMeeting"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Zoom Meeting"
-            android:textAppearance="@style/completedTasksContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings3"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings3"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings3"
-            android:layout_marginStart="18dp"/>
-
-
-        <!-- Rectangle 4 -->
-        <View
-            android:id="@+id/rectangleSettings4"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings3"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvGym"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Gym"
-            android:textAppearance="@style/completedTasksContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings4"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings4"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings4"
-            android:layout_marginStart="18dp"/>
-
-        <!-- Section Tuesday -->
-        <TextView
-            android:id="@+id/tvTuesday"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Tuesday, 21 October 2025"
-            android:textAppearance="@style/completedTasksLabel"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings4"
-            app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginStart="11dp"
-            android:layout_marginTop="22dp"/>
-
-        <!-- Rectangle 5 -->
-        <View
-            android:id="@+id/rectangleSettings5"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/tvTuesday"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvPayElectricityBill"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Pay Electricity Bill"
-            android:textAppearance="@style/completedTasksContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings5"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings5"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings5"
-            android:layout_marginStart="18dp"/>
-
-
-        <!-- Rectangle 6 : Doctor Appointment -->
-        <View
-            android:id="@+id/rectangleSettings6"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings5"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="6dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvDoctorAppointment"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Doctor Appointment"
-            android:textAppearance="@style/completedTasksContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings6"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings6"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings6"
-            android:layout_marginStart="18dp"/>
-
-        <!-- Label Monday -->
-        <TextView
-            android:id="@+id/tvMonday"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Monday, 20 October 2025"
-            android:textAppearance="@style/completedTasksLabel"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings6"
-            app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginStart="11dp"
-            android:layout_marginTop="22dp"/>
-
-        <!-- Rectangle 7 : Security -->
-        <View
-            android:id="@+id/rectangleSettings7"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/tvMonday"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvStudyGroupSession"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Study Group Session"
-            android:textAppearance="@style/completedTasksContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings7"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings7"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings7"
-            android:layout_marginStart="18dp"/>
-
-
-        <View
-            android:id="@+id/rectangleSettings8"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings7"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvCleantheRoom"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Clean the Room"
-            android:textAppearance="@style/completedTasksContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings8"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings8"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings8"
-            android:layout_marginStart="18dp"/>
-
-
-        <!-- Rectangle 9 : About -->
-        <View
-            android:id="@+id/rectangleSettings9"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings8"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvMorningRun"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Morning Run"
-            android:textAppearance="@style/completedTasksContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings9"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings9"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings9"
-            android:layout_marginStart="18dp"/>
-
-
-        <!-- Label Sunday -->
-        <TextView
-            android:id="@+id/tvSunday"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Sunday, 19 October 2025"
-            android:textAppearance="@style/completedTasksLabel"
-            app:layout_constraintTop_toBottomOf="@id/rectangleSettings9"
-            app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginStart="11dp"
-            android:layout_marginTop="22dp"/>
-
-
-        <!-- Rectangle 10 : Weekend Picnic -->
-        <View
-            android:id="@+id/rectangleSettings10"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rectangle_settings"
-            app:layout_constraintTop_toBottomOf="@id/tvSunday"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="0dp"
-            app:layout_constraintBottom_toTopOf="@id/ivTimySettings"
-            android:layout_marginBottom="16dp"
-            />
-
-        <TextView
-            android:id="@+id/tvWeekendPicnic"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Weekend Picnic"
-            android:textAppearance="@style/completedTasksContent"
-            app:layout_constraintStart_toStartOf="@id/rectangleSettings10"
-            app:layout_constraintTop_toTopOf="@id/rectangleSettings10"
-            app:layout_constraintBottom_toBottomOf="@id/rectangleSettings10"
-            android:layout_marginStart="18dp"/>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-    </androidx.core.widget.NestedScrollView>
-
-    <!-- Timy Settings sekarang ada di dalam bgCompletedTask-->
-    <ImageView
-        android:id="@+id/ivTimyTasks"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@drawable/timy_tasks"
-        android:contentDescription="Timy Settings"
+        android:id="@+id/content_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:elevation="30dp"
-        android:layout_marginBottom="-230dp"/> <!-- atur margin sesuai kebutuhan -->
+        android:clipToPadding="false"
+        android:paddingTop="120dp"
+        android:clipChildren="false">
 
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/tasks_scroll_view"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="20dp"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/bg_settings"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+            <LinearLayout
+                android:id="@+id/tasks_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+        </androidx.core.widget.NestedScrollView>
+
+        <LinearLayout
+            android:id="@+id/empty_state_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+            <ImageView
+                android:layout_width="220dp"
+                android:layout_height="220dp"
+                android:src="@drawable/timy_complete_task"
+                android:contentDescription="Timy Happy"
+                android:paddingBottom="16dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Yay, all tasks completed!"
+                android:textSize="16sp"
+                android:textColor="@color/very_dark_blue"
+                android:fontFamily="@font/lexend"
+                android:layout_marginTop="-60dp"/>
+        </LinearLayout>
+
+        <!-- Timy di dalam content_container -->
+        <ImageView
+            android:id="@+id/ivTimyTasks"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/timy_tasks"
+            android:contentDescription="Timy Settings"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:elevation="30dp"
+            android:layout_marginBottom="-230dp"/>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

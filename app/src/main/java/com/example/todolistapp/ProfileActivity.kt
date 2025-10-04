@@ -77,14 +77,28 @@ class ProfileActivity : AppCompatActivity() {
         // Listener navigasi navbar (Mempertahankan logika navigasi)
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_home -> {
-                    // Gunakan FLAG_ACTIVITY_REORDER_TO_FRONT untuk transisi Activity tanpa animasi
-                    startActivity(Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+                R.id.nav_home-> {
+                    startActivity(
+                        Intent(
+                            this,
+                            HomeActivity::class.java
+                        ).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION) // FLAG NO ANIMATION
+                    )
+                    finish() // Tutup Activity saat ini
+                    // MEMAKSA TRANSISI INSTAN (Hard Cut)
+                    overridePendingTransition(0, 0)
                     true
                 }
-                R.id.nav_tasks -> {
-                    // Gunakan FLAG_ACTIVITY_REORDER_TO_FRONT untuk transisi Activity tanpa animasi
-                    startActivity(Intent(this, TaskActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+                R.id.nav_tasks-> {
+                    startActivity(
+                        Intent(
+                            this,
+                            TaskActivity::class.java
+                        ).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION) // FLAG NO ANIMATION
+                    )
+                    finish() // Tutup Activity saat ini
+                    // MEMAKSA TRANSISI INSTAN (Hard Cut)
+                    overridePendingTransition(0, 0)
                     true
                 }
                 R.id.nav_profile -> true // Sudah di ProfileActivity
