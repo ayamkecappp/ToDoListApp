@@ -25,6 +25,7 @@ import java.util.*
 import androidx.appcompat.app.AlertDialog
 import android.view.LayoutInflater
 import androidx.core.content.ContextCompat
+import kotlin.math.max
 
 
 class TaskActivity : AppCompatActivity() {
@@ -78,6 +79,7 @@ class TaskActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             loadTasksForSelectedDate()
+            updateCalendar() // BARU: Perbarui kalender setelah menambah/mengedit tugas
         }
     }
 
@@ -119,9 +121,8 @@ class TaskActivity : AppCompatActivity() {
 
 
         // --- Setup Kalender & Navigasi ---
-        currentCalendar = selectedDate.clone() as Calendar // Salin tanggal hari ini.
-        currentCalendar.set(Calendar.DAY_OF_MONTH, 1) // Atur ke tanggal 1 di bulan ini.
-
+        currentCalendar = Calendar.getInstance()
+        selectedDate = currentCalendar.clone() as Calendar
 
         updateCalendar() //Membuat dan menampilkan kalender horizontal
         calendarMain.post { scrollToToday() } // Setelah layout siap, geser kalender ke tanggal hari ini.
@@ -190,10 +191,6 @@ class TaskActivity : AppCompatActivity() {
     }
 
 
-
-
-
-
 // --- FUNGSI SIKLUS HIDUP (LIFECYCLE) ---
 
 
@@ -214,6 +211,7 @@ class TaskActivity : AppCompatActivity() {
 
         TaskRepository.processTasksForMissed()
         loadTasksForSelectedDate()
+        updateCalendar() // BARU: Panggil updateCalendar di onResume
     }
 
     private fun checkStreakBreak() {
@@ -241,7 +239,7 @@ class TaskActivity : AppCompatActivity() {
                     val completedOnDay = TaskRepository.getCompletedTasksByDate(checkCalendar)
 
                     // Jika ada task tapi tidak ada yang completed, atau tidak ada task sama sekali
-                    if (tasksOnDay.isEmpty() || completedOnDay.isEmpty()) {
+                    if (tasksOnDay.isNotEmpty() && completedOnDay.isEmpty()) {
                         // Streak putus
                         prefs.edit()
                             .putInt(KEY_STREAK, 0)
@@ -290,25 +288,42 @@ class TaskActivity : AppCompatActivity() {
 
     // Menggeser kalender horizontal agar tanggal hari ini berada di tengah layar.
     private fun scrollToToday() {
+        // Rentang 13 bulan (6 bulan lalu, bulan ini, 6 bulan depan)
+        val monthsBefore = 6
+        val monthsTotal = 13
+
         val today = Calendar.getInstance()
-        if (today.get(Calendar.MONTH) == currentCalendar.get(Calendar.MONTH) &&
-            today.get(Calendar.YEAR) == currentCalendar.get(Calendar.YEAR)) {
+        val startCal = Calendar.getInstance().apply { add(Calendar.MONTH, -monthsBefore) }
 
+        var totalDays = 0
+        var daysUntilToday = 0
 
-            val todayDayOfMonth = today.get(Calendar.DAY_OF_MONTH)
-            val dayIndex = todayDayOfMonth - 1
-            val itemWidthPx = ITEM_WIDTH_DP.dp
-            val centerOffset = (calendarMain.width / 2) - (itemWidthPx / 2)
-            val scrollPosition = (dayIndex * itemWidthPx) - centerOffset
-            calendarMain.smoothScrollTo(scrollPosition.coerceAtLeast(0), 0)
+        for (m in 0 until monthsTotal) {
+            val cal = startCal.clone() as Calendar
+            cal.add(Calendar.MONTH, m)
+            val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+
+            if (cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                cal.get(Calendar.MONTH) == today.get(Calendar.MONTH)) {
+                daysUntilToday = totalDays + today.get(Calendar.DAY_OF_MONTH)
+            }
+
+            totalDays += daysInMonth
         }
+
+        // Posisi tengah item hari ini
+        val itemWidthPx = ITEM_WIDTH_DP.dp
+        val centerOffset = (calendarMain.width / 2) - (itemWidthPx / 2)
+        // Scroll ke hari ini
+        val scrollPosition = (daysUntilToday * itemWidthPx) - centerOffset
+        calendarMain.smoothScrollTo(max(0, scrollPosition), 0)
     }
 
 
     // Mengatur teks bulan dan tahun di atas daftar tugas (cth: "Oktober 2025").
     private fun setDynamicMonthYear() {
         val sdf = SimpleDateFormat("MMMM yyyy", Locale("in", "ID"))
-        octoberText.text = sdf.format(currentCalendar.time)
+        octoberText.text = sdf.format(selectedDate.time)
     }
 
 
@@ -326,75 +341,147 @@ class TaskActivity : AppCompatActivity() {
     // Membuat ulang dan menampilkan semua item tanggal di kalender horizontal.
     private fun updateCalendar() {
         dateItemsContainer.removeAllViews()  // Hapus kalender lama.
+        setDynamicMonthYear()
+
+        // Ambil semua tanggal task aktif (hanya tgl, tanpa jam/menit/detik)
+        val activeTaskDates = TaskRepository.getAllActiveTaskDates()
+
+        // Rentang 13 bulan (6 bulan lalu, bulan ini, 6 bulan depan)
+        val monthsBefore = 6
+        val monthsTotal = 13
+        val cal = Calendar.getInstance().apply { add(Calendar.MONTH, -monthsBefore) }
+
+        val today = Calendar.getInstance()
+
+        // Loop untuk setiap bulan dalam rentang 13 bulan
+        for (m in 0 until monthsTotal) {
+            val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+
+            // Loop untuk setiap hari dalam sebulan.
+            for (i in 1..daysInMonth) {
+                cal.set(Calendar.DAY_OF_MONTH, i)
+
+                val dayOfWeek = SimpleDateFormat("EEE", Locale("en", "US")).format(cal.time)
+                val day = i
+
+                // Cek apakah hari ini adalah tanggal yang sedang dipilih.
+                val isSelected = (cal.get(Calendar.YEAR) == selectedDate.get(Calendar.YEAR) &&
+                        cal.get(Calendar.MONTH) == selectedDate.get(Calendar.MONTH) &&
+                        cal.get(Calendar.DAY_OF_MONTH) == selectedDate.get(Calendar.DAY_OF_MONTH))
+
+                // Cek apakah hari ini adalah hari ini
+                val isToday = (cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                        cal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
+                        cal.get(Calendar.DAY_OF_MONTH) == today.get(Calendar.DAY_OF_MONTH))
+
+                // Ambil tanggal hari itu (tanpa jam/menit/detik) untuk cek dot
+                val currentDayZeroTime = cal.clone() as Calendar
+                currentDayZeroTime.set(Calendar.HOUR_OF_DAY, 0)
+                currentDayZeroTime.set(Calendar.MINUTE, 0)
+                currentDayZeroTime.set(Calendar.SECOND, 0)
+                currentDayZeroTime.set(Calendar.MILLISECOND, 0)
+                val hasTask = activeTaskDates.contains(currentDayZeroTime.timeInMillis)
 
 
-        val cal = currentCalendar.clone() as Calendar
-        cal.set(Calendar.DAY_OF_MONTH, 1)
-        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+                // NEW: Cek apakah ini hari pertama bulan
+                val isFirstDayOfMonth = i == 1
 
-
-        // Loop untuk setiap hari dalam sebulan.
-        for (i in 1..daysInMonth) {
-            cal.set(Calendar.DAY_OF_MONTH, i)
-
-
-            val dayOfWeek = SimpleDateFormat("EEE", Locale("en", "US")).format(cal.time)
-            val day = i
-
-
-            // Cek apakah hari ini adalah tanggal yang sedang dipilih.
-            val isSelected = (cal.get(Calendar.YEAR) == selectedDate.get(Calendar.YEAR) &&
-                    cal.get(Calendar.MONTH) == selectedDate.get(Calendar.MONTH) &&
-                    cal.get(Calendar.DAY_OF_MONTH) == selectedDate.get(Calendar.DAY_OF_MONTH))
-
-
-            // Membuat UI untuk satu item tanggal (kotak berisi hari dan tanggal)
-            val dayItemContainer = LinearLayout(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    ITEM_WIDTH_DP.dp,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                ).apply {
-                    setMargins(0, 0, 8.dp, 0)
+                // --- CONTAINER UTAMA PER TANGGAL (Vertikal) ---
+                val dayItemContainer = LinearLayout(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        ITEM_WIDTH_DP.dp,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    ).apply {
+                        setMargins(0, 0, 8.dp, 0)
+                    }
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    background = if (isSelected) createRoundedBackground(COLOR_ACTIVE_SELECTION) else createRoundedBackground(Color.WHITE)
+                    elevation = 2f
+                    setPadding(4.dp, 4.dp, 4.dp, 4.dp)
                 }
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                background = if (isSelected) createRoundedBackground(COLOR_ACTIVE_SELECTION) else createRoundedBackground(Color.WHITE)
-                elevation = 2f
-                setPadding(4.dp, 4.dp, 4.dp, 4.dp)
+
+
+                // NEW: Teks Bulan (Hanya ditampilkan pada hari pertama bulan)
+                val monthText = TextView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    text = SimpleDateFormat("MMM", Locale("in", "ID")).format(cal.time) // Short month name
+                    textSize = 10f
+                    typeface = ResourcesCompat.getFont(context, R.font.lexend)
+                    setTextColor(if (isSelected) COLOR_SELECTED_TEXT else Color.GRAY)
+                    visibility = if (isFirstDayOfMonth || m == 0 && i == 1) View.VISIBLE else View.GONE
+                    // Add a tiny spacer below the month name to push DayOfWeek down
+                    setPadding(0, 0, 0, 1.dp)
+                }
+                dayItemContainer.addView(monthText)
+
+                // NEW: Tambahkan Spacer kosong agar tinggi dayItemContainer konsisten
+                if (!isFirstDayOfMonth && !(m == 0 && i == 1)) {
+                    val monthSpacer = View(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(0, 10.dp) // Height matches the month text height
+                    }
+                    dayItemContainer.addView(monthSpacer)
+                }
+
+
+                val dayOfWeekText = TextView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    text = dayOfWeek
+                    textSize = 12f
+                    typeface = ResourcesCompat.getFont(context, R.font.lexend)
+                    setTextColor(if (isSelected) COLOR_SELECTED_TEXT else COLOR_DEFAULT_TEXT)
+                }
+                dayItemContainer.addView(dayOfWeekText)
+
+
+                val dayNumberText = TextView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    text = day.toString()
+                    textSize = 18f
+                    val font = ResourcesCompat.getFont(context, R.font.lexend)
+                    typeface = android.graphics.Typeface.create(font, android.graphics.Typeface.BOLD)
+                    setTextColor(if (isSelected) COLOR_SELECTED_TEXT else COLOR_DEFAULT_TEXT)
+                }
+                dayItemContainer.addView(dayNumberText)
+
+                // BARU: Dot Task (TETAP TAMPILKAN DOT dan ubah warna saat terpilih)
+                if (hasTask) {
+                    val taskDot = View(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(6.dp, 6.dp).apply {
+                            gravity = Gravity.CENTER_HORIZONTAL
+                            topMargin = 1.dp // Sedikit space dari angka
+                        }
+                        background = GradientDrawable().apply {
+                            shape = GradientDrawable.OVAL
+                            // Warna putih jika terpilih, merah jika tidak
+                            setColor(if (isSelected) Color.WHITE else Color.RED)
+                        }
+                    }
+                    dayItemContainer.addView(taskDot)
+                } else {
+                    // Tambahkan spacer agar tinggi item tidak berubah
+                    val spacer = View(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(6.dp, 6.dp)
+                    }
+                    dayItemContainer.addView(spacer)
+                }
+                // END BARU
+
+                // Menggunakan finalDayCal untuk menyimpan tanggal yang akan diklik
+                val finalDayCal = cal.clone() as Calendar
+
+                dayItemContainer.setOnClickListener {
+                    selectedDate = finalDayCal
+                    loadTasksForSelectedDate()
+                    updateCalendar()
+                }
+
+
+                dateItemsContainer.addView(dayItemContainer)
             }
-
-
-            val dayOfWeekText = TextView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                text = dayOfWeek
-                textSize = 12f
-                typeface = ResourcesCompat.getFont(context, R.font.lexend)
-                setTextColor(if (isSelected) COLOR_SELECTED_TEXT else COLOR_DEFAULT_TEXT)
-            }
-            dayItemContainer.addView(dayOfWeekText)
-
-
-            val dayNumberText = TextView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                text = day.toString()
-                textSize = 18f
-                val font = ResourcesCompat.getFont(context, R.font.lexend)
-                typeface = android.graphics.Typeface.create(font, android.graphics.Typeface.BOLD)
-                setTextColor(if (isSelected) COLOR_SELECTED_TEXT else COLOR_DEFAULT_TEXT)
-            }
-            dayItemContainer.addView(dayNumberText)
-
-
-            dayItemContainer.setOnClickListener {
-                val newSelectedDate = currentCalendar.clone() as Calendar
-                newSelectedDate.set(Calendar.DAY_OF_MONTH, i)
-                selectedDate = newSelectedDate
-                loadTasksForSelectedDate()
-                updateCalendar()
-            }
-
-
-            dateItemsContainer.addView(dayItemContainer)
+            // Lanjut ke bulan berikutnya
+            cal.add(Calendar.MONTH, 1)
+            cal.set(Calendar.DAY_OF_MONTH, 1)
         }
     }
 
@@ -455,6 +542,7 @@ class TaskActivity : AppCompatActivity() {
                     (mainContainer.parent as? ViewGroup)?.removeView(mainContainer) // Hapus dari UI.
                     // Muat ulang daftar untuk memperbarui status kosong
                     loadTasksForSelectedDate() // Muat ulang untuk update status
+                    updateCalendar() // BARU: Update kalender untuk menghapus dot (jika ada)
                 } else {
                     Toast.makeText(context, "Gagal menandai tugas selesai.", Toast.LENGTH_SHORT).show()
                 }
@@ -633,9 +721,14 @@ class TaskActivity : AppCompatActivity() {
         }
 
 
+        // EDIT BUTTON
         val editButton = createActionButton(
             R.drawable.ic_edit, "Edit") {
-            Toast.makeText(context, "Edit clicked for ${task.title}", Toast.LENGTH_SHORT).show()
+            // LOGIKA BARU: BUKA EDIT TASK ACTIVITY
+            val intent = Intent(context, EditTaskActivity::class.java).apply {
+                putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
+            }
+            startActivity(intent)
         }
 
 
@@ -647,6 +740,7 @@ class TaskActivity : AppCompatActivity() {
                 showConfirmationDialog(task.title, "dihapus")
                 // Muat ulang daftar tugas setelah penghapusan
                 loadTasksForSelectedDate()
+                updateCalendar() // BARU: Update kalender untuk menghapus dot (jika ada)
             } else {
                 Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
             }
