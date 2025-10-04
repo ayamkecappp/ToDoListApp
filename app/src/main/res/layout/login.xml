@@ -35,41 +35,36 @@
         app:layout_constraintHorizontal_bias="0.5" />
     <!-- Login Card -->
 
-    <!-- Avatar (dibesarkan, melayang di atas card) -->
     <LinearLayout
         android:id="@+id/login_card"
-        android:layout_width="412dp"
-        android:layout_height="628dp"
-        android:layout_marginTop="264dp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="265dp"
         android:background="@drawable/bg_login_card"
-        android:gravity="center"
-        android:minHeight="380dp"
+        android:elevation="4dp"
         android:orientation="vertical"
         android:padding="24dp"
-        android:elevation="4dp"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.0">
+        app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Title -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="start"
-            android:layout_marginBottom="16dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="30dp"
+            android:layout_marginBottom="24dp"
             android:text="Login"
             android:textColor="#0f2440"
             android:textSize="28sp"
             android:textStyle="bold" />
 
-        <!-- Input Email -->
         <EditText
             android:id="@+id/input_username"
-            android:layout_width="350dp"
+            android:layout_width="match_parent"
             android:layout_height="49dp"
+            android:layout_gravity="center_horizontal"
             android:layout_marginBottom="12dp"
             android:background="@drawable/round_input"
             android:drawableStart="@drawable/ic_email"
@@ -79,12 +74,12 @@
             android:textColor="#000"
             android:textColorHint="#919ca8" />
 
-        <!-- Input Password -->
         <EditText
             android:id="@+id/input_password"
-            android:layout_width="350dp"
+            android:layout_width="match_parent"
             android:layout_height="49dp"
-            android:layout_marginBottom="16dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="8dp"
             android:background="@drawable/round_input"
             android:drawableStart="@drawable/ic_lock"
             android:drawablePadding="12dp"
@@ -94,21 +89,31 @@
             android:textColor="#000"
             android:textColorHint="#919ca8" />
 
-        <!-- Tombol Login -->
+        <TextView
+            android:id="@+id/forgot_password"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:text="Forgot Password?"
+            android:textColor="#233447"
+            style="@style/completedTasksContent"/>
+
         <Button
             android:id="@+id/btn_login"
-            android:layout_width="360dp"
+            android:layout_width="match_parent"
             android:layout_height="49dp"
-            android:layout_marginBottom="20dp"
-            android:backgroundTint="#183351"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="30dp"
+            android:backgroundTint="@color/dark_blue"
             android:text="Login"
             android:textColor="#FFFFFF"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            app:cornerRadius="16dp" />
 
-        <!-- Divider -->
         <LinearLayout
-            android:layout_width="336dp"
-            android:layout_height="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:layout_marginBottom="12dp"
             android:gravity="center"
             android:orientation="horizontal">
@@ -134,11 +139,10 @@
                 android:background="#000000" />
         </LinearLayout>
 
-        <!-- Sosial Media -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center"
+            android:layout_gravity="center"
             android:orientation="horizontal">
 
             <ImageButton
@@ -157,14 +161,15 @@
                 android:src="@drawable/ic_google" />
         </LinearLayout>
 
-        <!-- Sign Up -->
         <TextView
             android:id="@+id/signup"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="60dp"
-            android:gravity="center"
-            android:text="Don't have account? Sign Up"
-            android:textColor="#233447" />
+            android:layout_gravity="center"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"
+            android:text="@string/signup_prompt"
+            style="@style/completedTasksContent"/>
     </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

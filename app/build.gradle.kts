@@ -61,5 +61,9 @@ dependencies {
 
     // BARU: Tambahkan baris ini untuk SwipeRefreshLayout
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    // Tambahkan Glide untuk memuat gambar dan GIF
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    // Jika Anda menggunakan Kotlin/KSP, tambahkan annotation processor
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
 }

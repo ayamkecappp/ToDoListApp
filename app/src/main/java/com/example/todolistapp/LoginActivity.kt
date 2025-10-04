@@ -7,6 +7,8 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+// Import jika diperlukan
+import android.text.Html
 
 class LoginActivity : AppCompatActivity() {
 
@@ -17,7 +19,21 @@ class LoginActivity : AppCompatActivity() {
         val usernameInput = findViewById<EditText>(R.id.input_username)
         val passwordInput = findViewById<EditText>(R.id.input_password)
         val loginBtn = findViewById<Button>(R.id.btn_login)
+        // --- TAMBAHKAN KODE INI ---
         val signupText = findViewById<TextView>(R.id.signup)
+        val htmlText = getString(R.string.signup_prompt)
+        signupText.text = Html.fromHtml(htmlText, Html.FROM_HTML_MODE_COMPACT)
+
+
+        // --- TAMBAHAN BARU UNTUK FORGOT PASSWORD ---
+        val forgotPasswordText = findViewById<TextView>(R.id.forgot_password)
+
+
+        forgotPasswordText.setOnClickListener {
+            // Arahkan ke halaman Forgot Password
+            val intent = Intent(this, ForgotPasswordActivity::class.java)
+            startActivity(intent)
+        }
 
         //untuk signup
         signupText.setOnClickListener {

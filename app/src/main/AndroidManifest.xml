@@ -97,7 +97,13 @@
             android:name=".EditTaskActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ForgotPasswordActivity"
+            android:exported="false" />
 
+        <activity
+            android:name=".NewPasswordActivity"
+            android:exported="false" />
     </application>
 
 </manifest>
