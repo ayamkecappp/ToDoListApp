@@ -254,4 +254,15 @@
     <item name="android:letterSpacing">0</item>
     <item name="android:gravity">center</item>
     </style>
+
+    <style name="BubbleChat">
+        <!-- Font -->
+        <item name="android:fontFamily">@font/lexend</item>
+        <item name="android:textStyle">normal</item> <!-- Regular / 400 -->
+        <item name="android:textSize">16sp</item>
+        <item name="android:lineSpacingExtra">0dp</item>
+        <item name="android:lineSpacingMultiplier">1.0</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:gravity">center</item>
+    </style>
 </resources>

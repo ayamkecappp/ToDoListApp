@@ -66,4 +66,13 @@ dependencies {
     // Jika Anda menggunakan Kotlin/KSP, tambahkan annotation processor
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
+    // 2. KOTLIN COROUTINES (Untuk logika looping chat: Job, CoroutineScope, delay)
+    // Gunakan versi sesuai dengan versi Kotlin Anda. Versi berikut umum digunakan:
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // Coroutines LifeCycle KTX (Penting untuk CoroutineScope dan lifecycle)
+    // Versi ini biasanya cocok dengan versi Coroutines di atas
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+
 }

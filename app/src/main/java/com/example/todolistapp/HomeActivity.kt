@@ -4,18 +4,27 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.text.Html
+import android.text.Spanned
 import android.view.View
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.bumptech.glide.Glide
+import kotlinx.coroutines.* // <<-- IMPORT COROUTINES DITAMBAHKAN
 import java.text.SimpleDateFormat
 import java.util.*
-
+import android.util.Log
+import java.lang.Exception
 class HomeActivity : AppCompatActivity() {
 
     private lateinit var tvTitle: TextView
-    private lateinit var tvSpeech: TextView
+    private lateinit var tvTimyChatText: TextView
+    private val scope = CoroutineScope(Dispatchers.Main.immediate)
+    private var chatJob: Job? = null
+
     private lateinit var tvStreak: TextView
     private lateinit var bottomNav: BottomNavigationView
 
@@ -23,6 +32,10 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var dayEllipses: List<View>
     private lateinit var dayRunnerLayouts: List<View>
     private lateinit var dayRunnerIcons: List<View>
+
+    // Kunci PREFS dari EditProfileActivity
+    private val PROFILE_PREFS_NAME = "ProfilePrefs"
+    private val KEY_USERNAME = "username"
 
     private val PREFS_NAME = "TimyTimePrefs"
     private val KEY_STREAK = "current_streak"
@@ -32,6 +45,28 @@ class HomeActivity : AppCompatActivity() {
     private val KEY_TASKS_COMPLETED_TODAY = "tasks_completed_today"
     private lateinit var prefs: SharedPreferences
 
+
+    // ==============================================
+    // 💡 FUNGSI MEMBUAT PESAN DENGAN BOLD/HTML 💡
+    // ==============================================
+    private fun getTimyMessages(userName: String): List<Spanned> {
+
+        // Format username agar tebal (bold) menggunakan tag HTML <b>
+        val boldUserName = "<b>$userName</b>"
+
+        val rawMessages = listOf(
+            "Hi! I’m Timy,\nYour Personal Time Assistant", // Chat 1
+            "Nice to see you,\n$boldUserName",             // Chat 2 (dengan username tebal)
+            "Let’s plan your day with me,\nTimy!",          // Chat 3
+        )
+
+        // Gunakan Core KTX Extension Function untuk Html.fromHtml
+        // Ini adalah cara modern dan aman, menghilangkan kebutuhan untuk pengecekan SDK manual
+        return rawMessages.map { rawMessage ->
+            Html.fromHtml(rawMessage, android.text.Html.FROM_HTML_MODE_LEGACY) // FROM_HTML_MODE_LEGACY adalah nilai default
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.home)
@@ -39,12 +74,17 @@ class HomeActivity : AppCompatActivity() {
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         tvTitle = findViewById(R.id.tvTitle)
-        tvSpeech = findViewById(R.id.tvSpeech)
+        tvTimyChatText = findViewById(R.id.tvTimyChatText)
         tvStreak = findViewById(R.id.tvStreak)
         bottomNav = findViewById(R.id.bottomNav)
 
+        // Ambil referensi TextView untuk Chat Bubble
+        tvTimyChatText = findViewById(R.id.tvTimyChatText)
+
         bottomNav.itemIconTintList = null
         initializeViews()
+
+        loadTimyGifs() // Asumsi fungsi ini sudah Anda implementasikan
 
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
@@ -96,6 +136,83 @@ class HomeActivity : AppCompatActivity() {
         super.onResume()
         updateWeeklyProgressUI()
         bottomNav.selectedItemId = R.id.nav_home
+
+        // MULAI LOOP KETIKA ACTIVITY TERLIHAT
+        startChatLoop()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // HENTIKAN LOOP KETIKA ACTIVITY TIDAK TERLIHAT
+        stopChatLoop()
+    }
+
+    // ==============================================
+    // 💡 FUNGSI LOGIKA CHAT LOOP 💡
+    // ==============================================
+    private fun startChatLoop() {
+        stopChatLoop()
+
+        // Ambil data username dari SharedPreferences yang digunakan di EditProfileActivity
+        val profilePrefs = getSharedPreferences(PROFILE_PREFS_NAME, Context.MODE_PRIVATE)
+        val userName = profilePrefs.getString(KEY_USERNAME, "Guest") ?: "Guest"
+
+        // Dapatkan list pesan yang sudah diformat HTML
+        val messages = getTimyMessages(userName)
+
+        chatJob = scope.launch {
+            var index = 0
+            while (isActive) {
+                // Tampilkan pesan dalam format Spanned (dengan bold)
+                tvTimyChatText.text = messages[index % messages.size]
+
+                // Pindah ke pesan berikutnya dan reset jika sudah mencapai akhir list
+                index++
+
+                // Tunggu 5 detik sebelum ganti pesan
+                delay(5000L)
+            }
+        }
+    }
+
+    private fun stopChatLoop() {
+        chatJob?.cancel()
+        chatJob = null
+    }
+
+    // ==============================================
+    // 💡 FUNGSI BARU UNTUK MEMUAT GIF DENGAN GLIDE
+    // ==============================================
+    private fun loadTimyGifs() {
+        try {
+            val timyFace = findViewById<ImageView>(R.id.imgTimyFaceGif)
+            val timyLeftArm = findViewById<ImageView>(R.id.imgTimyLeftArmGif)
+            val timyRightArm = findViewById<ImageView>(R.id.imgTimyRightArmGif)
+
+            // Muat GIF untuk Muka
+            Glide.with(this)
+                .asGif()
+                .load(R.drawable.timy_home_muka) // Pastikan nama aset GIF di drawable benar
+                .into(timyFace)
+
+            // Muat GIF untuk Tangan Kiri
+            Glide.with(this)
+                .asGif()
+                .load(R.drawable.timy_home_tangan_kiri) // Pastikan nama aset GIF di drawable benar
+                .into(timyLeftArm)
+
+            // Muat GIF untuk Tangan Kanan
+            Glide.with(this)
+                .asGif()
+                .load(R.drawable.timy_home_tangan_kanan) // Pastikan nama aset GIF di drawable benar
+                .into(timyRightArm)
+
+            // CATATAN: Badan (imgTimyBodyStatic) akan di-load sebagai gambar statis dari src-nya di XML.
+
+        } catch (e: Exception) {
+            // Ini untuk penanganan error jika Glide gagal memuat atau findViewById gagal
+            e.printStackTrace()
+        }
     }
 
     override fun onStart() {
