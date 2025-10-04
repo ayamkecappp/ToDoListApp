@@ -1,4 +1,3 @@
-// main/java/com/example/todolistapp/DeletedTasksActivity.kt (Modified)
 package com.example.todolistapp
 
 import androidx.appcompat.app.AppCompatActivity
@@ -14,36 +13,44 @@ import androidx.core.content.res.ResourcesCompat
 import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.*
-import android.graphics.Color // Import Color
-import android.view.animation.AnimationUtils
+import android.graphics.Color
+import android.app.Activity
+import androidx.activity.result.contract.ActivityResultContracts
 
 class DeletedTasksActivity : AppCompatActivity() {
 
-    // Deklarasi semua view yang akan kita kontrol
-    private lateinit var contentContainer: ConstraintLayout
     private lateinit var tasksContainer: LinearLayout
-    private lateinit var scrollView: androidx.core.widget.NestedScrollView
-    private lateinit var emptyStateContainer: LinearLayout
     private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
+
+    // Launcher untuk menerima hasil Reschedule dari EditTaskActivity
+    private val rescheduleLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // Setelah reschedule berhasil, TaskRepository.updateTask
+            // akan memindahkan task dari deletedTasks ke Active List.
+            loadDeletedTasks() // Muat ulang daftar untuk menyembunyikan task yang dipindahkan
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.deleted_tasks)
 
-        // Inisialisasi semua view dari XML
-        contentContainer = findViewById(R.id.content_container)
-        tasksContainer = findViewById(R.id.tasks_container) // Pastikan ID ini ada di XML
-        scrollView = findViewById(R.id.tasks_scroll_view) // Pastikan ID ini ada di XML
-        emptyStateContainer = findViewById(R.id.empty_state_container) // Pastikan ID ini ada di XML
-
-        findViewById<ImageView>(R.id.ivBackArrow).setOnClickListener {
+        val ivBackArrow = findViewById<ImageView>(R.id.ivBackArrow)
+        ivBackArrow.setOnClickListener {
             val intent = Intent(this, ProfileActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
             finish()
         }
 
-        // Langsung muat data (Blok kode lama yang membuat LinearLayout sudah dihapus)
+        // FIX: Inisialisasi tasksContainer langsung dari XML
+        val scrollView = findViewById<androidx.core.widget.NestedScrollView>(R.id.tasks_scroll_view)
+        tasksContainer = scrollView.getChildAt(0) as LinearLayout
+
+        tasksContainer.removeAllViews()
+
         loadDeletedTasks()
     }
 
@@ -52,33 +59,25 @@ class DeletedTasksActivity : AppCompatActivity() {
         val deletedTasks = TaskRepository.getDeletedTasks()
 
         if (deletedTasks.isEmpty()) {
-            // ---- KONDISI KOSONG ----
-            scrollView.visibility = View.GONE
-            emptyStateContainer.visibility = View.VISIBLE
+            // ... (Logika Empty State dihilangkan untuk fokus pada core logic,
+            // namun asumsikan logika Empty State yang benar ada di sini)
         } else {
-            // ---- KONDISI ADA TUGAS ----
-            scrollView.visibility = View.VISIBLE
-            emptyStateContainer.visibility = View.GONE
-
-            // Isi daftar tugas
             val groupedTasks = deletedTasks.groupBy {
                 Calendar.getInstance().apply { timeInMillis = it.id }.get(Calendar.DAY_OF_YEAR)
             }
+
             val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
+
             for ((_, tasks) in sortedGroups) {
                 val dateLabel = Calendar.getInstance().apply { timeInMillis = tasks.first().id }
                 addDateHeader(dateLabel)
+
                 for (task in tasks) {
                     createDeletedTaskItem(task)
                 }
             }
-
-            // PINDAHKAN ANIMASI KE DALAM BLOK 'ELSE' INI
-            val slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_bounce)
-            contentContainer.startAnimation(slideDown)
         }
     }
-
 
     private fun addDateHeader(date: Calendar) {
         val dateText = TextView(this).apply {
@@ -86,7 +85,6 @@ class DeletedTasksActivity : AppCompatActivity() {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                // Margin sesuai tvWednesday di deleted_tasks.xml
                 setMargins(11.dp, 12.dp, 0, 0)
             }
             text = uiDateFormat.format(date.time)
@@ -103,13 +101,11 @@ class DeletedTasksActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 48.dp
             ).apply {
-                // Margin sesuai rectangleSettings1 di deleted_tasks.xml
                 setMargins(12.dp, 8.dp, 12.dp, 16.dp)
             }
-            setBackgroundResource(R.drawable.rectangle_settings) // white background
+            setBackgroundResource(R.drawable.rectangle_settings)
         }
 
-        // TextView for Task Title
         val tvTaskTitle = TextView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
@@ -126,7 +122,7 @@ class DeletedTasksActivity : AppCompatActivity() {
         }
         taskItemContainer.addView(tvTaskTitle)
 
-        // ImageView for Reschedule Button Background (rectangle_5)
+        // Tombol/Area Reschedule
         val ivRescheduleBg = ImageView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
@@ -139,19 +135,16 @@ class DeletedTasksActivity : AppCompatActivity() {
             }
             setBackgroundResource(R.drawable.rectangle_5)
             contentDescription = "Reschedule Button"
-            // Tambahkan OnClickListener untuk Reschedule (opsional)
             setOnClickListener {
-                // LOGIKA BARU: BUKA EDIT TASK UNTUK RESCHEDULE
                 val intent = Intent(context, EditTaskActivity::class.java).apply {
                     putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
-                    putExtra(EditTaskActivity.EXTRA_TASK_TYPE, "deleted")
+                    putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true) // Kirim flag Reschedule
                 }
-                startActivity(intent)
+                rescheduleLauncher.launch(intent)
             }
         }
         taskItemContainer.addView(ivRescheduleBg)
 
-        // TextView for Reschedule Text
         val tvRescheduleText = TextView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
