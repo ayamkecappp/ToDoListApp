@@ -26,6 +26,7 @@ class FlowTimerActivity : AppCompatActivity() {
     private lateinit var tvTaskName: TextView
     private lateinit var tvTimerDisplay: TextView
     private lateinit var btnPlayPause: ImageView
+    private lateinit var npHours: NumberPicker
     private lateinit var npMinutes: NumberPicker
     private lateinit var npSeconds: NumberPicker
     private lateinit var layoutSetDuration: LinearLayout
@@ -43,7 +44,9 @@ class FlowTimerActivity : AppCompatActivity() {
     private val COLOR_DARK_BLUE = Color.parseColor("#283F6D")
 
     // Konstanta untuk konversi waktu
+    private val MILLIS_IN_HOUR = 60 * 60 * 1000L
     private val MILLIS_IN_MINUTE = 60 * 1000L
+    private val MILLIS_IN_SECOND = 1000L
 
 
     companion object {
@@ -64,13 +67,14 @@ class FlowTimerActivity : AppCompatActivity() {
         val storedDuration = sharedPrefs.getLong(KEY_FLOW_TIMER_DURATION, defaultDuration)
 
         // Set durasi awal
-        totalDurationMillis = storedDuration.coerceAtLeast(1000L) // Pastikan minimal 1 detik
+        totalDurationMillis = storedDuration.coerceAtLeast(MILLIS_IN_SECOND) // Pastikan minimal 1 detik
         timeRemainingMillis = totalDurationMillis
 
         // Hubungkan Views
         tvTaskName = findViewById(R.id.tvTaskName)
         tvTimerDisplay = findViewById(R.id.tvTimerDisplay)
         btnPlayPause = findViewById(R.id.btnPlayPause)
+        npHours = findViewById(R.id.npHours)
         npMinutes = findViewById(R.id.npMinutes)
         npSeconds = findViewById(R.id.npSeconds)
         layoutSetDuration = findViewById(R.id.layoutSetDuration)
@@ -90,9 +94,6 @@ class FlowTimerActivity : AppCompatActivity() {
         // Listener untuk menampilkan NumberPicker saat display timer diklik (untuk setting waktu)
         tvTimerDisplay.setOnClickListener {
             if (!isTimerRunning) {
-                // Pastikan nilai NumberPicker sesuai dengan waktu saat ini sebelum ditampilkan
-                npMinutes.value = (timeRemainingMillis / 60000).toInt()
-                npSeconds.value = ((timeRemainingMillis % 60000) / 1000).toInt()
                 toggleInputVisibility(true)
             }
         }
@@ -123,16 +124,20 @@ class FlowTimerActivity : AppCompatActivity() {
     // --- FUNGSI UTAMA TIMER ---
 
     private fun setupNumberPickers() {
+        npHours.minValue = 0
+        npHours.maxValue = 24
         npMinutes.minValue = 0
-        npMinutes.maxValue = 99
+        npMinutes.maxValue = 59
         npSeconds.minValue = 0
         npSeconds.maxValue = 59
     }
 
     private fun updateDurationFromPickers() {
+        val hours = npHours.value
         val minutes = npMinutes.value
         val seconds = npSeconds.value
-        totalDurationMillis = (minutes * 60 * 1000L) + (seconds * 1000L)
+        // UPDATED calculation
+        totalDurationMillis = (hours * MILLIS_IN_HOUR) + (minutes * MILLIS_IN_MINUTE) + (seconds * MILLIS_IN_SECOND)
         timeRemainingMillis = totalDurationMillis
         updateTimerDisplay()
     }
@@ -145,7 +150,7 @@ class FlowTimerActivity : AppCompatActivity() {
         }
 
         if (timeRemainingMillis <= 0) {
-            Toast.makeText(this, "Mohon set durasi lebih dari 00:00", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Mohon set durasi lebih dari 00:00:00", Toast.LENGTH_SHORT).show()
             toggleInputVisibility(true)
             return
         }
@@ -173,14 +178,26 @@ class FlowTimerActivity : AppCompatActivity() {
     }
 
     private fun updateTimerDisplay() {
-        val minutes = (timeRemainingMillis / 1000) / 60
-        val seconds = (timeRemainingMillis / 1000) % 60
-        val timeFormatted = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+        val hours = (timeRemainingMillis / MILLIS_IN_HOUR).toInt()
+        val minutes = ((timeRemainingMillis % MILLIS_IN_HOUR) / MILLIS_IN_MINUTE).toInt()
+        val seconds = ((timeRemainingMillis % MILLIS_IN_MINUTE) / MILLIS_IN_SECOND).toInt()
+
+        // UPDATED format: HH:MM:SS
+        val timeFormatted = String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
         tvTimerDisplay.text = timeFormatted
     }
 
     private fun toggleInputVisibility(showInput: Boolean) {
         if (showInput) {
+            // Pastikan nilai NumberPicker sesuai dengan waktu saat ini sebelum ditampilkan
+            val hours = (timeRemainingMillis / MILLIS_IN_HOUR).toInt()
+            val minutes = ((timeRemainingMillis % MILLIS_IN_HOUR) / MILLIS_IN_MINUTE).toInt()
+            val seconds = ((timeRemainingMillis % MILLIS_IN_MINUTE) / MILLIS_IN_SECOND).toInt()
+
+            npHours.value = hours
+            npMinutes.value = minutes
+            npSeconds.value = seconds
+
             layoutSetDuration.visibility = View.VISIBLE
             btnSetDurationOK.visibility = View.VISIBLE // Tampilkan tombol OK
             btnPlayPause.visibility = View.GONE
@@ -202,7 +219,7 @@ class FlowTimerActivity : AppCompatActivity() {
         isTimerRunning = false
         btnPlayPause.setImageResource(R.drawable.ic_play) // Reset ke Play
 
-        // Atur display ke 00:00
+        // Atur display ke 00:00:00
         timeRemainingMillis = 0
         updateTimerDisplay()
 
@@ -231,7 +248,6 @@ class FlowTimerActivity : AppCompatActivity() {
 
 
         val dialog = AlertDialog.Builder(context).setView(dialogView).create()
-        // PERBAIKAN: Hapus 'new' yang tidak diperlukan di Kotlin
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.setCancelable(false)
 
@@ -290,11 +306,13 @@ class FlowTimerActivity : AppCompatActivity() {
         Toast.makeText(this, "Atur durasi baru, lalu tekan OK untuk menyimpan.", Toast.LENGTH_LONG).show()
 
         // Set nilai NumberPicker sesuai sisa waktu (jika ada) atau total durasi
-        val timeToShow = if(totalDurationMillis > 0) totalDurationMillis else 30 * 60 * 1000L
+        val timeToShow = if(totalDurationMillis > 0) totalDurationMillis else 30 * MILLIS_IN_MINUTE
 
-        val initialMinutes = (timeToShow / 60000).toInt()
-        val initialSeconds = ((timeToShow % 60000) / 1000).toInt()
+        val initialHours = (timeToShow / MILLIS_IN_HOUR).toInt()
+        val initialMinutes = ((timeToShow % MILLIS_IN_HOUR) / MILLIS_IN_MINUTE).toInt()
+        val initialSeconds = ((timeToShow % MILLIS_IN_MINUTE) / MILLIS_IN_SECOND).toInt()
 
+        npHours.value = initialHours
         npMinutes.value = initialMinutes
         npSeconds.value = initialSeconds
 

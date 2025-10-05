@@ -1,4 +1,3 @@
-// main/java/com/example/todolistapp/TaskRepository.kt
 package com.example.todolistapp
 
 import java.util.Collections
@@ -24,16 +23,12 @@ object TaskRepository {
         tasks.add(0, task)
     }
 
-    // Perbaikan: Hapus duplikasi getTaskById. Fungsi ini akan mencari di tasks dan missedTasks.
     fun getTaskById(taskId: Long): Task? {
-        // Cari di daftar tugas aktif
         val activeTask = tasks.find { it.id == taskId }
         if (activeTask != null) return activeTask
-        // Cari di daftar missed tasks (agar bisa diedit)
         return missedTasks.find { it.id == taskId }
     }
 
-    // Perbaikan: Mengganti fungsi updateTask agar dapat memproses perubahan ID (tanggal)
     fun updateTask(originalTaskId: Long, updatedTask: Task): Boolean {
         synchronized(tasks) {
             // 1. Cari dan hapus tugas asli dari daftar aktif
@@ -71,9 +66,6 @@ object TaskRepository {
         return completedTasks.toList()
     }
 
-    /**
-     * Mendapatkan completed tasks berdasarkan tanggal TASK (dari ID task)
-     */
     fun getCompletedTasksByDate(selectedDate: Calendar): List<Task> {
         val selectedYear = selectedDate.get(Calendar.YEAR)
         val selectedMonth = selectedDate.get(Calendar.MONTH)
@@ -88,9 +80,6 @@ object TaskRepository {
         }
     }
 
-    /**
-     * Mendapatkan semua active tasks (tidak termasuk completed, deleted, atau missed)
-     */
     fun getAllTasks(): List<Task> {
         return tasks.toList()
     }
@@ -135,6 +124,30 @@ object TaskRepository {
             taskCalendar.get(Calendar.YEAR) == selectedYear &&
                     taskCalendar.get(Calendar.MONTH) == selectedMonth &&
                     taskCalendar.get(Calendar.DAY_OF_MONTH) == selectedDay
+        }
+    }
+
+    // NEW FUNCTION: Check if a day has any active task
+    fun hasTasksOnDate(date: Calendar): Boolean {
+        // Normalize the input date to start of day
+        val startOfDay = date.clone() as Calendar
+        startOfDay.set(Calendar.HOUR_OF_DAY, 0)
+        startOfDay.set(Calendar.MINUTE, 0)
+        startOfDay.set(Calendar.SECOND, 0)
+        startOfDay.set(Calendar.MILLISECOND, 0)
+
+        val startOfDayMillis = startOfDay.timeInMillis
+
+        // Iterate over active tasks
+        return tasks.any { task ->
+            // Normalize task ID to start of day for accurate comparison
+            val taskCalendar = Calendar.getInstance().apply { timeInMillis = task.id }
+            taskCalendar.set(Calendar.HOUR_OF_DAY, 0)
+            taskCalendar.set(Calendar.MINUTE, 0)
+            taskCalendar.set(Calendar.SECOND, 0)
+            taskCalendar.set(Calendar.MILLISECOND, 0)
+
+            taskCalendar.timeInMillis == startOfDayMillis
         }
     }
 

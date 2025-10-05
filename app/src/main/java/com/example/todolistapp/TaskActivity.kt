@@ -46,6 +46,8 @@ class TaskActivity : AppCompatActivity() {
     private val COLOR_ACTIVE_SELECTION = Color.parseColor("#283F6D")
     private val COLOR_DEFAULT_TEXT = Color.BLACK
     private val COLOR_SELECTED_TEXT = Color.WHITE
+    // NEW: Warna untuk dot
+    private val COLOR_DOT_INDICATOR = Color.parseColor("#283F6D")
     private val CORNER_RADIUS_DP = 16  // Corner radius untuk kelengkungan
     private val BORDER_WIDTH_DP = 2    // Ketebalan border
     private val BORDER_COLOR = Color.parseColor("#E0E0E0")  // Warna border abu-abu terang
@@ -174,6 +176,16 @@ class TaskActivity : AppCompatActivity() {
     // LOGIKA KALENDER
     // ===========================================
 
+    // NEW: Function to create a small dot drawable
+    private fun createDotDrawable(color: Int): GradientDrawable {
+        val size = 6.dp // Ukuran dot 6dp
+        return GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(color)
+            setSize(size, size)
+        }
+    }
+
     private fun generateYearlyCalendarViews() {
         dateItemsContainer.removeAllViews()
 
@@ -207,6 +219,15 @@ class TaskActivity : AppCompatActivity() {
     ): View {
         val context = this
 
+        // 1. Tentukan tanggal untuk pengecekan Task
+        val dateForCheck = Calendar.getInstance().apply { timeInMillis = dayMillis }
+        dateForCheck.set(Calendar.HOUR_OF_DAY, 0)
+        dateForCheck.set(Calendar.MINUTE, 0)
+        dateForCheck.set(Calendar.SECOND, 0)
+        dateForCheck.set(Calendar.MILLISECOND, 0)
+        // Pengecekan Task
+        val hasTasks = TaskRepository.hasTasksOnDate(dateForCheck)
+
         // Atur warna latar dan teks
         val backgroundColor = if (isSelected) COLOR_ACTIVE_SELECTION else Color.WHITE
         val textColor = if (isSelected) COLOR_SELECTED_TEXT else COLOR_DEFAULT_TEXT
@@ -221,8 +242,8 @@ class TaskActivity : AppCompatActivity() {
         val container = LinearLayout(context).apply {
             layoutParams = containerLayoutParams
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            // PERBAIKAN: Background dengan border melengkung
+            gravity = Gravity.CENTER_HORIZONTAL
+            // Background dengan border melengkung
             background = createRoundedBackgroundWithBorder(backgroundColor, isSelected)
             elevation = 4f
             setPadding(6.dp, 10.dp, 6.dp, 10.dp)
@@ -233,10 +254,10 @@ class TaskActivity : AppCompatActivity() {
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        // 1. Month (okt) - FONT DIPERKECIL
+        // 1. Month (okt)
         val monthText = TextView(context).apply {
             text = month
-            textSize = 10f  // Dikecilkan dari 11f
+            textSize = 10f
             typeface = ResourcesCompat.getFont(context, R.font.lexend)
             setTextColor(textColor)
             gravity = Gravity.CENTER_HORIZONTAL
@@ -244,10 +265,10 @@ class TaskActivity : AppCompatActivity() {
         }
         container.addView(monthText)
 
-        // 2. Day of Week (Sat/Sun) - FONT DIPERKECIL
+        // 2. Day of Week (Sat/Sun)
         val dayOfWeekText = TextView(context).apply {
             text = dayOfWeek
-            textSize = 12f  // Dikecilkan dari 14f
+            textSize = 12f
             typeface = ResourcesCompat.getFont(context, R.font.lexend)
             setTextColor(textColor)
             gravity = Gravity.CENTER_HORIZONTAL
@@ -255,17 +276,36 @@ class TaskActivity : AppCompatActivity() {
         }
         container.addView(dayOfWeekText)
 
-        // 3. Day of Month (4/5) - FONT DIPERKECIL
+        // 3. Day of Month (4/5)
         val dayNumberText = TextView(context).apply {
             text = dayOfMonth.toString()
-            textSize = 22f  // Dikecilkan dari 26f
+            textSize = 22f
             val font = ResourcesCompat.getFont(context, R.font.lexend)
             typeface = Typeface.create(font, Typeface.BOLD)
             setTextColor(textColor)
             gravity = Gravity.CENTER_HORIZONTAL
             layoutParams = textLayoutParams
+            // Hapus padding bawah default agar titik bisa diletakkan lebih dekat
+            setPadding(0, 0, 0, 2.dp)
         }
         container.addView(dayNumberText)
+
+        // 4. NEW: Dot Indicator
+        if (hasTasks) {
+            val dotColor = if (isSelected) Color.WHITE else COLOR_DOT_INDICATOR
+            val dotView = View(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    width = 6.dp
+                    height = 6.dp
+                }
+                background = createDotDrawable(dotColor)
+            }
+            container.addView(dotView)
+        }
+
 
         container.setOnClickListener {
             val newSelectedMillis = it.tag as Long

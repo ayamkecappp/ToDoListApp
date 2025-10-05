@@ -7,12 +7,12 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/headerText"
-        android:layout_width="match_parent"
-        android:layout_height="240dp"
+        android:layout_width="412dp"
+        android:layout_height="252dp"
         android:background="@drawable/bg_card"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toTopOf="parent">
 
         <TextView
             android:id="@+id/todayText"
@@ -20,13 +20,13 @@
             android:layout_height="40dp"
             android:layout_marginStart="16dp"
             android:layout_marginTop="72dp"
+            android:drawableEnd="@drawable/ic_sun"
+            android:drawablePadding="8dp"
             android:fontFamily="@font/lexend"
             android:text="Today"
             android:textColor="#14142A"
             android:textSize="29sp"
             android:textStyle="bold"
-            android:drawableEnd="@drawable/ic_sun"
-            android:drawablePadding="8dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
@@ -34,55 +34,55 @@
             android:id="@+id/octoberText"
             android:layout_width="200dp"
             android:layout_height="27dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="112dp"
+            android:fontFamily="@font/lexend"
             android:text=""
             android:textColor="#000000"
             android:textSize="20sp"
-            android:fontFamily="@font/lexend"
-            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginTop="112dp"
-            android:layout_marginStart="16dp"/>
+            app:layout_constraintTop_toTopOf="parent" />
 
         <ImageView
             android:id="@+id/btn_calendar"
             android:layout_width="30dp"
             android:layout_height="30dp"
-            android:src="@drawable/ic_calendar"
+            android:layout_marginEnd="16dp"
             android:contentDescription="Calendar"
-            app:layout_constraintTop_toTopOf="@id/todayText"
+            android:src="@drawable/ic_calendar"
             app:layout_constraintBottom_toBottomOf="@id/todayText"
             app:layout_constraintEnd_toStartOf="@id/btn_search"
-            android:layout_marginEnd="16dp" />
+            app:layout_constraintTop_toTopOf="@id/todayText" />
 
         <ImageView
             android:id="@+id/btn_search"
             android:layout_width="30dp"
             android:layout_height="30dp"
-            android:src="@drawable/ic_search"
+            android:layout_marginEnd="16dp"
             android:contentDescription="Search"
-            app:layout_constraintTop_toTopOf="@id/todayText"
+            android:src="@drawable/ic_search"
             app:layout_constraintBottom_toBottomOf="@id/todayText"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginEnd="16dp" />
+            app:layout_constraintTop_toTopOf="@id/todayText" />
 
         <HorizontalScrollView
             android:id="@+id/calendar_main"
-            android:layout_width="0dp"
-            android:layout_height="66dp"
-            android:scrollbars="none"
+            android:layout_width="408dp"
+            android:layout_height="73dp"
             android:layout_marginTop="12dp"
-            android:paddingStart="16dp"
             android:clipToPadding="false"
-            app:layout_constraintTop_toBottomOf="@id/octoberText"
+            android:paddingStart="16dp"
+            android:scrollbars="none"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            app:layout_constraintTop_toBottomOf="@id/octoberText">
 
             <LinearLayout
                 android:id="@+id/date_items_container"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
-                android:orientation="horizontal"
-                android:gravity="center_vertical" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal" />
 
         </HorizontalScrollView>
 
