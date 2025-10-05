@@ -26,6 +26,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import android.widget.Button
+import android.util.Log
 
 class TaskActivity : AppCompatActivity() {
 
@@ -401,59 +403,137 @@ class TaskActivity : AppCompatActivity() {
     }
 
     // ==========================================
+    // FUNGSI BARU: STREAK DIALOG
+    // ==========================================
+    private fun showStreakSuccessDialog(newStreak: Int) {
+        val layoutResId = resources.getIdentifier("dialog_streak_success", "layout", packageName)
+
+        if (layoutResId == 0) {
+            Log.e("TaskActivity", "FATAL: Layout 'dialog_streak_success.xml' not found. Dialog cannot be shown.")
+            return
+        }
+
+        try {
+            val dialogView = LayoutInflater.from(this).inflate(layoutResId, null)
+
+            val tvStreakMessage = dialogView.findViewById<TextView>(R.id.tv_streak_message)
+            val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
+
+            if (tvStreakMessage == null || btnOk == null) {
+                Log.e("TaskActivity", "FATAL: Views inside dialog_streak_success not found (tv_streak_message or btn_ok). Check IDs.")
+                return
+            }
+
+            tvStreakMessage.text = "$newStreak streak"
+
+            // Set warna teks streak (Asumsi orange/medium_priority)
+            tvStreakMessage.setTextColor(Color.parseColor("#FFC107")) // Medium priority color
+
+            val alertDialog = AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create()
+
+            alertDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+            btnOk.setOnClickListener {
+                alertDialog.dismiss()
+            }
+
+            alertDialog.show()
+        } catch (e: Exception) {
+            Log.e("TaskActivity", "Error showing streak dialog: ${e.message}", e)
+        }
+    }
+
+
+    // ==========================================
     // FUNGSI STREAK - DIPANGGIL SAAT COMPLETE TASK
     // ==========================================
-    private fun updateStreakOnTaskComplete() {
+    private fun updateStreakOnTaskComplete(): Int {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val todayStr = sdf.format(Date())
+        val todayCalendar = Calendar.getInstance()
 
-        val currentStreak = prefs.getInt(KEY_STREAK, 0)
+        val oldStreak = prefs.getInt(KEY_STREAK, 0)
         val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
 
+        val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
+        val hasCompletedToday = completedToday.isNotEmpty()
+
+        var newStreak = oldStreak
+        var shouldUpdate = false
+        var streakIncreased = false
+
+
         when {
+            // Kasus 1: Belum ada streak sama sekali
             lastDateStr == null -> {
-                prefs.edit().apply {
-                    putInt(KEY_STREAK, 1)
-                    putString(KEY_LAST_DATE, todayStr)
-                    putString(KEY_STREAK_DAYS, getCurrentDayOfWeek().toString())
-                    apply()
+                if (hasCompletedToday) {
+                    newStreak = 1
+                    shouldUpdate = true
+                    streakIncreased = true
                 }
             }
 
+            // Kasus 2: Sudah di-update hari ini (streak tidak bertambah)
             lastDateStr == todayStr -> {
-                // Sudah di-update hari ini, tidak perlu action
+                // newStreak = oldStreak; shouldUpdate = false;
             }
 
+            // Kasus 3: Hari ini adalah hari setelah lastDateStr (Beruntun)
             isYesterday(lastDateStr, todayStr) -> {
-                val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
-                val currentDay = getCurrentDayOfWeek()
-                val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+                if (hasCompletedToday) {
+                    newStreak = oldStreak + 1
+                    shouldUpdate = true
+                    streakIncreased = true
+                }
+            }
 
-                val newStreakDays = if (!existingDays.contains(currentDay)) {
+            // Kasus 4: Jeda lebih dari satu hari (Streak putus)
+            else -> {
+                if (hasCompletedToday) {
+                    newStreak = 1 // Mulai streak baru dari 1
+                    shouldUpdate = true
+                    streakIncreased = true
+                } else {
+                    newStreak = 0 // Reset streak
+                    shouldUpdate = true
+                }
+            }
+        }
+
+        if (shouldUpdate) {
+            val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+            val currentDay = getCurrentDayOfWeek()
+            val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+
+            val newStreakDays = if (newStreak > oldStreak) {
+                // Streak bertambah, tambahkan hari ini
+                if (!existingDays.contains(currentDay)) {
                     if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
                 } else {
                     streakDays
                 }
-
-                prefs.edit().apply {
-                    putInt(KEY_STREAK, currentStreak + 1)
-                    putString(KEY_LAST_DATE, todayStr)
-                    putString(KEY_STREAK_DAYS, newStreakDays)
-                    apply()
-                }
+            } else if (newStreak == 1) {
+                // Streak dimulai dari 1
+                currentDay.toString()
+            } else {
+                // Reset streak (newStreak == 0)
+                ""
             }
 
-            else -> {
-                prefs.edit().apply {
-                    putInt(KEY_STREAK, 1)
-                    putString(KEY_LAST_DATE, todayStr)
-                    putString(KEY_STREAK_DAYS, getCurrentDayOfWeek().toString())
-                    apply()
-                }
+            prefs.edit().apply {
+                putInt(KEY_STREAK, newStreak)
+                putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
+                putString(KEY_STREAK_DAYS, newStreakDays)
+                apply()
             }
         }
+
+        return if (streakIncreased) newStreak else oldStreak
     }
+
 
     private fun getCurrentDayOfWeek(): Int {
         val calendar = Calendar.getInstance()
@@ -480,6 +560,9 @@ class TaskActivity : AppCompatActivity() {
     private fun addNewTaskToUI(task: Task) {
         val context = this
         val marginPx = 16.dp
+        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val oldStreak = sharedPrefs.getInt(KEY_STREAK, 0)
+
 
         val mainContainer = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
@@ -510,8 +593,12 @@ class TaskActivity : AppCompatActivity() {
             setOnClickListener {
                 val success = TaskRepository.completeTask(task.id)
                 if (success) {
-                    updateStreakOnTaskComplete() // UPDATE STREAK SAAT COMPLETE
-                    showConfirmationDialog(task.title, "selesai")
+                    // 1. Dapatkan newStreak setelah tugas selesai
+                    val newStreak = updateStreakOnTaskComplete()
+
+                    // 2. Tampilkan dialog Confirmation dengan callback untuk dialog streak
+                    showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
+
                     (mainContainer.parent as? ViewGroup)?.removeView(mainContainer)
                     loadTasksForSelectedDate()
                 } else {
@@ -668,8 +755,7 @@ class TaskActivity : AppCompatActivity() {
         val deleteButton = createActionButton(R.drawable.ic_trash, "Delete") {
             val success = TaskRepository.deleteTask(task.id)
             if (success) {
-                showConfirmationDialog(task.title, "dihapus")
-                loadTasksForSelectedDate()
+                showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1) // No streak check for delete
             } else {
                 Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
             }
@@ -698,7 +784,10 @@ class TaskActivity : AppCompatActivity() {
         tvNoActivity.visibility = if (taskCount == 0) View.VISIBLE else View.GONE
     }
 
-    private fun showConfirmationDialog(taskTitle: String, action: String) {
+    // ==============================================================
+    // MODIFIKASI FUNGSI CONFIRMATION UNTUK MENAMBAH CALLBACK STREAK
+    // ==============================================================
+    private fun showConfirmationDialogWithStreakCheck(taskTitle: String, action: String, newStreak: Int, oldStreak: Int) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_save_success, null)
 
         val dialog = AlertDialog.Builder(this)
@@ -724,6 +813,12 @@ class TaskActivity : AppCompatActivity() {
 
         val dismissListener = View.OnClickListener {
             dialog.dismiss()
+
+            // LOGIKA CHAINING DI SINI
+            if (action == "selesai" && newStreak > oldStreak) {
+                // Jika aksi adalah selesai dan streak bertambah, tampilkan dialog streak
+                showStreakSuccessDialog(newStreak)
+            }
         }
 
         btnConfirm1.text = "OK"
@@ -732,11 +827,13 @@ class TaskActivity : AppCompatActivity() {
         btnConfirm1.setTextColor(Color.parseColor("#283F6D"))
         btnConfirm2.setTextColor(Color.parseColor("#283F6D"))
 
+        // Ganti dismissListener agar hanya dialog yang ditutup, bukan activity
         btnConfirm1.setOnClickListener(dismissListener)
         btnConfirm2.setOnClickListener(dismissListener)
 
         dialog.show()
     }
+
 
     override fun finish() {
         super.finish()
