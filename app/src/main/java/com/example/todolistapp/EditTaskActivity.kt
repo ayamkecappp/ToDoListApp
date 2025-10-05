@@ -24,7 +24,7 @@ import java.util.Locale
 import android.app.TimePickerDialog
 import android.widget.NumberPicker
 import android.graphics.drawable.ColorDrawable
-import java.text.SimpleDateFormat // DITAMBAHKAN
+import java.text.SimpleDateFormat
 import android.app.DatePickerDialog
 
 class EditTaskActivity : AppCompatActivity() {
@@ -37,28 +37,28 @@ class EditTaskActivity : AppCompatActivity() {
     private lateinit var btnSave: Button
     private lateinit var btnBack: ImageView
     private lateinit var tvEditFlowTimer: TextView
+    private lateinit var tvTitle: TextView
 
     private var currentTask: Task? = null
     private var taskIdToEdit: Long = -1L
     private var currentTaskDayStartMillis: Long = 0L
 
-    // DITAMBAHKAN: Format tanggal untuk tampilan
     private val uiDateDisplayFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
 
     private var currentSelectedPriority: String = ""
     private val priorities = arrayOf("None", "Low", "Medium", "High")
 
-    // Konstanta untuk Flow Timer
+    private var isRescheduleMode: Boolean = false
+
     companion object {
-        const val PREFS_NAME = "TimerPrefs"
-        const val KEY_FLOW_TIMER_DURATION = "flow_timer_duration"
         const val EXTRA_TASK_ID = "EXTRA_TASK_ID"
         const val EXTRA_RESCHEDULE_MODE = "EXTRA_RESCHEDULE_MODE"
+        const val DEFAULT_FLOW_TIMER_DURATION = 30 * 60 * 1000L
     }
 
-    private var flowTimerDurationMillis: Long = 0L
+    // ✅ DURASI FLOW TIMER SPESIFIK UNTUK TASK INI SAJA
+    private var taskSpecificFlowDuration: Long = 0L
 
-    // Konstanta untuk konversi waktu
     private val MILLIS_IN_HOUR = 60 * 60 * 1000L
     private val MILLIS_IN_MINUTE = 60 * 1000L
     private val MILLIS_IN_SECOND = 1000L
@@ -67,7 +67,6 @@ class EditTaskActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.edit_task)
 
-        // Inisialisasi Views
         inputActivity = findViewById(R.id.inputActivity)
         inputTime = findViewById(R.id.inputTime)
         inputLocation = findViewById(R.id.inputLocation)
@@ -76,8 +75,15 @@ class EditTaskActivity : AppCompatActivity() {
         btnBack = findViewById(R.id.btnBack)
         inputDate = findViewById(R.id.inputDate)
         tvEditFlowTimer = findViewById(R.id.tvAddFlowTimer)
+        tvTitle = findViewById(R.id.tvTitle)
 
-        // Nonaktifkan fokus manual
+        isRescheduleMode = intent.getBooleanExtra(EXTRA_RESCHEDULE_MODE, false)
+
+        if (isRescheduleMode) {
+            tvTitle?.text = "Reschedule Task"
+            btnSave.text = "Reschedule"
+        }
+
         inputTime.isFocusable = false
         inputTime.isFocusableInTouchMode = false
         inputPriority.isFocusable = false
@@ -85,7 +91,6 @@ class EditTaskActivity : AppCompatActivity() {
         inputDate.isFocusable = false
         inputDate.isFocusableInTouchMode = false
 
-        // 1. Load the task
         taskIdToEdit = intent.getLongExtra(EXTRA_TASK_ID, -1L)
         currentTask = TaskRepository.getTaskById(taskIdToEdit)
 
@@ -95,42 +100,49 @@ class EditTaskActivity : AppCompatActivity() {
             return
         }
 
-        // 2. Initialize Flow Timer state
-        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val defaultDuration = 30 * MILLIS_IN_MINUTE
-        flowTimerDurationMillis = sharedPrefs.getLong(KEY_FLOW_TIMER_DURATION, defaultDuration)
+        // ✅ AMBIL DURASI DARI TASK INI SAJA (State yang disimpan)
+        taskSpecificFlowDuration = if (currentTask!!.flowDurationMillis > 0L) {
+            currentTask!!.flowDurationMillis
+        } else {
+            DEFAULT_FLOW_TIMER_DURATION
+        }
 
-        // 3. Populate fields
         inputActivity.setText(currentTask!!.title)
         inputLocation.setText(currentTask!!.category)
 
         currentSelectedPriority = currentTask!!.priority
         inputPriority.setText(currentSelectedPriority)
 
-        // --- Date Initialization ---
         val taskDayCalendar = Calendar.getInstance().apply { timeInMillis = currentTask!!.id }
         inputDate.setText(uiDateDisplayFormat.format(taskDayCalendar.time))
         currentTaskDayStartMillis = taskDayCalendar.timeInMillis
-        // --- End Date Initialization ---
 
-        // --- Flow Timer Check and Initialization ---
         val taskTime = currentTask!!.time
+
+        // ✅ LOGIKA PENYETELAN INPUT TIME TAG (Flow Timer vs Time Range)
         if (taskTime.contains("(Flow)")) {
-            val timeDisplayString = formatDurationToString(flowTimerDurationMillis)
+            // Task menggunakan Flow Timer
+            val timeDisplayString = formatDurationToString(taskSpecificFlowDuration)
             tvEditFlowTimer.text = "Flow Timer Set (${timeDisplayString})"
             inputTime.setText("")
-            inputTime.tag = null
+            inputTime.tag = true // Tag Boolean menandakan Flow Timer aktif
         } else {
-            flowTimerDurationMillis = 0L
+            // Task menggunakan Time Range atau tidak ada waktu
             inputTime.setText(taskTime)
-            tvEditFlowTimer.text = "+ Add Flow Timer"
+
+            // Tampilkan durasi Flow Timer yang disimpan, tapi tidak diaktifkan
+            val timeDisplayString = formatDurationToString(taskSpecificFlowDuration)
+            tvEditFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
+
             if(currentTask!!.endTimeMillis > 0L) {
+                // Time Range aktif, gunakan Long (EndTimeMillis) sebagai tag
                 inputTime.tag = currentTask!!.endTimeMillis
+            } else {
+                // Tidak ada waktu, tag null
+                inputTime.tag = null
             }
         }
-        // ------------------------------------------
 
-        // Listener
         btnBack.setOnClickListener {
             setResult(Activity.RESULT_CANCELED)
             finish()
@@ -144,17 +156,14 @@ class EditTaskActivity : AppCompatActivity() {
             showPriorityDialog()
         }
 
-        // Listener untuk Time Input (UPDATED: untuk mereset Flow Timer)
         inputTime.setOnClickListener {
             showTimeRangePicker()
         }
 
-        // DITAMBAHKAN: Listener untuk Date Input
         inputDate.setOnClickListener {
             showDatePicker()
         }
 
-        // Listener untuk Flow Timer
         tvEditFlowTimer.setOnClickListener {
             showFlowTimerDialog()
         }
@@ -162,21 +171,17 @@ class EditTaskActivity : AppCompatActivity() {
 
     override fun finish() {
         super.finish()
-        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
     }
 
-    // --- NEW FUNCTION: showDatePicker (Dengan Custom Design) ---
     private fun showDatePicker() {
         val calendar = Calendar.getInstance().apply { timeInMillis = currentTaskDayStartMillis }
         val year = calendar.get(Calendar.YEAR)
         val month = calendar.get(Calendar.MONTH)
         val day = calendar.get(Calendar.DAY_OF_MONTH)
 
-        // Menggunakan tema bawaan Android yang bersih, yang hasilnya akan putih,
-        // dan warna aksen akan diatur oleh tema aplikasi utama.
         val datePickerDialog = DatePickerDialog(
             this,
-            // Menggunakan tema dialog yang bersih
             android.R.style.Theme_DeviceDefault_Light_Dialog_NoActionBar,
             { _, selectedYear, selectedMonth, selectedDay ->
                 val newCalendar = Calendar.getInstance().apply {
@@ -190,11 +195,9 @@ class EditTaskActivity : AppCompatActivity() {
                 val newDayStartMillis = newCalendar.timeInMillis
 
                 inputDate.setText(uiDateDisplayFormat.format(Date(newDayStartMillis)))
-
-                // Simpan tanggal baru untuk digunakan saat Save
                 currentTaskDayStartMillis = newDayStartMillis
 
-                // Sinkronisasi waktu berakhir (jika sudah diatur)
+                // Jika Time Range aktif, update endTimeMillis-nya
                 val existingEndTimeMillis = inputTime.tag as? Long ?: 0L
                 if (existingEndTimeMillis > 0L) {
                     val existingEndTimeCal = Calendar.getInstance().apply { timeInMillis = existingEndTimeMillis }
@@ -207,13 +210,10 @@ class EditTaskActivity : AppCompatActivity() {
             },
             year, month, day
         )
-        // Mengubah background window menjadi putih untuk tampilan kustom yang bersih
         datePickerDialog.window?.setBackgroundDrawableResource(android.R.color.white)
         datePickerDialog.show()
     }
-    // --- END NEW FUNCTION ---
 
-    // --- NEW FUNCTION: showFlowTimerDialog ---
     private fun showFlowTimerDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_flow_timer, null)
         val dialog = AlertDialog.Builder(this)
@@ -229,17 +229,16 @@ class EditTaskActivity : AppCompatActivity() {
         val btnCancel = dialogView.findViewById<TextView>(R.id.btnCancel)
         val btnSave = dialogView.findViewById<TextView>(R.id.btnSave)
 
-        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) // PERBAIKAN
-        val defaultDuration = 30 * MILLIS_IN_MINUTE
-        val currentDuration = if (flowTimerDurationMillis > 0L) flowTimerDurationMillis else sharedPrefs.getLong(KEY_FLOW_TIMER_DURATION, defaultDuration) // PERBAIKAN
+        // ✅ GUNAKAN DURASI TASK INI SAJA (State yang disimpan)
+        val initialDuration = taskSpecificFlowDuration
 
         var initialHours = 0
         var initialMinutes = 0
         var initialSeconds = 0
 
-        if (currentDuration > 0L) {
-            initialHours = (currentDuration / MILLIS_IN_HOUR).toInt()
-            val remainingAfterHours = currentDuration % MILLIS_IN_HOUR
+        if (initialDuration > 0L) {
+            initialHours = (initialDuration / MILLIS_IN_HOUR).toInt()
+            val remainingAfterHours = initialDuration % MILLIS_IN_HOUR
             initialMinutes = (remainingAfterHours / MILLIS_IN_MINUTE).toInt()
             initialSeconds = ((remainingAfterHours % MILLIS_IN_MINUTE) / MILLIS_IN_SECOND).toInt()
         }
@@ -272,26 +271,24 @@ class EditTaskActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            flowTimerDurationMillis = totalMillis
+            // ✅ SIMPAN DURASI BARU HANYA UNTUK TASK INI
+            taskSpecificFlowDuration = totalMillis
 
-            sharedPrefs.edit().putLong(KEY_FLOW_TIMER_DURATION, flowTimerDurationMillis).apply() // PERBAIKAN
-
-            val timeDisplayString = formatDurationToString(flowTimerDurationMillis)
+            val timeDisplayString = formatDurationToString(totalMillis)
 
             tvEditFlowTimer.text = "Flow Timer Set (${timeDisplayString})"
 
             inputTime.setText("")
-            inputTime.tag = null
+            // Tag disetel ke Boolean true untuk menandakan Flow Timer aktif
+            inputTime.tag = true
 
-            Toast.makeText(this, "Flow Timer berhasil disetel: ${timeDisplayString}.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Durasi Flow Timer diatur ke: ${timeDisplayString}.", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
         }
 
         dialog.show()
     }
-    // --- END NEW FUNCTION ---
 
-    // --- NEW HELPER FUNCTION: formatDurationToString ---
     private fun formatDurationToString(millis: Long): String {
         val durationHours = (millis / MILLIS_IN_HOUR).toInt()
         val remainingAfterHours = millis % MILLIS_IN_HOUR
@@ -309,9 +306,7 @@ class EditTaskActivity : AppCompatActivity() {
             else -> "0s"
         }
     }
-    // --- END NEW HELPER ---
 
-    // --- UPDATED FUNCTION: updateTask ---
     private fun updateTask(task: Task) {
         val originalTaskId = task.id
 
@@ -320,18 +315,34 @@ class EditTaskActivity : AppCompatActivity() {
         val location = inputLocation.text.toString().trim()
         val priority = currentSelectedPriority
 
-        val taskEndTimeMillis: Long
+        var taskEndTimeMillis: Long = 0L
 
-        if (flowTimerDurationMillis > 0L) {
+        // Cek Tag: Boolean untuk Flow Timer, Long untuk Time Range
+        val isFlowTimerActive = inputTime.tag is Boolean && inputTime.tag as Boolean
+        val isTimeRangeActive = inputTime.tag is Long
+
+        var savedFlowDuration: Long = 0L
+
+        val newTaskId = currentTaskDayStartMillis
+
+        if (isFlowTimerActive) {
             // Flow Timer aktif
-            taskEndTimeMillis = System.currentTimeMillis() + flowTimerDurationMillis
-
-            val timeDisplay = formatDurationToString(flowTimerDurationMillis) + " (Flow)"
+            taskEndTimeMillis = System.currentTimeMillis() + taskSpecificFlowDuration
+            val timeDisplay = formatDurationToString(taskSpecificFlowDuration) + " (Flow)"
             time = timeDisplay
+            savedFlowDuration = taskSpecificFlowDuration
+        } else if(isTimeRangeActive) {
+            // Time Range aktif
+            taskEndTimeMillis = inputTime.tag as Long
+            time = inputTime.text.toString().trim()
+            // Simpan durasi flow spesifik task (untuk next edit)
+            savedFlowDuration = taskSpecificFlowDuration
         } else {
-            // Flow Timer tidak aktif
-            taskEndTimeMillis = inputTime.tag as? Long ?: 0L
-            if (time.isEmpty()) time = "Waktu tidak disetel"
+            // Tidak ada waktu
+            time = ""
+            taskEndTimeMillis = 0L
+            // Simpan durasi flow spesifik task (untuk next edit)
+            savedFlowDuration = taskSpecificFlowDuration
         }
 
         if (title.isEmpty()) {
@@ -340,29 +351,34 @@ class EditTaskActivity : AppCompatActivity() {
         }
 
         val updatedTask = task.copy(
-            id = originalTaskId,
+            id = newTaskId,
             title = title,
             time = time,
-            category = if (location.isEmpty()) "Uncategorized" else location,
+            category = location.ifEmpty { "" },
             priority = priority,
-            endTimeMillis = taskEndTimeMillis
+            endTimeMillis = taskEndTimeMillis,
+            flowDurationMillis = savedFlowDuration // ✅ SIMPAN DURASI SPESIFIK TASK
         )
+
         val success = TaskRepository.updateTask(originalTaskId, updatedTask)
 
         if (success) {
-            showConfirmationDialog(updatedTask.title)
+            val action = if (isRescheduleMode) "di-reschedule" else "diperbarui"
+            showConfirmationDialog(updatedTask.title, action)
         } else {
             Toast.makeText(this, "Gagal menyimpan pembaruan tugas.", Toast.LENGTH_SHORT).show()
         }
     }
-    // --- END UPDATED FUNCTION ---
 
-    // --- UPDATED FUNCTION: showTimeRangePicker (untuk mereset Flow Timer) ---
     private fun showTimeRangePicker() {
-        // Reset Flow Timer ketika Time Picker digunakan
-        flowTimerDurationMillis = 0L
-        tvEditFlowTimer.text = "+ Add Flow Timer" // Reset teks tombol
-        inputTime.setText("") // Clear inputTime agar tidak bentrok
+        // ✅ RESET TAG KE NULL (membatalkan Flow Timer/Time Range lama)
+        inputTime.tag = null
+
+        // Tampilkan durasi flow timer yang tersimpan, tapi tidak diaktifkan
+        val timeDisplayString = formatDurationToString(taskSpecificFlowDuration)
+        tvEditFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
+
+        inputTime.setText("")
 
         val calendar = Calendar.getInstance()
         val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
@@ -370,14 +386,12 @@ class EditTaskActivity : AppCompatActivity() {
 
         var startTimeString = ""
 
-        // 1. Time Picker untuk Waktu MULAI
         val startTimePicker = TimePickerDialog(
             this,
             android.R.style.Theme_DeviceDefault_Light_Dialog_NoActionBar,
             { _, hourOfDay, minute ->
                 startTimeString = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minute)
 
-                // 2. Time Picker untuk Waktu BERAKHIR
                 val endTimePicker = TimePickerDialog(
                     this,
                     android.R.style.Theme_DeviceDefault_Light_Dialog_NoActionBar,
@@ -386,8 +400,7 @@ class EditTaskActivity : AppCompatActivity() {
 
                         inputTime.setText("$startTimeString - $endTimeString")
 
-                        // LOGIKA PENTING: MENGHITUNG END TIME MILLIS
-                        val selectedDayCalendar = Calendar.getInstance().apply { timeInMillis = currentTask?.id ?: System.currentTimeMillis() }
+                        val selectedDayCalendar = Calendar.getInstance().apply { timeInMillis = currentTaskDayStartMillis }
 
                         val startHourInt = startTimeString.substringBefore(":").toIntOrNull() ?: 0
                         val startMinuteInt = startTimeString.substringAfter(":").toIntOrNull() ?: 0
@@ -409,6 +422,7 @@ class EditTaskActivity : AppCompatActivity() {
                         selectedDayCalendar.set(Calendar.SECOND, 0)
                         selectedDayCalendar.set(Calendar.MILLISECOND, 0)
 
+                        // Tag disetel ke Long untuk Time Range
                         inputTime.tag = selectedDayCalendar.timeInMillis
                     },
                     currentHour,
@@ -425,9 +439,8 @@ class EditTaskActivity : AppCompatActivity() {
         startTimePicker.setTitle("Pilih Waktu Mulai")
         startTimePicker.show()
     }
-    // --- END UPDATED FUNCTION ---
 
-    private fun showConfirmationDialog(taskTitle: String) {
+    private fun showConfirmationDialog(taskTitle: String, action: String) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_save_success, null)
 
         val dialog = AlertDialog.Builder(this)
@@ -439,13 +452,15 @@ class EditTaskActivity : AppCompatActivity() {
         val btnIgnore = dialogView.findViewById<TextView>(R.id.btnIgnore)
         val btnView = dialogView.findViewById<TextView>(R.id.btnView)
 
-        mainMessageTextView.text = "Tugas '$taskTitle' berhasil diperbarui."
+        val message = "Tugas '$taskTitle' berhasil $action."
+
+        mainMessageTextView.text = message
         mainMessageTextView.setTextColor(Color.parseColor("#283F6D"))
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        btnIgnore.text = "Kembali ke Task" // Ganti teks
-        btnView.visibility = View.GONE // Sembunyikan tombol View jika tidak diperlukan
+        btnIgnore.text = "OK"
+        btnView.visibility = View.GONE
 
         btnIgnore.setOnClickListener {
             setResult(Activity.RESULT_OK)

@@ -10,7 +10,8 @@ data class Task(
     val category: String,
     val priority: String,
     val endTimeMillis: Long = 0L,
-    val monthAdded: Int = Calendar.getInstance().apply { timeInMillis = id }.get(Calendar.MONTH)
+    val monthAdded: Int = Calendar.getInstance().apply { timeInMillis = id }.get(Calendar.MONTH),
+    val flowDurationMillis: Long = 0L
 )
 
 object TaskRepository {
@@ -24,33 +25,47 @@ object TaskRepository {
     }
 
     fun getTaskById(taskId: Long): Task? {
+        // Cek di semua list: active, missed, dan deleted
         val activeTask = tasks.find { it.id == taskId }
         if (activeTask != null) return activeTask
-        return missedTasks.find { it.id == taskId }
+
+        val missedTask = missedTasks.find { it.id == taskId }
+        if (missedTask != null) return missedTask
+
+        return deletedTasks.find { it.id == taskId }
     }
 
     fun updateTask(originalTaskId: Long, updatedTask: Task): Boolean {
         synchronized(tasks) {
-            // 1. Cari dan hapus tugas asli dari daftar aktif
-            val index = tasks.indexOfFirst { it.id == originalTaskId }
-            if (index != -1) {
-                tasks.removeAt(index)
-                tasks.add(0, updatedTask) // Tambahkan tugas baru (dengan ID/tanggal yang mungkin baru)
+            // Cek di active tasks
+            val activeIndex = tasks.indexOfFirst { it.id == originalTaskId }
+            if (activeIndex != -1) {
+                tasks.removeAt(activeIndex)
+                tasks.add(0, updatedTask)
                 return true
             }
 
-            // 2. Cari dan hapus dari tugas yang terlewat (jika pengguna mengedit tugas yang terlewat)
+            // Cek di missed tasks
             val missedIndex = missedTasks.indexOfFirst { it.id == originalTaskId }
             if (missedIndex != -1) {
                 missedTasks.removeAt(missedIndex)
-                tasks.add(0, updatedTask) // Pindahkan kembali ke daftar aktif untuk tanggal barunya
+                tasks.add(0, updatedTask)
+                return true
+            }
+
+            // PENTING: Cek di deleted tasks (untuk reschedule)
+            val deletedIndex = deletedTasks.indexOfFirst { it.id == originalTaskId }
+            if (deletedIndex != -1) {
+                // Hapus dari deleted tasks
+                deletedTasks.removeAt(deletedIndex)
+                // Tambahkan ke active tasks dengan ID baru (tanggal baru)
+                tasks.add(0, updatedTask)
                 return true
             }
 
             return false
         }
     }
-
 
     fun completeTask(taskId: Long): Boolean {
         val taskToRemove = tasks.find { it.id == taskId }
@@ -86,14 +101,30 @@ object TaskRepository {
 
     fun processTasksForMissed() {
         val now = System.currentTimeMillis()
-        val missed = tasks.filter { it.endTimeMillis != 0L && it.endTimeMillis < now }
+
+        val missed = tasks.filter { task ->
+            if (task.endTimeMillis != 0L) {
+                task.endTimeMillis < now
+            } else {
+                val taskDate = Calendar.getInstance().apply {
+                    timeInMillis = task.id
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }
+                taskDate.timeInMillis < now
+            }
+        }
 
         tasks.removeAll(missed)
         missedTasks.addAll(missed)
     }
 
     fun getMissedTasks(): List<Task> {
-        return missedTasks.sortedByDescending { it.endTimeMillis }
+        return missedTasks.sortedByDescending {
+            if (it.endTimeMillis != 0L) it.endTimeMillis else it.id
+        }
     }
 
     fun deleteTask(taskId: Long): Boolean {
@@ -110,6 +141,19 @@ object TaskRepository {
         return deletedTasks.toList()
     }
 
+    // FUNGSI BARU: Reschedule deleted task
+    fun rescheduleDeletedTask(taskId: Long, newTask: Task): Boolean {
+        synchronized(deletedTasks) {
+            val deletedTask = deletedTasks.find { it.id == taskId }
+            if (deletedTask != null) {
+                deletedTasks.remove(deletedTask)
+                tasks.add(0, newTask)
+                return true
+            }
+            return false
+        }
+    }
+
     fun getTasksByDate(selectedDate: Calendar): List<Task> {
         processTasksForMissed()
 
@@ -118,7 +162,6 @@ object TaskRepository {
         val selectedDay = selectedDate.get(Calendar.DAY_OF_MONTH)
 
         return tasks.filter { task ->
-            // task.id merepresentasikan timestamp hari saat tugas dibuat
             val taskCalendar = Calendar.getInstance().apply { timeInMillis = task.id }
 
             taskCalendar.get(Calendar.YEAR) == selectedYear &&
@@ -127,9 +170,7 @@ object TaskRepository {
         }
     }
 
-    // NEW FUNCTION: Check if a day has any active task
     fun hasTasksOnDate(date: Calendar): Boolean {
-        // Normalize the input date to start of day
         val startOfDay = date.clone() as Calendar
         startOfDay.set(Calendar.HOUR_OF_DAY, 0)
         startOfDay.set(Calendar.MINUTE, 0)
@@ -138,9 +179,7 @@ object TaskRepository {
 
         val startOfDayMillis = startOfDay.timeInMillis
 
-        // Iterate over active tasks
         return tasks.any { task ->
-            // Normalize task ID to start of day for accurate comparison
             val taskCalendar = Calendar.getInstance().apply { timeInMillis = task.id }
             taskCalendar.set(Calendar.HOUR_OF_DAY, 0)
             taskCalendar.set(Calendar.MINUTE, 0)

@@ -4,7 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.os.Bundle // DITAMBAHKAN: Memperbaiki Unresolved reference 'Bundle'
+import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
@@ -21,58 +21,56 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
+import java.text.SimpleDateFormat
+import java.util.*
 
-class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
+class SearchFilterActivity : AppCompatActivity() {
 
     private lateinit var inputSearch: EditText
     private lateinit var taskResultsContainer: LinearLayout
     private lateinit var chipContainer: LinearLayout
     private lateinit var btnBack: ImageView
 
-    // Status filter bulan yang sedang aktif (-1 = All, 0=Jan, 11=Dec)
     private var activeMonthFilter: Int = -1
     private val monthNames = arrayOf("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
 
-    // Map untuk memetakan Priority ke Resource Color ID
     private val priorityColorMap = mapOf(
         "Low" to R.color.low_priority,
         "Medium" to R.color.medium_priority,
         "High" to R.color.high_priority
     )
 
-    // Launcher untuk EditTaskActivity. Memastikan refresh saat kembali.
+    // Streak SharedPreferences
+    private val PREFS_NAME = "TimyTimePrefs"
+    private val KEY_STREAK = "current_streak"
+    private val KEY_LAST_DATE = "last_completion_date"
+    private val KEY_STREAK_DAYS = "streak_days"
+
     private val editTaskLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            // Setelah Edit/Update berhasil, refresh tampilan pencarian
             performSearch(inputSearch.text.toString(), activeMonthFilter)
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) { // DIPERBAIKI
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.search_filter)
 
-        // --- INIALISASI VIEWS DARI XML ---
         inputSearch = findViewById(R.id.input_search)
         chipContainer = findViewById(R.id.chip_container)
         btnBack = findViewById(R.id.btn_back)
         taskResultsContainer = findViewById(R.id.task_results_container_xml)
 
-        // Mengatur ulang padding agar list dimulai dengan benar di dalam ScrollView yang sudah di-constrain di XML.
         taskResultsContainer.setPadding(16.dp, 16.dp, 16.dp, 16.dp)
 
-
-        // Listener untuk tombol Kembali (Arrow)
         btnBack.setOnClickListener {
             finish()
         }
 
-        // 2. Generate Chips Bulan
         generateMonthChips()
 
-        // 3. Listener Pencarian Teks (Memicu pencarian saat mengetik)
         inputSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
@@ -81,17 +79,13 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
             override fun afterTextChanged(s: Editable) {}
         })
 
-        // 4. Listener Tombol Batal/X (Memicu penghapusan teks dan pencarian ulang)
         inputSearch.setOnTouchListener(View.OnTouchListener { v, event ->
             if (event.action == android.view.MotionEvent.ACTION_UP) {
-                // Compound Drawable index 2 adalah drawableEnd (ikon Clear/X)
                 val drawableEnd = inputSearch.compoundDrawables[2]
                 if (drawableEnd != null) {
-                    // Hitung area klik pada ikon Clear
                     val isClicked = event.rawX >= (inputSearch.right - drawableEnd.bounds.width() - inputSearch.paddingEnd)
                     if (isClicked) {
                         inputSearch.setText("")
-                        // Memicu pencarian ulang setelah teks dihapus
                         performSearch("", activeMonthFilter)
                         return@OnTouchListener true
                     }
@@ -100,11 +94,85 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
             false
         })
 
-        // Muat semua tugas saat pertama kali dibuka (filter bulan = All)
         performSearch("", activeMonthFilter)
     }
 
-    // --- LOGIKA CHIPS ---
+    // ==========================================
+    // FUNGSI STREAK
+    // ==========================================
+    private fun updateStreakOnTaskComplete() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val todayStr = sdf.format(Date())
+
+        val currentStreak = prefs.getInt(KEY_STREAK, 0)
+        val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+
+        when {
+            lastDateStr == null -> {
+                prefs.edit().apply {
+                    putInt(KEY_STREAK, 1)
+                    putString(KEY_LAST_DATE, todayStr)
+                    putString(KEY_STREAK_DAYS, getCurrentDayOfWeek().toString())
+                    apply()
+                }
+            }
+
+            lastDateStr == todayStr -> {
+                // Sudah di-update hari ini
+            }
+
+            isYesterday(lastDateStr, todayStr) -> {
+                val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+                val currentDay = getCurrentDayOfWeek()
+                val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+
+                val newStreakDays = if (!existingDays.contains(currentDay)) {
+                    if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
+                } else {
+                    streakDays
+                }
+
+                prefs.edit().apply {
+                    putInt(KEY_STREAK, currentStreak + 1)
+                    putString(KEY_LAST_DATE, todayStr)
+                    putString(KEY_STREAK_DAYS, newStreakDays)
+                    apply()
+                }
+            }
+
+            else -> {
+                prefs.edit().apply {
+                    putInt(KEY_STREAK, 1)
+                    putString(KEY_LAST_DATE, todayStr)
+                    putString(KEY_STREAK_DAYS, getCurrentDayOfWeek().toString())
+                    apply()
+                }
+            }
+        }
+    }
+
+    private fun getCurrentDayOfWeek(): Int {
+        val calendar = Calendar.getInstance()
+        return when (calendar.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> 0
+            Calendar.TUESDAY -> 1
+            Calendar.WEDNESDAY -> 2
+            Calendar.THURSDAY -> 3
+            Calendar.FRIDAY -> 4
+            Calendar.SATURDAY -> 5
+            Calendar.SUNDAY -> 6
+            else -> 0
+        }
+    }
+
+    private fun isYesterday(lastDateStr: String?, todayStr: String): Boolean {
+        if (lastDateStr == null) return false
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+        val yesterdayStr = sdf.format(yesterday.time)
+        return lastDateStr == yesterdayStr
+    }
 
     private fun generateMonthChips() {
         if (chipContainer.childCount > 1) {
@@ -162,8 +230,6 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
         }
     }
 
-    // --- LOGIKA PENCARIAN & TAMPILAN ---
-
     private fun performSearch(query: String, monthFilter: Int) {
         val filteredTasks = TaskRepository.searchTasks(query, monthFilter)
         taskResultsContainer.removeAllViews()
@@ -189,7 +255,6 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
         val context = this
         val marginPx = 8.dp
 
-        // --- Container Utama Vertikal ---
         val mainContainer = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -199,7 +264,6 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
             orientation = LinearLayout.VERTICAL
         }
 
-        // --- 1. Item Tugas (Header) ---
         val taskItem = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 64.dp
@@ -211,20 +275,27 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
             setPadding(12.dp, 12.dp, 12.dp, 12.dp)
         }
 
-        // 1.1 Checklist/Status
+        // ✅ CHECKLIST BOX - LANGSUNG COMPLETE TASK
         val checklistBox = View(context).apply {
             layoutParams = LinearLayout.LayoutParams(24.dp, 24.dp).apply {
                 marginEnd = 16.dp
-                marginStart = 4.dp // Padding kiri untuk visual
+                marginStart = 4.dp
             }
             background = ResourcesCompat.getDrawable(context.resources, R.drawable.bg_checklist, null)
 
-            // Overriden by the Complete button in the expanded view for consistency
+            setOnClickListener {
+                val success = TaskRepository.completeTask(task.id)
+                if (success) {
+                    updateStreakOnTaskComplete() // UPDATE STREAK
+                    showConfirmationDialog(task.title, "selesai")
+                    performSearch(inputSearch.text.toString(), activeMonthFilter)
+                } else {
+                    Toast.makeText(context, "Gagal menandai tugas selesai.", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
         taskItem.addView(checklistBox)
 
-
-        // 1.2 Container Judul & Ikon Prioritas
         val titleAndPriorityContainer = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f
@@ -233,7 +304,6 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        // Title
         val taskTitle = TextView(context).apply {
             text = task.title
             textSize = 16f
@@ -242,7 +312,6 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
         }
         titleAndPriorityContainer.addView(taskTitle)
 
-        // Ikon Prioritas
         if (task.priority != "None") {
             val colorResId = priorityColorMap[task.priority] ?: R.color.dark_blue
             val colorInt = ContextCompat.getColor(context, colorResId)
@@ -252,7 +321,7 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
                     marginStart = 8.dp
                     gravity = Gravity.CENTER_VERTICAL
                 }
-                setImageResource(R.drawable.ic_missed) // Menggunakan ic_missed sebagai placeholder ikon
+                setImageResource(R.drawable.ic_missed)
                 contentDescription = "${task.priority} Priority"
                 setColorFilter(colorInt)
             }
@@ -260,7 +329,6 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
         }
         taskItem.addView(titleAndPriorityContainer)
 
-        // 1.3 Month Tag and Arrow
         val taskMonth = TextView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -274,7 +342,6 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
         }
         taskItem.addView(taskMonth)
 
-        // Arrow
         val arrowRight = ImageView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -290,8 +357,6 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
 
         mainContainer.addView(taskItem)
 
-
-        // --- 2. Tombol Aksi (Expanded Area) ---
         val actionButtonsContainer = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -300,10 +365,9 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(16.dp, 12.dp, 16.dp, 12.dp)
             setBackgroundColor(Color.TRANSPARENT)
-            visibility = View.GONE // Hidden by default
+            visibility = View.GONE
         }
 
-        // Helper function for creating action buttons
         fun createActionButton(iconResId: Int, buttonText: String, onClick: () -> Unit): LinearLayout {
             return LinearLayout(context).apply {
                 layoutParams = LinearLayout.LayoutParams(
@@ -338,29 +402,15 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
             }
         }
 
-        // **ACTION BUTTONS**
-
-        // Complete Button
-        val completeButton = createActionButton(R.drawable.ic_completed, "Complete") {
-            val success = TaskRepository.completeTask(task.id)
-            if (success) {
-                showConfirmationDialog(task.title, "selesai")
-                // Setelah complete, refresh list
-                performSearch(inputSearch.text.toString(), activeMonthFilter)
-            } else {
-                Toast.makeText(context, "Gagal menyelesaikan tugas.", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        // Flow Timer Button
         val flowTimerButton = createActionButton(R.drawable.ic_alarm, "Flow Timer") {
             val intent = Intent(context, FlowTimerActivity::class.java).apply {
                 putExtra(FlowTimerActivity.EXTRA_TASK_NAME, task.title)
+                // ✅ KIRIM DURASI SPESIFIK TASK
+                putExtra(FlowTimerActivity.EXTRA_FLOW_DURATION, task.flowDurationMillis)
             }
             startActivity(intent)
         }
 
-        // Edit Button
         val editButton = createActionButton(R.drawable.ic_edit, "Edit") {
             val intent = Intent(context, EditTaskActivity::class.java).apply {
                 putExtra("EXTRA_TASK_ID", task.id)
@@ -369,26 +419,22 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // Delete Button
         val deleteButton = createActionButton(R.drawable.ic_trash, "Delete") {
             val success = TaskRepository.deleteTask(task.id)
             if (success) {
                 showConfirmationDialog(task.title, "dihapus")
-                // Setelah delete, refresh list
                 performSearch(inputSearch.text.toString(), activeMonthFilter)
             } else {
                 Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
             }
         }
 
-        actionButtonsContainer.addView(completeButton)
         actionButtonsContainer.addView(flowTimerButton)
         actionButtonsContainer.addView(editButton)
         actionButtonsContainer.addView(deleteButton)
 
         mainContainer.addView(actionButtonsContainer)
 
-        // --- 3. Logika Klik untuk Expand/Collapse ---
         taskItem.setOnClickListener {
             if (actionButtonsContainer.visibility == View.GONE) {
                 actionButtonsContainer.visibility = View.VISIBLE
@@ -402,7 +448,6 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
         container.addView(mainContainer)
     }
 
-    // NEW: Function to show confirmation dialog (Copied from TaskActivity.kt)
     private fun showConfirmationDialog(taskTitle: String, action: String) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_save_success, null)
 
@@ -443,13 +488,11 @@ class SearchFilterActivity : AppCompatActivity() { // DIPERBAIKI
         dialog.show()
     }
 
-
     override fun finish() {
         super.finish()
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
 
-    // Definisi Int.dp
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
 }

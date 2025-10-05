@@ -27,6 +27,16 @@
         app:tint="@color/black"/>
 
     <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Edit Task"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/dark_blue"
+        android:fontFamily="@font/lexend"/>
+
+    <TextView
         android:id="@+id/tvNewReminderTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
