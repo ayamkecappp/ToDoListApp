@@ -1,14 +1,16 @@
 package com.example.todolistapp
 
+import android.animation.ObjectAnimator // Diperlukan untuk animasi
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-// Import jika diperlukan
 import android.text.Html
+import android.view.View // Diperlukan untuk View
 
 class LoginActivity : AppCompatActivity() {
 
@@ -27,6 +29,28 @@ class LoginActivity : AppCompatActivity() {
 
         // --- TAMBAHAN BARU UNTUK FORGOT PASSWORD ---
         val forgotPasswordText = findViewById<TextView>(R.id.forgot_password)
+        // Ambil elemen yang akan dianimasikan
+        val greetingText = findViewById<TextView>(R.id.greeting)
+        val avatarImage = findViewById<ImageView>(R.id.avatar)
+
+        // ==============================================
+        // 🔑 LOGIKA ANIMASI STARTUP 🔑
+        // ==============================================
+        // 1. Avatar (Naik dari bawah)
+        avatarImage.animate()
+            .translationY(1f) // Animasi ke posisi asli (translationY="1dp" di XML)
+            .alpha(1f)        // Jadikan terlihat
+            .setDuration(800) // Durasi animasi
+            .setStartDelay(200) // Mulai sedikit terlambat
+            .start()
+
+        // 2. Greeting (Turun dari atas)
+        greetingText.animate()
+            .translationY(0f) // Animasi ke posisi asli (translationY="0dp")
+            .alpha(1f)        // Jadikan terlihat
+            .setDuration(700)
+            .setStartDelay(100)
+            .start()
 
 
         forgotPasswordText.setOnClickListener {

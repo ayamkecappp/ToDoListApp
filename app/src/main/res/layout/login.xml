@@ -18,7 +18,9 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="60dp"
-        android:layout_marginBottom="12dp"/>
+        android:layout_marginBottom="12dp"
+        android:translationY="-100dp"
+        android:alpha="0.0"/>
 
     <ImageView
         android:id="@+id/avatar"
@@ -26,12 +28,13 @@
         android:layout_height="462dp"
         android:scaleType="centerInside"
         android:src="@drawable/timy_login"
-        android:translationY="1dp"
+        android:translationY="200dp"
         android:elevation="4dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintHorizontal_bias="0.5" />
+        app:layout_constraintHorizontal_bias="0.5"
+        android:alpha="0.0"/>
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline_card_start"
