@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/stats_header_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Monthly Productivity Statistics"
+        android:textAppearance="@style/DailyProductivityText"
+        android:gravity="start"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"/>
+
+    <TextView
+        android:id="@+id/streak_value"
+        android:layout_width="39dp"
+        android:layout_height="wrap_content"
+        android:text="23"
+        android:textAppearance="@style/some_id2"
+        android:gravity="center_horizontal"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="48dp"
+        android:layout_marginStart="38.58dp"/>
+
+    <ImageView
+        android:id="@+id/fire_icon2"
+        android:layout_width="19.39dp"
+        android:layout_height="25dp"
+        android:background="@drawable/ic_fire2"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="58dp"
+        android:layout_marginStart="19dp"/>
+
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/bar_chart_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="52dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <View
+              android:alpha="0.0"
+            android:id="@+id/rectangle_1"
+              android:layout_width="33dp"
+              android:layout_height="124dp"
+            android:layout_marginTop="100dp"
+              android:background="@drawable/rectangle_2"
+              app:layout_constraintBottom_toBottomOf="parent"
+              app:layout_constraintEnd_toStartOf="@id/rectangle_2"
+              app:layout_constraintStart_toStartOf="parent"
+              app:layout_constraintTop_toTopOf="parent"
+              app:layout_constraintWidth_percent="0.14"
+            android:transformPivotY="124dp"/>
+        <View
+              android:alpha="0.0"
+            android:id="@+id/rectangle_2"
+              android:layout_width="33dp"
+              android:layout_height="208dp"
+              android:background="@drawable/rectangle_2_gold"
+              app:layout_constraintBottom_toBottomOf="parent"
+              app:layout_constraintEnd_toStartOf="@id/rectangle_3"
+              app:layout_constraintStart_toEndOf="@id/rectangle_1"
+              app:layout_constraintWidth_percent="0.14"
+            android:transformPivotY="208dp"/>
+        <View
+              android:alpha="0.0"
+            android:id="@+id/rectangle_3"
+              android:layout_width="33dp"
+              android:layout_height="12dp"
+              android:background="@drawable/rectangle_2"
+              app:layout_constraintBottom_toBottomOf="parent"
+              app:layout_constraintEnd_toStartOf="@id/rectangle_4"
+              app:layout_constraintStart_toEndOf="@id/rectangle_2"
+              app:layout_constraintWidth_percent="0.14"
+            android:transformPivotY="12dp"/>
+        <View
+              android:alpha="0.0"
+            android:id="@+id/rectangle_4"
+              android:layout_width="33dp"
+              android:layout_height="12dp"
+              android:background="@drawable/rectangle_2"
+              app:layout_constraintBottom_toBottomOf="parent"
+              app:layout_constraintEnd_toStartOf="@id/rectangle_5"
+              app:layout_constraintStart_toEndOf="@id/rectangle_3"
+              app:layout_constraintWidth_percent="0.14"
+            android:transformPivotY="12dp"/>
+        <View
+              android:alpha="0.0"
+            android:id="@+id/rectangle_5"
+              android:layout_width="33dp"
+              android:layout_height="12dp"
+              android:background="@drawable/rectangle_2"
+              app:layout_constraintBottom_toBottomOf="parent"
+              app:layout_constraintEnd_toStartOf="@id/rectangle_6"
+              app:layout_constraintStart_toEndOf="@id/rectangle_4"
+              app:layout_constraintWidth_percent="0.14"
+            android:transformPivotY="12dp"/>
+        <View
+              android:alpha="0.0"
+            android:id="@+id/rectangle_6"
+              android:layout_width="33dp"
+              android:layout_height="12dp"
+              android:background="@drawable/rectangle_2"
+              app:layout_constraintBottom_toBottomOf="parent"
+              app:layout_constraintEnd_toStartOf="@id/rectangle_7"
+              app:layout_constraintStart_toEndOf="@id/rectangle_5"
+              app:layout_constraintWidth_percent="0.1" />
+        <View
+              android:alpha="0.0"
+            android:id="@+id/rectangle_7"
+              android:layout_width="33dp"
+              android:layout_height="12dp"
+              android:background="@drawable/rectangle_2"
+              app:layout_constraintBottom_toBottomOf="parent"
+              app:layout_constraintEnd_toEndOf="parent"
+              app:layout_constraintStart_toEndOf="@id/rectangle_6"
+              app:layout_constraintWidth_percent="0.14" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <LinearLayout
+        android:id="@+id/x_axis_labels"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp">
+
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Sept" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Oct" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Nov" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Dec" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Jan" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Feb" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Mar" style="@style/labelHari" android:gravity="center_horizontal"/>
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -16,8 +16,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
 import android.util.Log
 import java.lang.Exception
+import com.google.android.material.tabs.TabLayout
+import androidx.viewpager2.widget.ViewPager2
+import com.google.android.material.tabs.TabLayoutMediator // Import ini penting
+import androidx.fragment.app.FragmentActivity // Digunakan oleh Adapter
 
 class ProfileActivity : AppCompatActivity() {
+
+    private lateinit var tabLayout: TabLayout
+    private lateinit var viewPager: ViewPager2
+
 
     private lateinit var tvUsername: TextView
     private lateinit var ivProfilePicture: CircleImageView
@@ -50,8 +58,16 @@ class ProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile)
 
-        // Inisialisasi SharedPreferences
+        // Inisialisasi SharedPreferences (Harus Paling Awal)
         sharedPrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
+
+        // ===============================================
+        // 1. INISIALISASI SEMUA VIEW PENTING TERLEBIH DAHULU
+        // ===============================================
+
+        // Hubungkan Views untuk Tab dan Pager
+        tabLayout = findViewById<TabLayout>(R.id.tabLayout)
+        viewPager = findViewById<ViewPager2>(R.id.viewPager)
 
         // Hubungkan Views
         tvUsername = findViewById(R.id.tvUsername)
@@ -60,7 +76,6 @@ class ProfileActivity : AppCompatActivity() {
 
         val ivSettings = findViewById<ImageView>(R.id.ivSettings)
         val btnEditProfile = findViewById<TextView>(R.id.btnEditProfile)
-
         val CompletedTasks = findViewById<LinearLayout>(R.id.CompletedTasks)
         val MissedTasks = findViewById<LinearLayout>(R.id.MissedTasks)
         val DeletedTasks = findViewById<LinearLayout>(R.id.DeletedTasks)
@@ -73,6 +88,40 @@ class ProfileActivity : AppCompatActivity() {
 
         // Hapus tint default pada ikon
         bottomNav.itemIconTintList = null
+
+        // Hapus tint default pada ikon
+        bottomNav.itemIconTintList = null
+
+
+        // ===============================================
+        // 2. LOGIKA VIEWPAGER (Sekarang viewPager sudah aman digunakan)
+        // ===============================================
+
+        // 1. Setup Adapter untuk ViewPager2
+        val adapter = ProductivityStatsAdapter(this)
+        viewPager.adapter = adapter
+
+
+        // 2. Sinkronisasi TabLayout dan ViewPager2
+        TabLayoutMediator(tabLayout, viewPager) { tab, position ->
+            when (position) {
+                0 -> tab.text = "Daily"
+                1 -> tab.text = "Weekly"
+                2 -> tab.text = "Monthly"
+            }
+        }.attach()
+
+        // KUNCI 3: Listener Tab Instan
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                viewPager.setCurrentItem(tab.position, false)
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
+
+        // PENTING: Set item yang dipilih ke Daily (Indeks 0)
+        viewPager.setCurrentItem(0, false)
 
         // Listener navigasi navbar (Mempertahankan logika navigasi)
         bottomNav.setOnItemSelectedListener { item ->

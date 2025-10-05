@@ -38,13 +38,10 @@
         android:alpha="0.0"
         android:src="@drawable/timy_splash"
 
-        app:layout_constraintBottom_toTopOf="@id/timy_time_text"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
 
-        app:layout_constraintVertical_chainStyle="packed"
-        tools:ignore="ContentDescription" />
+        app:layout_constraintTop_toTopOf="parent"          app:layout_constraintBottom_toBottomOf="parent"     app:layout_constraintVertical_bias="0.45"           tools:ignore="ContentDescription" />
 
     <TextView
         android:id="@+id/timy_time_text"
@@ -52,13 +49,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
 
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="-290dp"
         android:alpha="0.0"
         android:text="@string/timy_time"
 
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/timy_senyum" />
+
+        app:layout_constraintTop_toTopOf="parent"          app:layout_constraintVertical_bias="0.72" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -14,44 +14,35 @@ import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.*
 import android.graphics.Color
-import android.app.Activity
-import androidx.activity.result.contract.ActivityResultContracts
+import android.view.animation.AnimationUtils
 
 class MissedTasksActivity : AppCompatActivity() {
 
+    // Deklarasi semua view yang akan kita kontrol
+    private lateinit var contentContainer: ConstraintLayout
     private lateinit var tasksContainer: LinearLayout
+    private lateinit var scrollView: androidx.core.widget.NestedScrollView
+    private lateinit var emptyStateContainer: LinearLayout
     private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
-
-    // Launcher untuk menerima hasil Reschedule dari EditTaskActivity
-    private val rescheduleLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            // Setelah reschedule berhasil, proses ulang MissedTasks
-            // (yang akan memindahkan task dari Missed ke Active List jika tanggalnya di masa depan)
-            TaskRepository.processTasksForMissed()
-            loadMissedTasks() // Muat ulang daftar
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.missed_tasks)
 
-        val ivBackArrow = findViewById<ImageView>(R.id.ivBackArrow)
-        ivBackArrow.setOnClickListener {
+        // Inisialisasi semua view dari XML
+        contentContainer = findViewById(R.id.content_container)
+        tasksContainer = findViewById(R.id.tasks_container)
+        scrollView = findViewById(R.id.tasks_scroll_view)
+        emptyStateContainer = findViewById(R.id.empty_state_container)
+
+        findViewById<ImageView>(R.id.ivBackArrow).setOnClickListener {
             val intent = Intent(this, ProfileActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
             finish()
         }
 
-        // FIX: Inisialisasi tasksContainer langsung dari XML
-        val scrollView = findViewById<androidx.core.widget.NestedScrollView>(R.id.tasks_scroll_view)
-        tasksContainer = scrollView.getChildAt(0) as LinearLayout
-
-        tasksContainer.removeAllViews()
-
+        // Proses missed tasks sebelum memuat
         TaskRepository.processTasksForMissed()
         loadMissedTasks()
     }
@@ -61,55 +52,35 @@ class MissedTasksActivity : AppCompatActivity() {
         val missedTasks = TaskRepository.getMissedTasks()
 
         if (missedTasks.isEmpty()) {
-            val emptyStateContainer = LinearLayout(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    setMargins(0, 100.dp, 0, 100.dp)
-                }
-                orientation = LinearLayout.VERTICAL
-                gravity = android.view.Gravity.CENTER
-            }
-
-            val ivTimyHappy = ImageView(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    220.dp, 220.dp
-                )
-                setImageResource(R.drawable.timy_complete_task)
-                contentDescription = "Timy Happy"
-                setPadding(0, 0, 0, 16.dp)
-            }
-            emptyStateContainer.addView(ivTimyHappy)
-
-            val tvMessage = TextView(this).apply {
-                text = "Yay, no missed tasks!"
-                textSize = 16f
-                setTextColor(resources.getColor(R.color.very_dark_blue, theme))
-                typeface = ResourcesCompat.getFont(context, R.font.lexend)
-                gravity = android.view.Gravity.CENTER_HORIZONTAL
-            }
-            emptyStateContainer.addView(tvMessage)
-
-            tasksContainer.addView(emptyStateContainer)
-
+            // ---- KONDISI KOSONG ----
+            // Sembunyikan background kartu dan tampilkan tampilan kosong
+            scrollView.visibility = View.GONE
+            emptyStateContainer.visibility = View.VISIBLE
         } else {
+            // ---- KONDISI ADA TUGAS ----
+            // Tampilkan background kartu dan sembunyikan tampilan kosong
+            scrollView.visibility = View.VISIBLE
+            emptyStateContainer.visibility = View.GONE
+
+            // Kelompokkan tugas berdasarkan tanggal berakhir
             val groupedTasks = missedTasks.groupBy {
-                val millis = if (it.endTimeMillis > 0L) it.endTimeMillis else it.id
-                Calendar.getInstance().apply { timeInMillis = millis }.get(Calendar.DAY_OF_YEAR)
+                Calendar.getInstance().apply { timeInMillis = it.endTimeMillis }.get(Calendar.DAY_OF_YEAR)
             }
 
             val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
 
             for ((_, tasks) in sortedGroups) {
-                val millis = if (tasks.first().endTimeMillis > 0L) tasks.first().endTimeMillis else tasks.first().id
-                val dateLabel = Calendar.getInstance().apply { timeInMillis = millis }
+                val dateLabel = Calendar.getInstance().apply { timeInMillis = tasks.first().endTimeMillis }
                 addDateHeader(dateLabel)
 
                 for (task in tasks) {
                     createMissedTaskItem(task)
                 }
             }
+
+            // Jalankan animasi
+            val slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_bounce)
+            contentContainer.startAnimation(slideDown)
         }
     }
 
@@ -140,6 +111,7 @@ class MissedTasksActivity : AppCompatActivity() {
             setBackgroundResource(R.drawable.rectangle_settings)
         }
 
+        // TextView for Task Title
         val tvTaskTitle = TextView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
@@ -156,7 +128,7 @@ class MissedTasksActivity : AppCompatActivity() {
         }
         taskItemContainer.addView(tvTaskTitle)
 
-        // Tombol/Area Reschedule
+        // ImageView for Reschedule Button Background (rectangle_5 - Dark Blue)
         val ivRescheduleBg = ImageView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
@@ -170,15 +142,12 @@ class MissedTasksActivity : AppCompatActivity() {
             setBackgroundResource(R.drawable.rectangle_5)
             contentDescription = "Reschedule Button"
             setOnClickListener {
-                val intent = Intent(context, EditTaskActivity::class.java).apply {
-                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
-                    putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true) // Kirim flag Reschedule
-                }
-                rescheduleLauncher.launch(intent)
+                Toast.makeText(context, "Reschedule ${task.title} clicked", Toast.LENGTH_SHORT).show()
             }
         }
         taskItemContainer.addView(ivRescheduleBg)
 
+        // TextView for Reschedule Text
         val tvRescheduleText = TextView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
