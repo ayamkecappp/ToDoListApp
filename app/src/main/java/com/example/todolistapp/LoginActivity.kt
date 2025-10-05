@@ -1,90 +1,88 @@
 package com.example.todolistapp
 
-import android.animation.ObjectAnimator // Diperlukan untuk animasi
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.TextView
-import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import android.text.Html
-import android.view.View // Diperlukan untuk View
+import com.google.firebase.auth.FirebaseAuth
 
 class LoginActivity : AppCompatActivity() {
 
+    private lateinit var auth: FirebaseAuth
+    private lateinit var googleSignInHandler: GoogleSignInHandler
+    private lateinit var facebookLoginHandler: FacebookLoginHandler
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.login) // pakai layout login.xml
+        setContentView(R.layout.login)
 
-        val usernameInput = findViewById<EditText>(R.id.input_username)
-        val passwordInput = findViewById<EditText>(R.id.input_password)
-        val loginBtn = findViewById<Button>(R.id.btn_login)
-        // --- TAMBAHKAN KODE INI ---
-        val signupText = findViewById<TextView>(R.id.signup)
-        val htmlText = getString(R.string.signup_prompt)
-        signupText.text = Html.fromHtml(htmlText, Html.FROM_HTML_MODE_COMPACT)
+        auth = FirebaseAuth.getInstance()
 
-
-        // --- TAMBAHAN BARU UNTUK FORGOT PASSWORD ---
-        val forgotPasswordText = findViewById<TextView>(R.id.forgot_password)
-        // Ambil elemen yang akan dianimasikan
-        val greetingText = findViewById<TextView>(R.id.greeting)
-        val avatarImage = findViewById<ImageView>(R.id.avatar)
-
-        // ==============================================
-        // 🔑 LOGIKA ANIMASI STARTUP 🔑
-        // ==============================================
-        // 1. Avatar (Naik dari bawah)
-        avatarImage.animate()
-            .translationY(1f) // Animasi ke posisi asli (translationY="1dp" di XML)
-            .alpha(1f)        // Jadikan terlihat
-            .setDuration(800) // Durasi animasi
-            .setStartDelay(200) // Mulai sedikit terlambat
-            .start()
-
-        // 2. Greeting (Turun dari atas)
-        greetingText.animate()
-            .translationY(0f) // Animasi ke posisi asli (translationY="0dp")
-            .alpha(1f)        // Jadikan terlihat
-            .setDuration(700)
-            .setStartDelay(100)
-            .start()
-
-
-        forgotPasswordText.setOnClickListener {
-            // Arahkan ke halaman Forgot Password
-            val intent = Intent(this, ForgotPasswordActivity::class.java)
-            startActivity(intent)
+        // Cek jika pengguna sudah login, langsung arahkan ke HomeActivity
+        if (auth.currentUser != null) {
+            navigateToHome()
+            return // Hentikan eksekusi onCreate lebih lanjut
         }
 
-        //untuk signup
-        signupText.setOnClickListener {
-            val intent = Intent(this, SignUpActivity::class.java)
-            startActivity(intent)
-        }
+        googleSignInHandler = GoogleSignInHandler(this, auth)
+        facebookLoginHandler = FacebookLoginHandler(this, auth)
 
-        // Klik tombol Login
-        loginBtn.setOnClickListener {
-            val username = usernameInput.text.toString()
-            val password = passwordInput.text.toString()
+        // Menggunakan ID yang sesuai dengan login.xml Anda
+        val emailEditText = findViewById<EditText>(R.id.input_username)
+        val passwordEditText = findViewById<EditText>(R.id.input_password)
+        val loginButton = findViewById<Button>(R.id.btn_login)
+        val signUpText = findViewById<TextView>(R.id.signup)
+        val googleLoginButton = findViewById<ImageButton>(R.id.btn_google)
+        val facebookLoginButton = findViewById<ImageButton>(R.id.btn_facebook)
 
-            if (username.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
-            } else {
-                // Login sukses → pindah ke HomeActivity
-                val intent = Intent(this, HomeActivity::class.java)
-                startActivity(intent)
-                finish() // supaya tidak bisa balik ke login dengan back
+        loginButton.setOnClickListener {
+            val email = emailEditText.text.toString().trim()
+            val password = passwordEditText.text.toString().trim()
+
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Email dan kata sandi tidak boleh kosong.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
+
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this) { task ->
+                    if (task.isSuccessful) {
+                        Log.d("LoginActivity", "signInWithEmail:success")
+                        navigateToHome()
+                    } else {
+                        Log.w("LoginActivity", "signInWithEmail:failure", task.exception)
+                        Toast.makeText(baseContext, "Autentikasi gagal.", Toast.LENGTH_SHORT).show()
+                    }
+                }
         }
 
-        // Klik Sign Up (contoh navigasi ke SignUpActivity jika ada)
-        signupText.setOnClickListener {
-            // Navigasi ke halaman Sign Up
+        signUpText.setOnClickListener {
             val intent = Intent(this, SignUpActivity::class.java)
             startActivity(intent)
+        }
+
+        googleLoginButton.setOnClickListener {
+            googleSignInHandler.signIn()
+        }
+
+        facebookLoginButton.setOnClickListener {
+            facebookLoginHandler.signIn()
         }
     }
+
+    // Blok onActivityResult sudah dihapus karena tidak lagi diperlukan
+
+    private fun navigateToHome() {
+        val intent = Intent(this, HomeActivity::class.java)
+        // Membersihkan stack aktivitas sehingga pengguna tidak bisa kembali ke halaman login
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
+    }
 }
+
