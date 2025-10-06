@@ -28,6 +28,9 @@ import java.util.Date
 import java.util.Locale
 import android.widget.Button
 import android.util.Log
+import android.os.Handler
+import android.os.Looper
+import android.view.animation.AnimationUtils
 
 class TaskActivity : AppCompatActivity() {
 
@@ -61,6 +64,22 @@ class TaskActivity : AppCompatActivity() {
     private val KEY_STREAK = "current_streak"
     private val KEY_LAST_DATE = "last_completion_date"
     private val KEY_STREAK_DAYS = "streak_days"
+
+    // Kode Hasil Khusus
+    companion object {
+        const val RESULT_TASK_DELETED = 101 // Harus sinkron dengan EditTaskActivity.kt
+    }
+
+    // MODIFIED: Menggunakan taskEditLauncher untuk menangkap hasil dari EditTaskActivity
+    private val taskEditLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        // Jika OK (Update/Reschedule) atau Deleted, muat ulang.
+        if (result.resultCode == Activity.RESULT_OK || result.resultCode == RESULT_TASK_DELETED) {
+            TaskRepository.processTasksForMissed()
+            loadTasksForSelectedDate()
+        }
+    }
 
     private val addTaskLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -403,7 +422,7 @@ class TaskActivity : AppCompatActivity() {
     }
 
     // ==========================================
-    // FUNGSI BARU: STREAK DIALOG
+    // FUNGSI STREAK DIALOG (DIPERLUKAN UNTUK PENGUJIAN LENGKAP)
     // ==========================================
     private fun showStreakSuccessDialog(newStreak: Int) {
         val layoutResId = resources.getIdentifier("dialog_streak_success", "layout", packageName)
@@ -426,7 +445,6 @@ class TaskActivity : AppCompatActivity() {
 
             tvStreakMessage.text = "$newStreak streak"
 
-            // Set warna teks streak (Asumsi orange/medium_priority)
             tvStreakMessage.setTextColor(Color.parseColor("#FFC107")) // Medium priority color
 
             val alertDialog = AlertDialog.Builder(this)
@@ -447,7 +465,7 @@ class TaskActivity : AppCompatActivity() {
 
 
     // ==========================================
-    // FUNGSI STREAK - DIPANGGIL SAAT COMPLETE TASK
+    // FUNGSI STREAK
     // ==========================================
     private fun updateStreakOnTaskComplete(): Int {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -557,6 +575,7 @@ class TaskActivity : AppCompatActivity() {
         return lastDateStr == yesterdayStr
     }
 
+    // MODIFIED: Menggunakan taskEditLauncher untuk meluncurkan EditTaskActivity
     private fun addNewTaskToUI(task: Task) {
         val context = this
         val marginPx = 16.dp
@@ -599,8 +618,15 @@ class TaskActivity : AppCompatActivity() {
                     // 2. Tampilkan dialog Confirmation dengan callback untuk dialog streak
                     showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
 
-                    (mainContainer.parent as? ViewGroup)?.removeView(mainContainer)
-                    loadTasksForSelectedDate()
+                    // NEW LOGIC: Remove view with animation
+                    val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
+                    mainContainer.startAnimation(slideRight)
+
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        tasksContainer.removeView(mainContainer)
+                        loadTasksForSelectedDate()
+                    }, 300)
+
                 } else {
                     Toast.makeText(context, "Gagal menandai tugas selesai.", Toast.LENGTH_SHORT).show()
                 }
@@ -748,7 +774,8 @@ class TaskActivity : AppCompatActivity() {
             val intent = Intent(context, EditTaskActivity::class.java).apply {
                 putExtra("EXTRA_TASK_ID", task.id)
             }
-            startActivity(intent)
+            // MODIFIED: Gunakan launcher
+            taskEditLauncher.launch(intent)
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
@@ -756,6 +783,15 @@ class TaskActivity : AppCompatActivity() {
             val success = TaskRepository.deleteTask(task.id)
             if (success) {
                 showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1) // No streak check for delete
+
+                // NEW LOGIC: Remove view with animation
+                val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
+                mainContainer.startAnimation(slideRight)
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    tasksContainer.removeView(mainContainer)
+                    loadTasksForSelectedDate()
+                }, 300)
             } else {
                 Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
             }
