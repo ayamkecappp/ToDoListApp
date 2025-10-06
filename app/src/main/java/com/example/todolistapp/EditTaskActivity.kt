@@ -26,6 +26,8 @@ import android.widget.NumberPicker
 import android.graphics.drawable.ColorDrawable
 import java.text.SimpleDateFormat
 import android.app.DatePickerDialog
+import android.widget.LinearLayout // Import LinearLayout
+import android.view.Gravity // Import Gravity
 
 class EditTaskActivity : AppCompatActivity() {
 
@@ -75,13 +77,18 @@ class EditTaskActivity : AppCompatActivity() {
         btnBack = findViewById(R.id.btnBack)
         inputDate = findViewById(R.id.inputDate)
         tvEditFlowTimer = findViewById(R.id.tvAddFlowTimer)
-        tvTitle = findViewById(R.id.tvTitle)
+
+        // PERBAIKAN: Inisialisasi tvTitle dengan ID yang benar dari layout
+        tvTitle = findViewById(R.id.tvNewReminderTitle)
 
         isRescheduleMode = intent.getBooleanExtra(EXTRA_RESCHEDULE_MODE, false)
 
         if (isRescheduleMode) {
-            tvTitle?.text = "Reschedule Task"
+            tvTitle.text = "Reschedule Task" // Mengganti teks untuk mode Reschedule
             btnSave.text = "Reschedule"
+        } else {
+            // Menggunakan teks default "Edit Task" dari XML. Baris ini opsional tapi memastikan.
+            tvTitle.text = "Edit Task"
         }
 
         inputTime.isFocusable = false
@@ -449,8 +456,16 @@ class EditTaskActivity : AppCompatActivity() {
             .create()
 
         val mainMessageTextView = dialogView.findViewById<TextView>(R.id.tvMessageTitle)
-        val btnIgnore = dialogView.findViewById<TextView>(R.id.btnIgnore)
-        val btnView = dialogView.findViewById<TextView>(R.id.btnView)
+        val btnIgnore = dialogView.findViewById<TextView>(R.id.btnIgnore) // Tombol Kiri
+        val btnView = dialogView.findViewById<TextView>(R.id.btnView) // Tombol Kanan
+
+        // Ambil container tombol (LinearLayout terakhir di dialog_save_success.xml)
+        val dialogViewRoot = dialogView as ViewGroup
+        // Indeks 2 adalah LinearLayout yang berisi tombol-tombol
+        val buttonContainer = dialogViewRoot.getChildAt(2) as LinearLayout
+
+        // Vertical Divider berada di indeks 1 di dalam buttonContainer
+        val verticalDivider = buttonContainer.getChildAt(1)
 
         val message = "Tugas '$taskTitle' berhasil $action."
 
@@ -459,10 +474,22 @@ class EditTaskActivity : AppCompatActivity() {
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        btnIgnore.text = "OK"
-        btnView.visibility = View.GONE
+        // 1. NONAKTIFKAN TOMBOL KIRI DAN DIVIDER VERTIKAL
+        btnIgnore.visibility = View.GONE
+        verticalDivider.visibility = View.GONE
 
-        btnIgnore.setOnClickListener {
+        // 2. ATUR TOMBOL KANAN (btnView) sebagai tombol OK tunggal
+        btnView.text = "OK"
+
+        // Buat tombol kanan mengisi seluruh lebar container (weightSum=2)
+        val viewParams = btnView.layoutParams as LinearLayout.LayoutParams
+        viewParams.width = 0
+        viewParams.weight = 2.0f // Ambil seluruh lebar
+        btnView.layoutParams = viewParams
+        btnView.gravity = Gravity.CENTER // Pastikan teks "OK" di tengah
+
+        // Set listener pada tombol kanan (btnView)
+        btnView.setOnClickListener {
             setResult(Activity.RESULT_OK)
             dialog.dismiss()
             finish()

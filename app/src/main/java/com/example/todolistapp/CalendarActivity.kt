@@ -27,6 +27,8 @@ import android.app.Dialog
 import android.view.Window
 import android.view.animation.AnimationUtils
 import android.content.Context
+import android.animation.AnimatorListenerAdapter
+import android.animation.Animator
 
 class CalendarActivity : AppCompatActivity() {
 
@@ -227,7 +229,32 @@ class CalendarActivity : AppCompatActivity() {
     }
 
     /**
+     * Menjalankan animasi slide-out dan menutup dialog.
+     */
+    private fun performCloseAnimation(dialog: Dialog, overlay: LinearLayout, sheet: LinearLayout) {
+        // 1. Animasi Slide Out Sheet
+        sheet.animate()
+            .translationX(sheet.width.toFloat())
+            .setDuration(300)
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    // 2. Tutup dialog setelah animasi selesai
+                    dialog.dismiss()
+                }
+            })
+            .start()
+
+        // 3. Animasi Fade Out Overlay
+        overlay.animate()
+            .alpha(0f)
+            .setDuration(250)
+            .start()
+    }
+
+
+    /**
      * MENAMPILKAN RIGHT SHEET DIALOG DAFTAR TUGAS (DRAWER DARI KANAN)
+     * TERMASUK LOGIKA ANIMASI SLIDE-IN DAN SLIDE-OUT.
      */
     private fun showTaskRightSheet(date: Calendar, tasks: List<Task>) {
         val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
@@ -242,9 +269,8 @@ class CalendarActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#80000000"))
             gravity = Gravity.END
 
-            setOnClickListener {
-                dialog.dismiss()
-            }
+            // Mengatasi masalah Unresolved reference: Kita akan menambahkan sheetContainer setelahnya
+            // dan menggunakan variabel akhir di listeners.
         }
 
         val sheetContainer = LinearLayout(this).apply {
@@ -256,9 +282,13 @@ class CalendarActivity : AppCompatActivity() {
             setBackgroundColor(Color.WHITE)
             elevation = 8f
 
-            setOnClickListener { }
+            setOnClickListener { } // Mencegah klik menyebar ke overlay
         }
 
+        // Tambahkan sheetContainer ke overlayContainer sekarang juga
+        overlayContainer.addView(sheetContainer)
+
+        // --- Konten Sheet (Header, ScrollView, Tasks) ---
         val headerContainer = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -277,8 +307,9 @@ class CalendarActivity : AppCompatActivity() {
             setPadding(6.dp, 6.dp, 6.dp, 6.dp)
             isClickable = true
             isFocusable = true
+            // Animasi Slide Out saat tombol ditutup
             setOnClickListener {
-                dialog.dismiss()
+                performCloseAnimation(dialog, overlayContainer, sheetContainer)
             }
         }
         headerContainer.addView(ivCloseButton)
@@ -340,15 +371,22 @@ class CalendarActivity : AppCompatActivity() {
         scrollView.addView(tasksContainer)
         sheetContainer.addView(scrollView)
 
-        overlayContainer.addView(sheetContainer)
-
+        // Panggil setContentView dengan overlayContainer
         dialog.setContentView(overlayContainer)
+
+        // PERBAIKAN: Setelah sheetContainer ditambahkan, kita bisa setOnClickListener pada overlayContainer
+        overlayContainer.setOnClickListener {
+            // Animasi Slide Out saat overlay diklik (menggantikan yang dikomentari di atas)
+            performCloseAnimation(dialog, overlayContainer, sheetContainer)
+        }
+
 
         dialog.window?.apply {
             setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundDrawableResource(android.R.color.transparent)
         }
 
+        // --- ANIMASI SLIDE-IN (Sheet masuk dari kanan) ---
         sheetContainer.translationX = sheetContainer.layoutParams.width.toFloat()
         sheetContainer.post {
             sheetContainer.animate()
@@ -357,15 +395,9 @@ class CalendarActivity : AppCompatActivity() {
                 .start()
         }
 
-        dialog.setOnDismissListener {
-            sheetContainer.animate()
-                .translationX(sheetContainer.width.toFloat())
-                .setDuration(250)
-                .start()
-        }
-
         dialog.show()
     }
+
 
     /**
      * MEMBUAT ITEM TUGAS INTERAKTIF
@@ -373,6 +405,11 @@ class CalendarActivity : AppCompatActivity() {
     private fun createInteractiveTaskItem(container: LinearLayout, task: Task, dialog: Dialog) {
         val context = this
         val marginPx = 16.dp
+
+        // Dapatkan referensi yang diperlukan untuk performCloseAnimation
+        val decorView = dialog.window?.decorView as? ViewGroup
+        val overlayContainerView = decorView?.getChildAt(0) as? LinearLayout
+        val sheetContainerView = overlayContainerView?.getChildAt(0) as? LinearLayout
 
         val mainContainer = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
@@ -407,7 +444,12 @@ class CalendarActivity : AppCompatActivity() {
                 val success = TaskRepository.completeTask(task.id)
                 if (success) {
                     updateStreakOnTaskComplete() // UPDATE STREAK
-                    dialog.dismiss()
+                    // Gunakan animasi penutup sebelum dismiss
+                    if (overlayContainerView != null && sheetContainerView != null) {
+                        performCloseAnimation(dialog, overlayContainerView, sheetContainerView)
+                    } else {
+                        dialog.dismiss()
+                    }
                     showConfirmationDialog(task.title, "selesai")
                     updateCalendar()
                 } else {
@@ -543,7 +585,11 @@ class CalendarActivity : AppCompatActivity() {
         }
 
         val flowTimerButton = createActionButton(R.drawable.ic_alarm, "Flow Timer") {
-            dialog.dismiss()
+            if (overlayContainerView != null && sheetContainerView != null) {
+                performCloseAnimation(dialog, overlayContainerView, sheetContainerView)
+            } else {
+                dialog.dismiss()
+            }
             val intent = Intent(context, FlowTimerActivity::class.java).apply {
                 putExtra(FlowTimerActivity.EXTRA_TASK_NAME, task.title)
                 putExtra(FlowTimerActivity.EXTRA_FLOW_DURATION, task.flowDurationMillis)
@@ -552,7 +598,11 @@ class CalendarActivity : AppCompatActivity() {
         }
 
         val editButton = createActionButton(R.drawable.ic_edit, "Edit") {
-            dialog.dismiss()
+            if (overlayContainerView != null && sheetContainerView != null) {
+                performCloseAnimation(dialog, overlayContainerView, sheetContainerView)
+            } else {
+                dialog.dismiss()
+            }
             val intent = Intent(context, EditTaskActivity::class.java).apply {
                 putExtra("EXTRA_TASK_ID", task.id)
             }
@@ -563,7 +613,11 @@ class CalendarActivity : AppCompatActivity() {
         val deleteButton = createActionButton(R.drawable.ic_trash, "Delete") {
             val success = TaskRepository.deleteTask(task.id)
             if (success) {
-                dialog.dismiss()
+                if (overlayContainerView != null && sheetContainerView != null) {
+                    performCloseAnimation(dialog, overlayContainerView, sheetContainerView)
+                } else {
+                    dialog.dismiss()
+                }
                 showConfirmationDialog(task.title, "dihapus")
                 updateCalendar()
             } else {
@@ -618,13 +672,26 @@ class CalendarActivity : AppCompatActivity() {
             dialog.dismiss()
         }
 
-        btnConfirm1.text = "OK"
-        btnConfirm2.text = "Tutup"
+        // --- LOGIKA TOMBOL HANYA DI KANAN ---
+        // Ambil container tombol (LinearLayout index 2)
+        val buttonContainer = dialogView.getChildAt(2) as LinearLayout
+        // Vertical Divider (index 1 dari buttonContainer)
+        val verticalDivider = buttonContainer.getChildAt(1)
 
-        btnConfirm1.setTextColor(Color.parseColor("#283F6D"))
-        btnConfirm2.setTextColor(Color.parseColor("#283F6D"))
+        // 1. NONAKTIFKAN TOMBOL KIRI DAN DIVIDER VERTIKAL
+        btnConfirm1.visibility = View.GONE
+        verticalDivider.visibility = View.GONE
 
-        btnConfirm1.setOnClickListener(dismissListener)
+        // 2. ATUR TOMBOL KANAN (btnConfirm2/btnView) sebagai tombol OK tunggal
+        btnConfirm2.text = "OK"
+
+        // Buat tombol kanan mengisi seluruh lebar container (weightSum=2)
+        val viewParams = btnConfirm2.layoutParams as LinearLayout.LayoutParams
+        viewParams.width = 0
+        viewParams.weight = 2.0f
+        btnConfirm2.layoutParams = viewParams
+        btnConfirm2.gravity = Gravity.CENTER // Pastikan teks "OK" di tengah
+
         btnConfirm2.setOnClickListener(dismissListener)
 
         dialog.show()

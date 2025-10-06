@@ -103,18 +103,18 @@ class DeletedTasksActivity : AppCompatActivity() {
             }
             setBackgroundResource(R.drawable.rectangle_settings)
 
-            // Tambahkan click listener untuk whole item - arahkan ke reschedule
+            // Tambahkan click listener untuk whole item - arahkan ke reschedule/restore
             setOnClickListener {
                 val intent = Intent(context, EditTaskActivity::class.java).apply {
                     putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
-                    putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true)
+                    putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true) // Menggunakan mode reschedule untuk restore/pindah ke active
                 }
                 startActivity(intent)
                 overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
             }
         }
 
-        // ImageView for Reschedule Button Background (rectangle_5) - BUAT DULU
+        // ImageView for Reschedule/Restore Button Background (rectangle_5) - BUAT DULU
         val ivRescheduleBg = ImageView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
@@ -126,9 +126,9 @@ class DeletedTasksActivity : AppCompatActivity() {
                 marginEnd = 45.dp
             }
             setBackgroundResource(R.drawable.rectangle_5)
-            contentDescription = "Reschedule Button"
+            contentDescription = "Restore Button"
 
-            // Click listener untuk button reschedule (sama dengan parent)
+            // Click listener untuk button restore (sama dengan parent)
             setOnClickListener {
                 val intent = Intent(context, EditTaskActivity::class.java).apply {
                     putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
@@ -162,7 +162,7 @@ class DeletedTasksActivity : AppCompatActivity() {
         }
         taskItemContainer.addView(tvTaskTitle)
 
-        // TextView for Reschedule Text
+        // TextView for Restore Text
         val tvRescheduleText = TextView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
@@ -173,7 +173,8 @@ class DeletedTasksActivity : AppCompatActivity() {
                 bottomToBottom = ivRescheduleBg.id
                 marginStart = 13.dp
             }
-            text = "Reschedule"
+            // PERBAIKAN: Mengganti teks menjadi "Restore"
+            text = "Restore"
             setTextAppearance(context, R.style.deletedTasksLabel)
             typeface = ResourcesCompat.getFont(context, R.font.lexend)
 
