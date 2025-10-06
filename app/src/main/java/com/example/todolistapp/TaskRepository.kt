@@ -11,7 +11,8 @@ data class Task(
     val priority: String,
     val endTimeMillis: Long = 0L,
     val monthAdded: Int = Calendar.getInstance().apply { timeInMillis = id }.get(Calendar.MONTH),
-    val flowDurationMillis: Long = 0L
+    val flowDurationMillis: Long = 0L,
+    val actionDateMillis: Long? = null // BARU: Menyimpan waktu tugas diselesaikan/dihapus/terlewat
 )
 
 object TaskRepository {
@@ -67,11 +68,14 @@ object TaskRepository {
         }
     }
 
+    // MODIFIED: Capture completion time
     fun completeTask(taskId: Long): Boolean {
         val taskToRemove = tasks.find { it.id == taskId }
         if (taskToRemove != null) {
             tasks.remove(taskToRemove)
-            completedTasks.add(0, taskToRemove)
+            // Capture completion time
+            val completedTask = taskToRemove.copy(actionDateMillis = System.currentTimeMillis())
+            completedTasks.add(0, completedTask)
             return true
         }
         return false
@@ -87,7 +91,9 @@ object TaskRepository {
         val selectedDay = selectedDate.get(Calendar.DAY_OF_MONTH)
 
         return completedTasks.filter { task ->
-            val taskCalendar = Calendar.getInstance().apply { timeInMillis = task.id }
+            // Use actionDateMillis for grouping/filtering the completed task date
+            val timeToUse = task.actionDateMillis ?: task.id
+            val taskCalendar = Calendar.getInstance().apply { timeInMillis = timeToUse }
 
             taskCalendar.get(Calendar.YEAR) == selectedYear &&
                     taskCalendar.get(Calendar.MONTH) == selectedMonth &&
@@ -99,11 +105,17 @@ object TaskRepository {
         return tasks.toList()
     }
 
+    // MODIFIED: Capture missed time
     fun processTasksForMissed() {
         val now = System.currentTimeMillis()
+        val missedTime = now
 
-        val missed = tasks.filter { task ->
-            if (task.endTimeMillis != 0L) {
+        val tasksToKeep = mutableListOf<Task>()
+        val updatedMissedTasks = mutableListOf<Task>()
+
+        // Use a loop/iterator for safe modification while iterating
+        for (task in tasks) {
+            val isMissed = if (task.endTimeMillis != 0L) {
                 task.endTimeMillis < now
             } else {
                 val taskDate = Calendar.getInstance().apply {
@@ -115,33 +127,46 @@ object TaskRepository {
                 }
                 taskDate.timeInMillis < now
             }
+
+            if (isMissed) {
+                // Capture the time it was processed as missed
+                updatedMissedTasks.add(task.copy(actionDateMillis = missedTime))
+            } else {
+                tasksToKeep.add(task)
+            }
         }
 
-        tasks.removeAll(missed)
-        missedTasks.addAll(missed)
+        // Update the tasks list and add new missed tasks
+        tasks.clear()
+        tasks.addAll(tasksToKeep)
+        missedTasks.addAll(updatedMissedTasks)
     }
 
     fun getMissedTasks(): List<Task> {
+        // Sort by the missed date (actionDateMillis)
         return missedTasks.sortedByDescending {
-            if (it.endTimeMillis != 0L) it.endTimeMillis else it.id
+            it.actionDateMillis ?: if (it.endTimeMillis != 0L) it.endTimeMillis else it.id
         }
     }
 
+    // MODIFIED: Capture deletion time
     fun deleteTask(taskId: Long): Boolean {
         val taskToRemove = tasks.find { it.id == taskId }
         if (taskToRemove != null) {
             tasks.remove(taskToRemove)
-            deletedTasks.add(0, taskToRemove)
+            // Capture deletion time
+            val deletedTask = taskToRemove.copy(actionDateMillis = System.currentTimeMillis())
+            deletedTasks.add(0, deletedTask)
             return true
         }
         return false
     }
 
     fun getDeletedTasks(): List<Task> {
+        // Sort by the deletion date (actionDateMillis)
         return deletedTasks.toList()
     }
 
-    // FUNGSI BARU: Reschedule deleted task
     fun rescheduleDeletedTask(taskId: Long, newTask: Task): Boolean {
         synchronized(deletedTasks) {
             val deletedTask = deletedTasks.find { it.id == taskId }

@@ -75,15 +75,16 @@ class MissedTasksActivity : AppCompatActivity() {
             emptyStateContainer.visibility = View.GONE
 
             val groupedTasks = missedTasks.groupBy {
-                // Kelompokkan berdasarkan endTimeMillis jika ada, jika tidak gunakan id
-                val timeToUse = if (it.endTimeMillis != 0L) it.endTimeMillis else it.id
+                // MODIFIED: Group by actionDateMillis (missed date)
+                val timeToUse = it.actionDateMillis ?: if (it.endTimeMillis != 0L) it.endTimeMillis else it.id
                 Calendar.getInstance().apply { timeInMillis = timeToUse }.get(Calendar.DAY_OF_YEAR)
             }
 
             val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
 
             for ((_, tasks) in sortedGroups) {
-                val timeToUse = if (tasks.first().endTimeMillis != 0L) tasks.first().endTimeMillis else tasks.first().id
+                // MODIFIED: Display actionDateMillis
+                val timeToUse = tasks.first().actionDateMillis ?: if (tasks.first().endTimeMillis != 0L) tasks.first().endTimeMillis else tasks.first().id
                 val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
                 addDateHeader(dateLabel)
 
