@@ -57,12 +57,13 @@
 
             <ImageView
                 android:id="@+id/ivMainBadge"
-                android:layout_width="250dp"
-                android:layout_height="250dp"
-                android:src="@drawable/timy1"
+                android:layout_width="550dp"
+                android:layout_height="550dp"
+                android:src="@drawable/streak_badge_1"
                 android:scaleType="fitCenter"
                 android:contentDescription="Main Streak Badge"
-                android:layout_marginBottom="16dp"/>
+                android:layout_marginBottom="-170dp"
+                android:layout_marginTop="-130dp"/>
 
             <TextView
                 android:id="@+id/tvOnFire"
@@ -92,14 +93,13 @@
                 android:rowCount="2"
                 android:alignmentMode="alignBounds"
                 android:useDefaultMargins="true"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:padding="8dp">
+                android:padding="8dp"
+                android:layout_marginTop="-39dp">
 
                 <ImageView
                     android:layout_width="80dp"
                     android:layout_height="80dp"
-                    android:src="@drawable/timy_tasks"
+                    android:src="@drawable/streak_badge_2"
                     android:scaleType="fitCenter"
                     android:contentDescription="Badge 7"
                     android:layout_margin="8dp"/>
@@ -107,7 +107,7 @@
                 <ImageView
                     android:layout_width="80dp"
                     android:layout_height="80dp"
-                    android:src="@drawable/timy_tasks"
+                    android:src="@drawable/streak_badge_3"
                     android:scaleType="fitCenter"
                     android:contentDescription="Badge 15"
                     android:layout_margin="8dp"/>
@@ -115,34 +115,40 @@
                 <ImageView
                     android:layout_width="80dp"
                     android:layout_height="80dp"
-                    android:src="@drawable/timy_tasks"
+                    android:src="@drawable/streak_badge_4"
                     android:scaleType="fitCenter"
                     android:contentDescription="Badge 30"
                     android:layout_margin="8dp"/>
 
-                <ImageView
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    android:src="@drawable/timy_tasks"
-                    android:scaleType="fitCenter"
-                    android:contentDescription="Badge 50"
-                    android:layout_margin="8dp"/>
-
-                <ImageView
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    android:src="@drawable/timy_tasks"
-                    android:scaleType="fitCenter"
-                    android:contentDescription="Badge 100"
-                    android:layout_margin="8dp"/>
-
-                <View
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    android:layout_margin="8dp"/>
 
             </GridLayout>
 
+            <GridLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:columnCount="3"
+                android:rowCount="2"
+                android:alignmentMode="alignBounds"
+                android:useDefaultMargins="true"
+                android:padding="8dp"
+                android:layout_marginTop="-39dp">
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/streak_badge_5"
+                android:scaleType="fitCenter"
+                android:contentDescription="Badge 50"
+                android:layout_margin="8dp" />
+
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/streak_badge_6"
+                android:scaleType="fitCenter"
+                android:contentDescription="Badge 100"
+                android:layout_margin="8dp"/>
+
+        </GridLayout>
         </LinearLayout>
     </ScrollView>
 
