@@ -26,8 +26,8 @@ import android.widget.NumberPicker
 import android.graphics.drawable.ColorDrawable
 import java.text.SimpleDateFormat
 import android.app.DatePickerDialog
-import android.widget.LinearLayout // Import LinearLayout
-import android.view.Gravity // Import Gravity
+import android.widget.LinearLayout
+import android.view.Gravity
 
 class EditTaskActivity : AppCompatActivity() {
 
@@ -58,7 +58,6 @@ class EditTaskActivity : AppCompatActivity() {
         const val DEFAULT_FLOW_TIMER_DURATION = 30 * 60 * 1000L
     }
 
-    // ✅ DURASI FLOW TIMER SPESIFIK UNTUK TASK INI SAJA
     private var taskSpecificFlowDuration: Long = 0L
 
     private val MILLIS_IN_HOUR = 60 * 60 * 1000L
@@ -69,6 +68,9 @@ class EditTaskActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.edit_task)
 
+        // PENTING: Inisialisasi TaskRepository untuk load data tersimpan
+        TaskRepository.initialize(applicationContext)
+
         inputActivity = findViewById(R.id.inputActivity)
         inputTime = findViewById(R.id.inputTime)
         inputLocation = findViewById(R.id.inputLocation)
@@ -77,17 +79,14 @@ class EditTaskActivity : AppCompatActivity() {
         btnBack = findViewById(R.id.btnBack)
         inputDate = findViewById(R.id.inputDate)
         tvEditFlowTimer = findViewById(R.id.tvAddFlowTimer)
-
-        // PERBAIKAN: Inisialisasi tvTitle dengan ID yang benar dari layout
         tvTitle = findViewById(R.id.tvNewReminderTitle)
 
         isRescheduleMode = intent.getBooleanExtra(EXTRA_RESCHEDULE_MODE, false)
 
         if (isRescheduleMode) {
-            tvTitle.text = "Reschedule Task" // Mengganti teks untuk mode Reschedule
+            tvTitle.text = "Reschedule Task"
             btnSave.text = "Reschedule"
         } else {
-            // Menggunakan teks default "Edit Task" dari XML. Baris ini opsional tapi memastikan.
             tvTitle.text = "Edit Task"
         }
 
@@ -99,6 +98,8 @@ class EditTaskActivity : AppCompatActivity() {
         inputDate.isFocusableInTouchMode = false
 
         taskIdToEdit = intent.getLongExtra(EXTRA_TASK_ID, -1L)
+
+        // PERBAIKAN: Load task dari repository setelah initialize
         currentTask = TaskRepository.getTaskById(taskIdToEdit)
 
         if (currentTask == null) {
@@ -107,7 +108,7 @@ class EditTaskActivity : AppCompatActivity() {
             return
         }
 
-        // ✅ AMBIL DURASI DARI TASK INI SAJA (State yang disimpan)
+        // Ambil durasi dari task ini
         taskSpecificFlowDuration = if (currentTask!!.flowDurationMillis > 0L) {
             currentTask!!.flowDurationMillis
         } else {
@@ -126,26 +127,23 @@ class EditTaskActivity : AppCompatActivity() {
 
         val taskTime = currentTask!!.time
 
-        // ✅ LOGIKA PENYETELAN INPUT TIME TAG (Flow Timer vs Time Range)
+        // Logika penyetelan input time tag
         if (taskTime.contains("(Flow)")) {
             // Task menggunakan Flow Timer
             val timeDisplayString = formatDurationToString(taskSpecificFlowDuration)
             tvEditFlowTimer.text = "Flow Timer Set (${timeDisplayString})"
             inputTime.setText("")
-            inputTime.tag = true // Tag Boolean menandakan Flow Timer aktif
+            inputTime.tag = true
         } else {
             // Task menggunakan Time Range atau tidak ada waktu
             inputTime.setText(taskTime)
 
-            // Tampilkan durasi Flow Timer yang disimpan, tapi tidak diaktifkan
             val timeDisplayString = formatDurationToString(taskSpecificFlowDuration)
             tvEditFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
 
             if(currentTask!!.endTimeMillis > 0L) {
-                // Time Range aktif, gunakan Long (EndTimeMillis) sebagai tag
                 inputTime.tag = currentTask!!.endTimeMillis
             } else {
-                // Tidak ada waktu, tag null
                 inputTime.tag = null
             }
         }
@@ -236,7 +234,6 @@ class EditTaskActivity : AppCompatActivity() {
         val btnCancel = dialogView.findViewById<TextView>(R.id.btnCancel)
         val btnSave = dialogView.findViewById<TextView>(R.id.btnSave)
 
-        // ✅ GUNAKAN DURASI TASK INI SAJA (State yang disimpan)
         val initialDuration = taskSpecificFlowDuration
 
         var initialHours = 0
@@ -278,7 +275,6 @@ class EditTaskActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // ✅ SIMPAN DURASI BARU HANYA UNTUK TASK INI
             taskSpecificFlowDuration = totalMillis
 
             val timeDisplayString = formatDurationToString(totalMillis)
@@ -286,7 +282,6 @@ class EditTaskActivity : AppCompatActivity() {
             tvEditFlowTimer.text = "Flow Timer Set (${timeDisplayString})"
 
             inputTime.setText("")
-            // Tag disetel ke Boolean true untuk menandakan Flow Timer aktif
             inputTime.tag = true
 
             Toast.makeText(this, "Durasi Flow Timer diatur ke: ${timeDisplayString}.", Toast.LENGTH_SHORT).show()
@@ -342,13 +337,11 @@ class EditTaskActivity : AppCompatActivity() {
             // Time Range aktif
             taskEndTimeMillis = inputTime.tag as Long
             time = inputTime.text.toString().trim()
-            // Simpan durasi flow spesifik task (untuk next edit)
             savedFlowDuration = taskSpecificFlowDuration
         } else {
             // Tidak ada waktu
             time = ""
             taskEndTimeMillis = 0L
-            // Simpan durasi flow spesifik task (untuk next edit)
             savedFlowDuration = taskSpecificFlowDuration
         }
 
@@ -357,6 +350,11 @@ class EditTaskActivity : AppCompatActivity() {
             return
         }
 
+        // PERBAIKAN: Hitung monthAdded berdasarkan newTaskId (tanggal baru)
+        val monthAdded = Calendar.getInstance().apply {
+            timeInMillis = newTaskId
+        }.get(Calendar.MONTH)
+
         val updatedTask = task.copy(
             id = newTaskId,
             title = title,
@@ -364,7 +362,9 @@ class EditTaskActivity : AppCompatActivity() {
             category = location.ifEmpty { "" },
             priority = priority,
             endTimeMillis = taskEndTimeMillis,
-            flowDurationMillis = savedFlowDuration // ✅ SIMPAN DURASI SPESIFIK TASK
+            monthAdded = monthAdded, // Update monthAdded
+            flowDurationMillis = savedFlowDuration,
+            actionDateMillis = null // Reset actionDateMillis untuk task yang di-edit
         )
 
         val success = TaskRepository.updateTask(originalTaskId, updatedTask)
@@ -378,10 +378,9 @@ class EditTaskActivity : AppCompatActivity() {
     }
 
     private fun showTimeRangePicker() {
-        // ✅ RESET TAG KE NULL (membatalkan Flow Timer/Time Range lama)
+        // Reset tag ke null
         inputTime.tag = null
 
-        // Tampilkan durasi flow timer yang tersimpan, tapi tidak diaktifkan
         val timeDisplayString = formatDurationToString(taskSpecificFlowDuration)
         tvEditFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
 
@@ -429,7 +428,6 @@ class EditTaskActivity : AppCompatActivity() {
                         selectedDayCalendar.set(Calendar.SECOND, 0)
                         selectedDayCalendar.set(Calendar.MILLISECOND, 0)
 
-                        // Tag disetel ke Long untuk Time Range
                         inputTime.tag = selectedDayCalendar.timeInMillis
                     },
                     currentHour,
@@ -456,15 +454,11 @@ class EditTaskActivity : AppCompatActivity() {
             .create()
 
         val mainMessageTextView = dialogView.findViewById<TextView>(R.id.tvMessageTitle)
-        val btnIgnore = dialogView.findViewById<TextView>(R.id.btnIgnore) // Tombol Kiri
-        val btnView = dialogView.findViewById<TextView>(R.id.btnView) // Tombol Kanan
+        val btnIgnore = dialogView.findViewById<TextView>(R.id.btnIgnore)
+        val btnView = dialogView.findViewById<TextView>(R.id.btnView)
 
-        // Ambil container tombol (LinearLayout terakhir di dialog_save_success.xml)
         val dialogViewRoot = dialogView as ViewGroup
-        // Indeks 2 adalah LinearLayout yang berisi tombol-tombol
         val buttonContainer = dialogViewRoot.getChildAt(2) as LinearLayout
-
-        // Vertical Divider berada di indeks 1 di dalam buttonContainer
         val verticalDivider = buttonContainer.getChildAt(1)
 
         val message = "Tugas '$taskTitle' berhasil $action."
@@ -474,21 +468,17 @@ class EditTaskActivity : AppCompatActivity() {
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        // 1. NONAKTIFKAN TOMBOL KIRI DAN DIVIDER VERTIKAL
         btnIgnore.visibility = View.GONE
         verticalDivider.visibility = View.GONE
 
-        // 2. ATUR TOMBOL KANAN (btnView) sebagai tombol OK tunggal
         btnView.text = "OK"
 
-        // Buat tombol kanan mengisi seluruh lebar container (weightSum=2)
         val viewParams = btnView.layoutParams as LinearLayout.LayoutParams
         viewParams.width = 0
-        viewParams.weight = 2.0f // Ambil seluruh lebar
+        viewParams.weight = 2.0f
         btnView.layoutParams = viewParams
-        btnView.gravity = Gravity.CENTER // Pastikan teks "OK" di tengah
+        btnView.gravity = Gravity.CENTER
 
-        // Set listener pada tombol kanan (btnView)
         btnView.setOnClickListener {
             setResult(Activity.RESULT_OK)
             dialog.dismiss()
