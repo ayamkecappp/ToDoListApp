@@ -12,7 +12,7 @@ data class Task(
     val endTimeMillis: Long = 0L,
     val monthAdded: Int = Calendar.getInstance().apply { timeInMillis = id }.get(Calendar.MONTH),
     val flowDurationMillis: Long = 0L,
-    val actionDateMillis: Long? = null // BARU: Menyimpan waktu tugas diselesaikan/dihapus/terlewat
+    val actionDateMillis: Long? = null
 )
 
 object TaskRepository {
@@ -26,7 +26,6 @@ object TaskRepository {
     }
 
     fun getTaskById(taskId: Long): Task? {
-        // Cek di semua list: active, missed, dan deleted
         val activeTask = tasks.find { it.id == taskId }
         if (activeTask != null) return activeTask
 
@@ -38,7 +37,6 @@ object TaskRepository {
 
     fun updateTask(originalTaskId: Long, updatedTask: Task): Boolean {
         synchronized(tasks) {
-            // Cek di active tasks
             val activeIndex = tasks.indexOfFirst { it.id == originalTaskId }
             if (activeIndex != -1) {
                 tasks.removeAt(activeIndex)
@@ -46,7 +44,6 @@ object TaskRepository {
                 return true
             }
 
-            // Cek di missed tasks
             val missedIndex = missedTasks.indexOfFirst { it.id == originalTaskId }
             if (missedIndex != -1) {
                 missedTasks.removeAt(missedIndex)
@@ -54,12 +51,9 @@ object TaskRepository {
                 return true
             }
 
-            // PENTING: Cek di deleted tasks (untuk reschedule)
             val deletedIndex = deletedTasks.indexOfFirst { it.id == originalTaskId }
             if (deletedIndex != -1) {
-                // Hapus dari deleted tasks
                 deletedTasks.removeAt(deletedIndex)
-                // Tambahkan ke active tasks dengan ID baru (tanggal baru)
                 tasks.add(0, updatedTask)
                 return true
             }
@@ -68,12 +62,10 @@ object TaskRepository {
         }
     }
 
-    // MODIFIED: Capture completion time
     fun completeTask(taskId: Long): Boolean {
         val taskToRemove = tasks.find { it.id == taskId }
         if (taskToRemove != null) {
             tasks.remove(taskToRemove)
-            // Capture completion time
             val completedTask = taskToRemove.copy(actionDateMillis = System.currentTimeMillis())
             completedTasks.add(0, completedTask)
             return true
@@ -91,7 +83,6 @@ object TaskRepository {
         val selectedDay = selectedDate.get(Calendar.DAY_OF_MONTH)
 
         return completedTasks.filter { task ->
-            // Use actionDateMillis for grouping/filtering the completed task date
             val timeToUse = task.actionDateMillis ?: task.id
             val taskCalendar = Calendar.getInstance().apply { timeInMillis = timeToUse }
 
@@ -105,7 +96,6 @@ object TaskRepository {
         return tasks.toList()
     }
 
-    // MODIFIED: Capture missed time
     fun processTasksForMissed() {
         val now = System.currentTimeMillis()
         val missedTime = now
@@ -113,11 +103,25 @@ object TaskRepository {
         val tasksToKeep = mutableListOf<Task>()
         val updatedMissedTasks = mutableListOf<Task>()
 
-        // Use a loop/iterator for safe modification while iterating
         for (task in tasks) {
-            val isMissed = if (task.endTimeMillis != 0L) {
+            // ✅ FIX: Cek apakah task menggunakan Flow Timer
+            val isFlowTimer = task.time.contains("(Flow)")
+
+            val isMissed = if (isFlowTimer) {
+                // ✅ Flow Timer: Hanya cek berdasarkan tanggal task, BUKAN endTimeMillis
+                val taskDate = Calendar.getInstance().apply {
+                    timeInMillis = task.id
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }
+                taskDate.timeInMillis < now
+            } else if (task.endTimeMillis != 0L) {
+                // ✅ Time Range: Cek berdasarkan endTimeMillis
                 task.endTimeMillis < now
             } else {
+                // ✅ No Time: Cek berdasarkan tanggal task
                 val taskDate = Calendar.getInstance().apply {
                     timeInMillis = task.id
                     set(Calendar.HOUR_OF_DAY, 23)
@@ -129,32 +133,27 @@ object TaskRepository {
             }
 
             if (isMissed) {
-                // Capture the time it was processed as missed
                 updatedMissedTasks.add(task.copy(actionDateMillis = missedTime))
             } else {
                 tasksToKeep.add(task)
             }
         }
 
-        // Update the tasks list and add new missed tasks
         tasks.clear()
         tasks.addAll(tasksToKeep)
         missedTasks.addAll(updatedMissedTasks)
     }
 
     fun getMissedTasks(): List<Task> {
-        // Sort by the missed date (actionDateMillis)
         return missedTasks.sortedByDescending {
             it.actionDateMillis ?: if (it.endTimeMillis != 0L) it.endTimeMillis else it.id
         }
     }
 
-    // MODIFIED: Capture deletion time
     fun deleteTask(taskId: Long): Boolean {
         val taskToRemove = tasks.find { it.id == taskId }
         if (taskToRemove != null) {
             tasks.remove(taskToRemove)
-            // Capture deletion time
             val deletedTask = taskToRemove.copy(actionDateMillis = System.currentTimeMillis())
             deletedTasks.add(0, deletedTask)
             return true
@@ -163,7 +162,6 @@ object TaskRepository {
     }
 
     fun getDeletedTasks(): List<Task> {
-        // Sort by the deletion date (actionDateMillis)
         return deletedTasks.toList()
     }
 
