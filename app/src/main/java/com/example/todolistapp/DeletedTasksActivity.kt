@@ -112,7 +112,7 @@ class DeletedTasksActivity : AppCompatActivity() {
             // Tambahkan click listener untuk whole item - arahkan ke reschedule/restore
             setOnClickListener {
                 val intent = Intent(context, EditTaskActivity::class.java).apply {
-                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
+                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id) // Menggunakan konstanta
                     putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true) // Menggunakan mode reschedule untuk restore/pindah ke active
                 }
                 startActivity(intent)
@@ -137,7 +137,7 @@ class DeletedTasksActivity : AppCompatActivity() {
             // Click listener untuk button restore (sama dengan parent)
             setOnClickListener {
                 val intent = Intent(context, EditTaskActivity::class.java).apply {
-                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
+                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id) // Menggunakan konstanta
                     putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true)
                 }
                 startActivity(intent)

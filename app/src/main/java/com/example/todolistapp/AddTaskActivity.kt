@@ -35,8 +35,10 @@ class AddTaskActivity : AppCompatActivity() {
     private lateinit var inputActivity: EditText
     private lateinit var inputTime: EditText
     private lateinit var inputLocation: EditText
+    private lateinit var inputDetails: EditText
     private lateinit var tvAddFlowTimer: TextView
 
+    // taskDateMillis adalah tanggal kapan tugas dijadwalkan (bukan ID uniknya)
     private var taskDateMillis: Long = System.currentTimeMillis()
     private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
     private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
@@ -48,7 +50,7 @@ class AddTaskActivity : AppCompatActivity() {
         const val DEFAULT_FLOW_TIMER_DURATION = 30 * 60 * 1000L // 30 menit default
     }
 
-    // ✅ Durasi Flow Timer SPESIFIK untuk task yang akan dibuat
+    // Durasi Flow Timer SPESIFIK untuk task yang akan dibuat
     private var flowTimerDurationMillis: Long = DEFAULT_FLOW_TIMER_DURATION
 
     private val MILLIS_IN_HOUR = 60 * 60 * 1000L
@@ -67,8 +69,9 @@ class AddTaskActivity : AppCompatActivity() {
         inputLocation = findViewById(R.id.inputLocation)
         inputPriority = findViewById(R.id.inputPriority)
         tvAddFlowTimer = findViewById(R.id.tvAddFlowTimer)
+        inputDetails = findViewById(R.id.inputDetails)
 
-        // ✅ KONDISI AWAL SELALU: "+ Add Flow Timer (30m)"
+        // KONDISI AWAL SELALU: "+ Add Flow Timer (30m)"
         flowTimerDurationMillis = DEFAULT_FLOW_TIMER_DURATION
         val defaultTimeDisplayString = formatDurationToString(DEFAULT_FLOW_TIMER_DURATION)
         tvAddFlowTimer.text = "+ Add Flow Timer (${defaultTimeDisplayString})"
@@ -99,6 +102,7 @@ class AddTaskActivity : AppCompatActivity() {
             var time = inputTime.text.toString().trim()
             val location = inputLocation.text.toString().trim()
             val priority = currentSelectedPriority
+            val details = inputDetails.text.toString().trim()
 
             var taskEndTimeMillis: Long = 0L
 
@@ -135,15 +139,30 @@ class AddTaskActivity : AppCompatActivity() {
                 savedFlowDuration = flowTimerDurationMillis
             }
 
-            // MEMBUAT TASK BARU
+            // MEMBUAT TASK BARU dengan ID yang unik dari System.currentTimeMillis()
+            // Perlu memastikan timeMillis dari ID adalah waktu di hari taskDateMillis
+            val taskCalendar = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
+
+            // Set waktu ke tengah hari agar unik per hari tapi tetap konsisten
+            taskCalendar.set(Calendar.HOUR_OF_DAY, 12)
+            taskCalendar.set(Calendar.MINUTE, 0)
+            taskCalendar.set(Calendar.SECOND, 0)
+            taskCalendar.set(Calendar.MILLISECOND, 0)
+
+            val baseTaskTimeMillis = taskCalendar.timeInMillis
+            // Gabungkan dengan unique ID untuk memastikan perbedaan
+            val uniqueId = baseTaskTimeMillis + System.currentTimeMillis() % 1000000 // Menambahkan milidetik untuk keunikan
+
             val newTask = Task(
-                id = taskDateMillis,
+                id = uniqueId, // Gunakan ID yang unik
                 title = title,
                 time = time,
                 category = location.ifEmpty { "" },
                 priority = priority,
                 endTimeMillis = taskEndTimeMillis,
-                flowDurationMillis = savedFlowDuration // ✅ SIMPAN DURASI SPESIFIK
+                flowDurationMillis = savedFlowDuration, // SIMPAN DURASI SPESIFIK
+                details = details,
+                monthAdded = taskCalendar.get(Calendar.MONTH)
             )
             TaskRepository.addTask(newTask)
 
@@ -185,7 +204,7 @@ class AddTaskActivity : AppCompatActivity() {
         val btnCancel = dialogView.findViewById<TextView>(R.id.btnCancel)
         val btnSave = dialogView.findViewById<TextView>(R.id.btnSave)
 
-        // ✅ GUNAKAN DURASI TASK INI (State yang tersimpan)
+        // GUNAKAN DURASI TASK INI (State yang tersimpan)
         val currentDuration = flowTimerDurationMillis
 
         var initialHours = 0
@@ -227,7 +246,7 @@ class AddTaskActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // ✅ SIMPAN DURASI HANYA UNTUK TASK INI
+            // SIMPAN DURASI HANYA UNTUK TASK INI
             flowTimerDurationMillis = totalMillis
 
             // Tag disetel ke Boolean true untuk menandakan Flow Timer aktif
@@ -246,10 +265,10 @@ class AddTaskActivity : AppCompatActivity() {
     }
 
     private fun showTimeRangePicker() {
-        // ✅ RESET TAG KE NULL (membatalkan Flow Timer/Time Range lama)
+        // RESET TAG KE NULL (membatalkan Flow Timer/Time Range lama)
         inputTime.tag = null
 
-        // ✅ UPDATE TAMPILAN (tampilkan durasi current task yang tersimpan)
+        // UPDATE TAMPILAN (tampilkan durasi current task yang tersimpan)
         val timeDisplayString = formatDurationToString(flowTimerDurationMillis)
         tvAddFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
 
@@ -339,15 +358,16 @@ class AddTaskActivity : AppCompatActivity() {
         btnAddMore.setOnClickListener {
             setResult(Activity.RESULT_OK, createResultIntent())
 
-            // ✅ RESET FORM
+            // RESET FORM
             inputActivity.setText("")
             inputTime.setText("")
             inputLocation.setText("")
+            inputDetails.setText("")
             currentSelectedPriority = "None"
             inputPriority.setText(currentSelectedPriority)
             inputTime.tag = null
 
-            // ✅ RESET DURASI KE DEFAULT 30m
+            // RESET DURASI KE DEFAULT 30m
             flowTimerDurationMillis = DEFAULT_FLOW_TIMER_DURATION
             val defaultTimeDisplayString = formatDurationToString(DEFAULT_FLOW_TIMER_DURATION)
             tvAddFlowTimer.text = "+ Add Flow Timer (${defaultTimeDisplayString})"

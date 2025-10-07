@@ -1,24 +1,29 @@
 package com.example.todolistapp
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.content.Intent
+import android.os.Bundle
+import android.os.Handler
+import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import kotlin.math.hypot
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
-import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -28,7 +33,6 @@ import java.util.Date
 import java.util.Locale
 import android.widget.Button
 import android.util.Log
-import android.os.Handler
 import android.os.Looper
 import android.view.animation.AnimationUtils
 
@@ -754,7 +758,7 @@ class TaskActivity : AppCompatActivity() {
 
         val editButton = createActionButton(R.drawable.ic_edit, "Edit") {
             val intent = Intent(context, EditTaskActivity::class.java).apply {
-                putExtra("EXTRA_TASK_ID", task.id)
+                putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
             }
             taskEditLauncher.launch(intent)
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)

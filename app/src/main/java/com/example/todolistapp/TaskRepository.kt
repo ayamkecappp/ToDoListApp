@@ -16,6 +16,7 @@ data class Task(
     val endTimeMillis: Long = 0L,
     val monthAdded: Int = Calendar.getInstance().apply { timeInMillis = id }.get(Calendar.MONTH),
     val flowDurationMillis: Long = 0L,
+    val details: String = "",
     val actionDateMillis: Long? = null
 )
 
@@ -44,6 +45,19 @@ object TaskRepository {
     }
 
     /**
+     * Helper untuk load list task dari JSON string
+     */
+    private fun loadTaskList(prefs: SharedPreferences, key: String): List<Task> {
+        val json = prefs.getString(key, null) ?: return emptyList()
+        return try {
+            val type = object : TypeToken<List<Task>>() {}.type
+            gson.fromJson(json, type) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
      * Load semua data dari SharedPreferences
      */
     private fun loadAllData() {
@@ -59,19 +73,6 @@ object TaskRepository {
 
             completedTasks.clear()
             completedTasks.addAll(loadTaskList(prefs, KEY_COMPLETED_TASKS))
-        }
-    }
-
-    /**
-     * Helper untuk load list task dari JSON string
-     */
-    private fun loadTaskList(prefs: SharedPreferences, key: String): List<Task> {
-        val json = prefs.getString(key, null) ?: return emptyList()
-        return try {
-            val type = object : TypeToken<List<Task>>() {}.type
-            gson.fromJson(json, type) ?: emptyList()
-        } catch (e: Exception) {
-            emptyList()
         }
     }
 
