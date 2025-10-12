@@ -24,6 +24,7 @@ class MissedTasksActivity : AppCompatActivity() {
     private lateinit var tasksContainer: LinearLayout
     private lateinit var scrollView: androidx.core.widget.NestedScrollView
     private lateinit var emptyStateContainer: LinearLayout
+    private lateinit var ivTimyTasks: ImageView
     private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
 
     // Launcher untuk Edit Task Activity (Reschedule)
@@ -45,6 +46,7 @@ class MissedTasksActivity : AppCompatActivity() {
         tasksContainer = findViewById(R.id.tasks_container)
         scrollView = findViewById(R.id.tasks_scroll_view)
         emptyStateContainer = findViewById(R.id.empty_state_container)
+        ivTimyTasks = findViewById(R.id.ivTimyTasks)
 
         findViewById<ImageView>(R.id.ivBackArrow).setOnClickListener {
             val intent = Intent(this, ProfileActivity::class.java)
@@ -69,9 +71,11 @@ class MissedTasksActivity : AppCompatActivity() {
 
         if (missedTasks.isEmpty()) {
             scrollView.visibility = View.GONE
+            ivTimyTasks.visibility = View.GONE
             emptyStateContainer.visibility = View.VISIBLE
         } else {
             scrollView.visibility = View.VISIBLE
+            ivTimyTasks.visibility = View.VISIBLE
             emptyStateContainer.visibility = View.GONE
 
             val groupedTasks = missedTasks.groupBy {

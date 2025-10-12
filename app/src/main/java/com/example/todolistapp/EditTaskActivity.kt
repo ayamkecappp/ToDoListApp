@@ -38,8 +38,9 @@ class EditTaskActivity : AppCompatActivity() {
     private lateinit var inputDate: EditText
     private lateinit var tvAddFlowTimer: TextView
 
-    private var taskIdToEdit: Long = -1L
-    private var taskDateMillis: Long = System.currentTimeMillis() // ID asli tugas/tanggal jadwal
+    private var taskIdToEdit: Long = -1L // ID ASLI dari task yang sedang diedit
+    private var taskDateMillis: Long = System.currentTimeMillis() // Tanggal yang dipilih (bisa berubah)
+    private var originalTaskDateMillis: Long = System.currentTimeMillis() // Tanggal ASLI task (tidak berubah)
     private var taskEndTimeMillis: Long = 0L // End Time asli
 
 
@@ -77,7 +78,6 @@ class EditTaskActivity : AppCompatActivity() {
         tvAddFlowTimer = findViewById(R.id.tvAddFlowTimer)
 
         // 1. Ambil Task ID dan Mode Reschedule dari Intent
-        // taskIdToEdit adalah kunci yang unik untuk mengambil data tugas yang benar
         taskIdToEdit = intent.getLongExtra(EXTRA_TASK_ID, -1L)
         val isRescheduleMode = intent.getBooleanExtra(EXTRA_RESCHEDULE_MODE, false)
 
@@ -94,11 +94,12 @@ class EditTaskActivity : AppCompatActivity() {
 
             currentSelectedPriority = existingTask.priority
 
-            // Simpan ID asli (timestamp jadwal) dan End Time asli
-            taskDateMillis = existingTask.id // ID asli adalah timestamp task dibuat/dijadwalkan
+            // Simpan ID asli dan tanggal asli
+            originalTaskDateMillis = existingTask.id // Tanggal ASLI task (tidak berubah)
+            taskDateMillis = existingTask.id // Tanggal yang bisa diubah user
             taskEndTimeMillis = existingTask.endTimeMillis
 
-            // Set Data: Menggunakan ID asli (timestamp)
+            // Set Data: Menggunakan tanggal asli
             val initialDate = Date(taskDateMillis)
             inputDate.setText(uiDateFormat.format(initialDate))
 
@@ -182,41 +183,60 @@ class EditTaskActivity : AppCompatActivity() {
                 savedFlowDuration = flowTimerDurationMillis
             }
 
-            // Dapatkan bulan yang benar berdasarkan taskDateMillis yang baru (untuk jadwal ulang)
-            val updatedMonthAdded = Calendar.getInstance().apply { timeInMillis = taskDateMillis }.get(Calendar.MONTH)
+            // Dapatkan bulan yang benar berdasarkan taskDateMillis yang baru
+            val calendarForNewDate = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
+            val updatedMonthAdded = calendarForNewDate.get(Calendar.MONTH)
+
+            // Cek apakah tanggal berubah
+            val isDateChanged = !isSameDay(taskDateMillis, originalTaskDateMillis)
+
+            // Tentukan ID untuk task yang akan disimpan
+            val newTaskId = if (isRescheduleMode || isDateChanged) {
+                // Jika mode reschedule atau tanggal berubah, gunakan tanggal baru sebagai ID
+                calendarForNewDate.apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+            } else {
+                // Jika tanggal tidak berubah, gunakan ID asli
+                taskIdToEdit
+            }
 
             // Buat objek Task baru
             val updatedTask = Task(
-                id = taskIdToEdit,
+                id = newTaskId,
                 title = title,
                 time = time.ifEmpty { "" },
                 category = location.ifEmpty { "" },
                 priority = priority,
                 endTimeMillis = newEndTimeMillis,
-                // Pastikan monthAdded menggunakan nilai yang benar saat ini
                 monthAdded = updatedMonthAdded,
                 flowDurationMillis = savedFlowDuration,
-                details = details
+                details = details,
+                actionDateMillis = null
             )
 
-            val success = if (isRescheduleMode) {
-                // Dalam mode reschedule, buat ID baru berdasarkan tanggal yang baru
-                val newId = Calendar.getInstance().apply { timeInMillis = taskDateMillis }.timeInMillis
-                val rescheduledTask = updatedTask.copy(
-                    id = newId, // Memberikan ID baru (tanggal reschedule)
-                    monthAdded = updatedMonthAdded,
-                    actionDateMillis = null
-                )
-                // Gunakan ID LAMA untuk mencari task di repository dan update dengan task baru
-                TaskRepository.updateTask(taskIdToEdit, rescheduledTask)
+            val success = if (isRescheduleMode || isDateChanged) {
+                // Hapus task lama dan buat task baru di tanggal yang baru
+                TaskRepository.deleteTask(taskIdToEdit)
+                TaskRepository.addTask(updatedTask)
+                true
             } else {
-                // Dalam mode edit biasa, gunakan ID yang SAMA
+                // Update task yang ada dengan ID yang sama
                 TaskRepository.updateTask(taskIdToEdit, updatedTask)
             }
 
-
             if (success) {
-                showConfirmationDialog(updatedTask)
+                val message = if (isDateChanged && !isRescheduleMode) {
+                    "Task berhasil dipindahkan ke ${uiDateFormat.format(Date(taskDateMillis))}"
+                } else if (isRescheduleMode) {
+                    "Task berhasil dijadwalkan ulang"
+                } else {
+                    "Task berhasil diperbarui"
+                }
+                showConfirmationDialog(updatedTask, message)
             } else {
                 Toast.makeText(this, "Gagal menyimpan pembaruan tugas.", Toast.LENGTH_SHORT).show()
             }
@@ -248,6 +268,15 @@ class EditTaskActivity : AppCompatActivity() {
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
 
+    private fun isSameDay(millis1: Long, millis2: Long): Boolean {
+        val cal1 = Calendar.getInstance().apply { timeInMillis = millis1 }
+        val cal2 = Calendar.getInstance().apply { timeInMillis = millis2 }
+
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH) &&
+                cal1.get(Calendar.DAY_OF_MONTH) == cal2.get(Calendar.DAY_OF_MONTH)
+    }
+
     private fun showDatePicker() {
         val calendar = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
         val year = calendar.get(Calendar.YEAR)
@@ -257,8 +286,18 @@ class EditTaskActivity : AppCompatActivity() {
         val datePicker = DatePickerDialog(this,
             { _, selectedYear, selectedMonth, selectedDay ->
                 calendar.set(selectedYear, selectedMonth, selectedDay)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+
                 taskDateMillis = calendar.timeInMillis
                 inputDate.setText(uiDateFormat.format(calendar.time))
+
+                // Beri notifikasi jika tanggal berubah
+                if (!isSameDay(taskDateMillis, originalTaskDateMillis)) {
+                    Toast.makeText(this, "Tanggal diubah. Task akan dipindahkan ke tanggal baru.", Toast.LENGTH_SHORT).show()
+                }
             }, year, month, day)
 
         datePicker.show()
@@ -364,7 +403,7 @@ class EditTaskActivity : AppCompatActivity() {
                         val endTimeString = String.format(Locale.getDefault(), "%02d:%02d", endHourOfDay, endMinute)
                         inputTime.setText("$startTimeString - $endTimeString")
 
-                        // Gunakan ID asli tugas sebagai basis tanggal
+                        // Gunakan tanggal yang dipilih sebagai basis
                         val selectedDayCalendar = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
                         val startHourInt = startTimeString.substringBefore(":").toIntOrNull() ?: 0
                         val startMinuteInt = startTimeString.substringAfter(":").toIntOrNull() ?: 0
@@ -425,7 +464,7 @@ class EditTaskActivity : AppCompatActivity() {
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
 
-    private fun showConfirmationDialog(task: Task) {
+    private fun showConfirmationDialog(task: Task, message: String) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_save_success, null)
 
         val dialog = AlertDialog.Builder(this)
@@ -439,7 +478,7 @@ class EditTaskActivity : AppCompatActivity() {
         val btnClose = dialogView.findViewById<TextView>(R.id.btnIgnore)
         val btnView = dialogView.findViewById<TextView>(R.id.btnView)
 
-        tvMessageTitle.text = "Success Update Reminder"
+        tvMessageTitle.text = message
         tvMessageTitle.setTextColor(Color.parseColor("#283F6D"))
 
         val createResultIntent = {
