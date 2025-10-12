@@ -19,7 +19,6 @@ import android.view.ViewGroup
 import android.graphics.drawable.ColorDrawable
 import android.widget.Button
 import android.view.Gravity
-import android.content.SharedPreferences
 
 class FlowTimerActivity : AppCompatActivity() {
 
@@ -36,38 +35,40 @@ class FlowTimerActivity : AppCompatActivity() {
     private var countDownTimer: CountDownTimer? = null
     private var isTimerRunning = false
 
-    // Durasi awal akan diisi dari SharedPreferences
+    // Durasi awal - PENTING: Prioritas dari task, baru fallback ke default
     private var totalDurationMillis: Long = 30 * 60 * 1000L
     private var timeRemainingMillis: Long = totalDurationMillis
 
-    // Warna untuk dialog
     private val COLOR_DARK_BLUE = Color.parseColor("#283F6D")
 
-    // Konstanta untuk konversi waktu
     private val MILLIS_IN_HOUR = 60 * 60 * 1000L
     private val MILLIS_IN_MINUTE = 60 * 1000L
     private val MILLIS_IN_SECOND = 1000L
 
-
     companion object {
         const val EXTRA_TASK_NAME = "EXTRA_TASK_NAME"
-        // Constants untuk SharedPreferences (HARUS SAMA DENGAN AddTaskActivity.kt)
-        const val PREFS_NAME = "TimerPrefs"
-        const val KEY_FLOW_TIMER_DURATION = "flow_timer_duration"
+        const val EXTRA_FLOW_DURATION = "EXTRA_FLOW_DURATION"
+        const val DEFAULT_FLOW_DURATION = 30 * 60 * 1000L // 30 menit default
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_flow_timer)
 
-        // BARU: Load durasi dari SharedPreferences
-        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        // Default 30 menit jika belum pernah diset
-        val defaultDuration = 30 * MILLIS_IN_MINUTE
-        val storedDuration = sharedPrefs.getLong(KEY_FLOW_TIMER_DURATION, defaultDuration)
+        // 1. Ambil Nama Tugas dari Intent
+        val taskName = intent.getStringExtra(EXTRA_TASK_NAME) ?: "Flow Task"
 
-        // Set durasi awal
-        totalDurationMillis = storedDuration.coerceAtLeast(MILLIS_IN_SECOND) // Pastikan minimal 1 detik
+        // 2. Ambil durasi SPESIFIK dari Task (jika ada)
+        val taskFlowDuration = intent.getLongExtra(EXTRA_FLOW_DURATION, 0L)
+
+        // 3. Tentukan durasi: gunakan durasi task jika > 0, jika tidak gunakan default 30 menit
+        val initialDuration = if (taskFlowDuration > 0L) {
+            taskFlowDuration
+        } else {
+            DEFAULT_FLOW_DURATION
+        }
+
+        totalDurationMillis = initialDuration.coerceAtLeast(MILLIS_IN_SECOND)
         timeRemainingMillis = totalDurationMillis
 
         // Hubungkan Views
@@ -81,33 +82,23 @@ class FlowTimerActivity : AppCompatActivity() {
         btnBack = findViewById(R.id.btnBack)
         btnSetDurationOK = findViewById(R.id.btnSetDurationOK)
 
-        // 1. Ambil Nama Tugas dari Intent
-        val taskName = intent.getStringExtra(EXTRA_TASK_NAME) ?: "Flow Task"
         tvTaskName.text = taskName
 
-        // 2. Setup Number Pickers
         setupNumberPickers()
-
-        // Atur tampilan awal
         updateTimerDisplay()
 
-        // Listener untuk menampilkan NumberPicker saat display timer diklik (untuk setting waktu)
         tvTimerDisplay.setOnClickListener {
             if (!isTimerRunning) {
                 toggleInputVisibility(true)
             }
         }
 
-        // Listener Tombol OK (Untuk set durasi secara manual)
         btnSetDurationOK.setOnClickListener {
-            // 1. Ambil nilai baru, set total/timeRemainingMillis
             updateDurationFromPickers()
-            // 2. Sembunyikan input dan tampilkan timer/play button
             toggleInputVisibility(false)
             Toast.makeText(this, "Durasi diatur ke ${tvTimerDisplay.text}", Toast.LENGTH_SHORT).show()
         }
 
-        // Listener Tombol
         btnBack.setOnClickListener {
             onBackPressed()
         }
@@ -120,8 +111,6 @@ class FlowTimerActivity : AppCompatActivity() {
             }
         }
     }
-
-    // --- FUNGSI UTAMA TIMER ---
 
     private fun setupNumberPickers() {
         npHours.minValue = 0
@@ -136,14 +125,12 @@ class FlowTimerActivity : AppCompatActivity() {
         val hours = npHours.value
         val minutes = npMinutes.value
         val seconds = npSeconds.value
-        // UPDATED calculation
         totalDurationMillis = (hours * MILLIS_IN_HOUR) + (minutes * MILLIS_IN_MINUTE) + (seconds * MILLIS_IN_SECOND)
         timeRemainingMillis = totalDurationMillis
         updateTimerDisplay()
     }
 
     private fun startTimer() {
-        // PERHATIAN: Jika input durasi terlihat, set nilai baru lalu sembunyikan sebelum mulai
         if (layoutSetDuration.visibility == View.VISIBLE) {
             updateDurationFromPickers()
             toggleInputVisibility(false)
@@ -162,19 +149,18 @@ class FlowTimerActivity : AppCompatActivity() {
             }
 
             override fun onFinish() {
-                // PENTING: Panggil alur dialog.
                 timerFinishedFlow()
             }
         }.start()
 
         isTimerRunning = true
-        btnPlayPause.setImageResource(R.drawable.ic_pause) // Ikon Pause placeholder
+        btnPlayPause.setImageResource(R.drawable.ic_pause)
     }
 
     private fun pauseTimer() {
         countDownTimer?.cancel()
         isTimerRunning = false
-        btnPlayPause.setImageResource(R.drawable.ic_play) // Ikon Play
+        btnPlayPause.setImageResource(R.drawable.ic_play)
     }
 
     private fun updateTimerDisplay() {
@@ -182,14 +168,12 @@ class FlowTimerActivity : AppCompatActivity() {
         val minutes = ((timeRemainingMillis % MILLIS_IN_HOUR) / MILLIS_IN_MINUTE).toInt()
         val seconds = ((timeRemainingMillis % MILLIS_IN_MINUTE) / MILLIS_IN_SECOND).toInt()
 
-        // UPDATED format: HH:MM:SS
         val timeFormatted = String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
         tvTimerDisplay.text = timeFormatted
     }
 
     private fun toggleInputVisibility(showInput: Boolean) {
         if (showInput) {
-            // Pastikan nilai NumberPicker sesuai dengan waktu saat ini sebelum ditampilkan
             val hours = (timeRemainingMillis / MILLIS_IN_HOUR).toInt()
             val minutes = ((timeRemainingMillis % MILLIS_IN_HOUR) / MILLIS_IN_MINUTE).toInt()
             val seconds = ((timeRemainingMillis % MILLIS_IN_MINUTE) / MILLIS_IN_SECOND).toInt()
@@ -199,31 +183,25 @@ class FlowTimerActivity : AppCompatActivity() {
             npSeconds.value = seconds
 
             layoutSetDuration.visibility = View.VISIBLE
-            btnSetDurationOK.visibility = View.VISIBLE // Tampilkan tombol OK
+            btnSetDurationOK.visibility = View.VISIBLE
             btnPlayPause.visibility = View.GONE
             tvTimerDisplay.visibility = View.GONE
         } else {
-            // Set waktu display ke durasi baru setelah di-set
             updateTimerDisplay()
             layoutSetDuration.visibility = View.GONE
-            btnSetDurationOK.visibility = View.GONE // Sembunyikan tombol OK
+            btnSetDurationOK.visibility = View.GONE
             btnPlayPause.visibility = View.VISIBLE
             tvTimerDisplay.visibility = View.VISIBLE
         }
     }
 
-    // --- LOGIKA DIALOG BERURUTAN ---
-
     private fun timerFinishedFlow() {
-        // Hentikan state dan reset tombol visual
         isTimerRunning = false
-        btnPlayPause.setImageResource(R.drawable.ic_play) // Reset ke Play
+        btnPlayPause.setImageResource(R.drawable.ic_play)
 
-        // Atur display ke 00:00:00
         timeRemainingMillis = 0
         updateTimerDisplay()
 
-        // Panggil dialog pertama
         showDoneDialog()
     }
 
@@ -242,10 +220,8 @@ class FlowTimerActivity : AppCompatActivity() {
         btnNo.text = negativeText
         btnYes.text = positiveText
 
-        // Atur warna teks tombol
         btnNo.setTextColor(COLOR_DARK_BLUE)
         btnYes.setTextColor(COLOR_DARK_BLUE)
-
 
         val dialog = AlertDialog.Builder(context).setView(dialogView).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -262,38 +238,31 @@ class FlowTimerActivity : AppCompatActivity() {
         return dialog
     }
 
-
-    // Dialog 1: Are you done with your task?
     private fun showDoneDialog() {
         val dialog = buildCustomDialog(
             this,
             "Are you done with your task?",
             "Yes", "No",
             onPositive = {
-                // Yes: Berhenti dan kembali ke TaskActivity
                 Toast.makeText(this, "Tugas Selesai!", Toast.LENGTH_SHORT).show()
                 finish()
             },
             onNegative = {
-                // No: Lanjutkan ke Dialog 2
                 showAdjustTimeDialog()
             }
         )
         dialog.show()
     }
 
-    // Dialog 2: Adjust Time?
     private fun showAdjustTimeDialog() {
         val dialog = buildCustomDialog(
             this,
             "Adjust Time?",
             "Yes", "No",
             onPositive = {
-                // Yes: Lanjutkan ke Dialog 3 (Set Time)
                 showSetNewTimeDialog()
             },
             onNegative = {
-                // No: Langsung kembali ke TaskActivity
                 Toast.makeText(this, "Kembali ke daftar tugas.", Toast.LENGTH_SHORT).show()
                 finish()
             }
@@ -301,11 +270,9 @@ class FlowTimerActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    // Dialog 3: Set Time (Menggunakan NumberPicker bawaan Activity)
     private fun showSetNewTimeDialog() {
         Toast.makeText(this, "Atur durasi baru, lalu tekan OK untuk menyimpan.", Toast.LENGTH_LONG).show()
 
-        // Set nilai NumberPicker sesuai sisa waktu (jika ada) atau total durasi
         val timeToShow = if(totalDurationMillis > 0) totalDurationMillis else 30 * MILLIS_IN_MINUTE
 
         val initialHours = (timeToShow / MILLIS_IN_HOUR).toInt()
@@ -316,10 +283,8 @@ class FlowTimerActivity : AppCompatActivity() {
         npMinutes.value = initialMinutes
         npSeconds.value = initialSeconds
 
-        // Tampilkan input durasi
         toggleInputVisibility(true)
     }
-
 
     override fun onDestroy() {
         super.onDestroy()

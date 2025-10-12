@@ -64,11 +64,17 @@ class CompletedTasksActivity : AppCompatActivity() {
             emptyStateContainer.visibility = View.GONE
 
             val groupedTasks = completedTasks.groupBy {
-                Calendar.getInstance().apply { timeInMillis = it.id }.get(Calendar.DAY_OF_YEAR)
+                // MODIFIED: Group by actionDateMillis (completion date)
+                val timeToUse = it.actionDateMillis ?: it.id // Fallback to original ID if somehow null
+                Calendar.getInstance().apply { timeInMillis = timeToUse }.get(Calendar.DAY_OF_YEAR)
             }
+            // Sort groups by date descending (latest completion date first)
             val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
+
             for ((_, tasks) in sortedGroups) {
-                val dateLabel = Calendar.getInstance().apply { timeInMillis = tasks.first().id }
+                // MODIFIED: Display actionDateMillis
+                val timeToUse = tasks.first().actionDateMillis ?: tasks.first().id
+                val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
                 addDateHeader(dateLabel)
                 for (task in tasks) {
                     createCompletedTaskItem(task)

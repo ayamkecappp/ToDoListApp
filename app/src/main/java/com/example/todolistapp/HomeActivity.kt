@@ -13,11 +13,16 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.bumptech.glide.Glide
-import kotlinx.coroutines.* // <<-- IMPORT COROUTINES DITAMBAHKAN
+import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
 import java.util.*
 import android.util.Log
-import java.lang.Exception
+import android.view.ViewGroup
+import android.app.AlertDialog
+import android.view.LayoutInflater
+import android.widget.Button
+import android.graphics.Color // Tambahkan import ini jika diperlukan
+
 class HomeActivity : AppCompatActivity() {
 
     private lateinit var tvTitle: TextView
@@ -33,37 +38,24 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var dayRunnerLayouts: List<View>
     private lateinit var dayRunnerIcons: List<View>
 
-    // Kunci PREFS dari EditProfileActivity
     private val PROFILE_PREFS_NAME = "ProfilePrefs"
     private val KEY_USERNAME = "username"
 
     private val PREFS_NAME = "TimyTimePrefs"
     private val KEY_STREAK = "current_streak"
     private val KEY_LAST_DATE = "last_completion_date"
-    private val KEY_STREAK_START_DATE = "streak_start_date"
-    private val KEY_TASKS_TOTAL_TODAY = "tasks_total_today"
-    private val KEY_TASKS_COMPLETED_TODAY = "tasks_completed_today"
+    private val KEY_STREAK_DAYS = "streak_days"
     private lateinit var prefs: SharedPreferences
 
-
-    // ==============================================
-    // 💡 FUNGSI MEMBUAT PESAN DENGAN BOLD/HTML 💡
-    // ==============================================
     private fun getTimyMessages(userName: String): List<Spanned> {
-
-        // Format username agar tebal (bold) menggunakan tag HTML <b>
         val boldUserName = "<b>$userName</b>"
-
         val rawMessages = listOf(
-            "Hi! I’m Timy,\nYour Personal Time Assistant", // Chat 1
-            "Nice to see you,\n$boldUserName",             // Chat 2 (dengan username tebal)
-            "Let’s plan your day with me,\nTimy!",          // Chat 3
+            "Hi! I'm Timy,\nYour Personal Time Assistant",
+            "Nice to see you,\n$boldUserName",
+            "Let's plan your day with me,\nTimy!",
         )
-
-        // Gunakan Core KTX Extension Function untuk Html.fromHtml
-        // Ini adalah cara modern dan aman, menghilangkan kebutuhan untuk pengecekan SDK manual
         return rawMessages.map { rawMessage ->
-            Html.fromHtml(rawMessage, android.text.Html.FROM_HTML_MODE_LEGACY) // FROM_HTML_MODE_LEGACY adalah nilai default
+            Html.fromHtml(rawMessage, android.text.Html.FROM_HTML_MODE_LEGACY)
         }
     }
 
@@ -78,32 +70,24 @@ class HomeActivity : AppCompatActivity() {
         tvStreak = findViewById(R.id.tvStreak)
         bottomNav = findViewById(R.id.bottomNav)
 
-        // Ambil referensi TextView untuk Chat Bubble
-        tvTimyChatText = findViewById(R.id.tvTimyChatText)
-
         bottomNav.itemIconTintList = null
         initializeViews()
-
-        loadTimyGifs() // Asumsi fungsi ini sudah Anda implementasikan
+        loadTimyGifs()
 
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> true
                 R.id.nav_tasks -> {
                     startActivity(
-                        Intent(
-                            this,
-                            TaskActivity::class.java
-                        ).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                        Intent(this, TaskActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
                     )
                     true
                 }
                 R.id.nav_profile -> {
                     startActivity(
-                        Intent(
-                            this,
-                            ProfileActivity::class.java
-                        ).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                        Intent(this, ProfileActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
                     )
                     true
                 }
@@ -113,10 +97,8 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun initializeViews() {
-        // Hanya gunakan yang ADA di XML
         dayProgressBars = listOf(findViewById(R.id.full_week_progress_bar))
 
-        // Untuk marker (ellipse kecil di bawah hari)
         dayEllipses = listOf(
             findViewById(R.id.day_marker_0),
             findViewById(R.id.day_marker_1),
@@ -127,49 +109,34 @@ class HomeActivity : AppCompatActivity() {
             findViewById(R.id.day_marker_6)
         )
 
-        // Runner icon hanya 1
         dayRunnerIcons = listOf(findViewById(R.id.runner_icon))
         dayRunnerLayouts = emptyList()
     }
 
     override fun onResume() {
         super.onResume()
+        checkAndUpdateStreak()
         updateWeeklyProgressUI()
         bottomNav.selectedItemId = R.id.nav_home
-
-        // MULAI LOOP KETIKA ACTIVITY TERLIHAT
         startChatLoop()
     }
 
     override fun onPause() {
         super.onPause()
-        // HENTIKAN LOOP KETIKA ACTIVITY TIDAK TERLIHAT
         stopChatLoop()
     }
 
-    // ==============================================
-    // 💡 FUNGSI LOGIKA CHAT LOOP 💡
-    // ==============================================
     private fun startChatLoop() {
         stopChatLoop()
-
-        // Ambil data username dari SharedPreferences yang digunakan di EditProfileActivity
         val profilePrefs = getSharedPreferences(PROFILE_PREFS_NAME, Context.MODE_PRIVATE)
         val userName = profilePrefs.getString(KEY_USERNAME, "Guest") ?: "Guest"
-
-        // Dapatkan list pesan yang sudah diformat HTML
         val messages = getTimyMessages(userName)
 
         chatJob = scope.launch {
             var index = 0
             while (isActive) {
-                // Tampilkan pesan dalam format Spanned (dengan bold)
                 tvTimyChatText.text = messages[index % messages.size]
-
-                // Pindah ke pesan berikutnya dan reset jika sudah mencapai akhir list
                 index++
-
-                // Tunggu 5 detik sebelum ganti pesan
                 delay(5000L)
             }
         }
@@ -180,38 +147,17 @@ class HomeActivity : AppCompatActivity() {
         chatJob = null
     }
 
-    // ==============================================
-    // 💡 FUNGSI BARU UNTUK MEMUAT GIF DENGAN GLIDE
-    // ==============================================
     private fun loadTimyGifs() {
         try {
             val timyFace = findViewById<ImageView>(R.id.imgTimyFaceGif)
             val timyLeftArm = findViewById<ImageView>(R.id.imgTimyLeftArmGif)
             val timyRightArm = findViewById<ImageView>(R.id.imgTimyRightArmGif)
 
-            // Muat GIF untuk Muka
-            Glide.with(this)
-                .asGif()
-                .load(R.drawable.timy_home_muka) // Pastikan nama aset GIF di drawable benar
-                .into(timyFace)
-
-            // Muat GIF untuk Tangan Kiri
-            Glide.with(this)
-                .asGif()
-                .load(R.drawable.timy_home_tangan_kiri) // Pastikan nama aset GIF di drawable benar
-                .into(timyLeftArm)
-
-            // Muat GIF untuk Tangan Kanan
-            Glide.with(this)
-                .asGif()
-                .load(R.drawable.timy_home_tangan_kanan) // Pastikan nama aset GIF di drawable benar
-                .into(timyRightArm)
-
-            // CATATAN: Badan (imgTimyBodyStatic) akan di-load sebagai gambar statis dari src-nya di XML.
-
+            Glide.with(this).asGif().load(R.drawable.timy_home_muka).into(timyFace)
+            Glide.with(this).asGif().load(R.drawable.timy_home_tangan_kiri).into(timyLeftArm)
+            Glide.with(this).asGif().load(R.drawable.timy_home_tangan_kanan).into(timyRightArm)
         } catch (e: Exception) {
-            // Ini untuk penanganan error jika Glide gagal memuat atau findViewById gagal
-            e.printStackTrace()
+            Log.e("HomeActivity", "Error loading GIFs", e)
         }
     }
 
@@ -220,21 +166,142 @@ class HomeActivity : AppCompatActivity() {
         bottomNav.selectedItemId = R.id.nav_home
     }
 
-    private fun updateWeeklyProgressUI() {
+    /**
+     * Menampilkan dialog YAY, you on fire (X streak)
+     * Membutuhkan layout: dialog_streak_success.xml
+     */
+    private fun showStreakSuccessDialog(newStreak: Int) {
+        // Cek apakah resource layout ada sebelum mencoba menggunakannya
+        val layoutResId = resources.getIdentifier("dialog_streak_success", "layout", packageName)
+
+        if (layoutResId == 0) {
+            Log.e("HomeActivity", "FATAL: Layout 'dialog_streak_success.xml' not found. Dialog cannot be shown.")
+            return
+        }
+
+        // Gunakan try-catch untuk menangkap NullPointerException/InflateException
+        try {
+            val dialogView = LayoutInflater.from(this).inflate(layoutResId, null)
+
+            // Menggunakan elvis operator (?.) untuk mencegah crash jika view tidak ditemukan
+            val tvStreakMessage = dialogView.findViewById<TextView>(R.id.tv_streak_message)
+            val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
+
+            if (tvStreakMessage == null || btnOk == null) {
+                Log.e("HomeActivity", "FATAL: Views inside dialog_streak_success not found (tv_streak_message or btn_ok). Check IDs.")
+                return
+            }
+
+            tvStreakMessage.text = "$newStreak streak"
+
+            // Set warna teks (opsional, untuk memastikan tampilan)
+            tvStreakMessage.setTextColor(resources.getColor(R.color.orange, theme))
+
+            val alertDialog = AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create()
+
+            // Membuat background dialog transparan agar custom shape di XML terlihat
+            alertDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+            btnOk.setOnClickListener {
+                alertDialog.dismiss()
+            }
+
+            alertDialog.show()
+        } catch (e: Exception) {
+            Log.e("HomeActivity", "Error showing streak dialog: ${e.message}", e)
+        }
+    }
+
+
+    private fun checkAndUpdateStreak() {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val todayStr = sdf.format(Date())
         val todayCalendar = Calendar.getInstance()
 
-        val fullWeekProgressBar = dayProgressBars.firstOrNull()
-        val runnerIcon = dayRunnerIcons.firstOrNull()
-
-        // Ambil data dari SharedPreferences
         val currentStreak = prefs.getInt(KEY_STREAK, 0)
-        val lastCompletionDateStr = prefs.getString(KEY_LAST_DATE, null)
-        val streakStartDateStr = prefs.getString(KEY_STREAK_START_DATE, null)
+        val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
 
-        // Hitung posisi hari ini dalam minggu (0=Senin, 6=Minggu)
-        val dayOfWeek = when (todayCalendar.get(Calendar.DAY_OF_WEEK)) {
+        val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
+        val hasCompletedToday = completedToday.isNotEmpty()
+
+        when {
+            // Kasus 1: Belum ada streak sama sekali
+            lastDateStr == null -> {
+                if (hasCompletedToday) {
+                    // Mulai streak pertama (Streak 1)
+                    prefs.edit().apply {
+                        putInt(KEY_STREAK, 1)
+                        putString(KEY_LAST_DATE, todayStr)
+                        putString(KEY_STREAK_DAYS, getCurrentDayOfWeek().toString())
+                        apply()
+                    }
+                    showStreakSuccessDialog(1) // Panggil dialog untuk streak 1
+                }
+            }
+
+            // Kasus 2: Sudah di-update hari ini
+            lastDateStr == todayStr -> {
+                // Streak dipertahankan dan tidak ada yang diubah.
+            }
+
+            // Kasus 3: Hari ini adalah hari setelah lastDateStr (Beruntun, misalnya streak 1 -> streak 2)
+            isYesterday(lastDateStr, todayStr) -> {
+                if (hasCompletedToday) {
+                    val newStreak = currentStreak + 1
+
+                    // Tambah streak karena hari ini selesai
+                    val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+                    val currentDay = getCurrentDayOfWeek()
+                    val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+
+                    val newStreakDays = if (!existingDays.contains(currentDay)) {
+                        // Tambahkan hari ini ke daftar streak days
+                        if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
+                    } else {
+                        streakDays
+                    }
+
+                    prefs.edit().apply {
+                        putInt(KEY_STREAK, newStreak) // Meningkatkan streak
+                        putString(KEY_LAST_DATE, todayStr) // Update tanggal terakhir
+                        putString(KEY_STREAK_DAYS, newStreakDays)
+                        apply()
+                    }
+                    showStreakSuccessDialog(newStreak) // Panggil dialog untuk streak yang bertambah
+                } else {
+                    // JANGAN DIRESET. Streak dipertahankan untuk hari ini, akan direset besok jika hari ini terlewat.
+                }
+            }
+
+            // Kasus 4: Jeda lebih dari satu hari (Streak putus)
+            else -> {
+                if (hasCompletedToday) {
+                    // Streak putus, tapi hari ini sudah selesai -> Mulai streak baru dari 1
+                    prefs.edit().apply {
+                        putInt(KEY_STREAK, 1)
+                        putString(KEY_LAST_DATE, todayStr)
+                        putString(KEY_STREAK_DAYS, getCurrentDayOfWeek().toString())
+                        apply()
+                    }
+                    showStreakSuccessDialog(1) // Panggil dialog karena streak dimulai dari 1
+                } else {
+                    // Streak putus dan hari ini juga belum selesai -> Reset total ke 0
+                    prefs.edit().apply {
+                        putInt(KEY_STREAK, 0)
+                        putString(KEY_LAST_DATE, null)
+                        putString(KEY_STREAK_DAYS, "")
+                        apply()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getCurrentDayOfWeek(): Int {
+        val calendar = Calendar.getInstance()
+        return when (calendar.get(Calendar.DAY_OF_WEEK)) {
             Calendar.MONDAY -> 0
             Calendar.TUESDAY -> 1
             Calendar.WEDNESDAY -> 2
@@ -244,83 +311,112 @@ class HomeActivity : AppCompatActivity() {
             Calendar.SUNDAY -> 6
             else -> 0
         }
+    }
+
+    private fun updateWeeklyProgressUI() {
+        val todayCalendar = Calendar.getInstance()
+        val fullWeekProgressBar = dayProgressBars.firstOrNull()
+        val runnerIcon = dayRunnerIcons.firstOrNull()
+
+        val currentStreak = prefs.getInt(KEY_STREAK, 0)
+        val streakDaysStr = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+        val todayDayOfWeek = getCurrentDayOfWeek() // 0=Mon, 6=Sun
 
         tvStreak.text = currentStreak.toString()
 
-        // Reset semua ellipse dulu - tampilkan semua
+        // Default visibility for ellipses and runner
         dayEllipses.forEach { it.visibility = View.VISIBLE }
         dayRunnerIcons.forEach { it.visibility = View.GONE }
 
         if (fullWeekProgressBar != null && runnerIcon != null) {
-            // Cek apakah streak aktif
-            val isStreakActive = currentStreak > 0 &&
-                    (lastCompletionDateStr == todayStr || isYesterday(lastCompletionDateStr, todayStr))
+            if (currentStreak > 0 && streakDaysStr.isNotEmpty()) {
+                val streakDays = streakDaysStr.split(",").mapNotNull { it.toIntOrNull() }.toSet()
 
-            if (isStreakActive && streakStartDateStr != null) {
-                // Tampilkan progress bar dan runner
-                fullWeekProgressBar.visibility = View.VISIBLE
-                runnerIcon.visibility = View.VISIBLE
+                // Cari hari pertama streak aktif dalam minggu ini (indeks terendah)
+                val minStreakDay = streakDays.minOrNull() ?: todayDayOfWeek
 
-                // Parse tanggal mulai streak
-                val startDate = sdf.parse(streakStartDateStr)!!
-                val startCalendar = Calendar.getInstance().apply { time = startDate }
+                if (streakDays.isNotEmpty()) {
+                    fullWeekProgressBar.visibility = View.VISIBLE
+                    runnerIcon.visibility = View.VISIBLE
 
-                // Hitung hari mulai streak dalam minggu ini
-                val streakStartDayOfWeek = when (startCalendar.get(Calendar.DAY_OF_WEEK)) {
-                    Calendar.MONDAY -> 0
-                    Calendar.TUESDAY -> 1
-                    Calendar.WEDNESDAY -> 2
-                    Calendar.THURSDAY -> 3
-                    Calendar.FRIDAY -> 4
-                    Calendar.SATURDAY -> 5
-                    Calendar.SUNDAY -> 6
-                    else -> 0
-                }
-
-                // FIX: Sembunyikan ellipse HANYA di rentang streak aktif
-                dayEllipses.forEachIndexed { index, ellipse ->
-                    // Sembunyikan ellipse dari hari mulai streak sampai hari ini (inklusif)
-                    // Gunakan <= untuk memastikan hari pertama juga tersembunyi
-                    ellipse.visibility = if (index >= streakStartDayOfWeek && index <= dayOfWeek) {
-                        View.GONE  // Sembunyikan di rentang aktif
-                    } else {
-                        View.VISIBLE  // Tampilkan di luar rentang
+                    // --- 1. Update Ellipses (Ellipses are GONE if the day is part of the streak) ---
+                    dayEllipses.forEachIndexed { index, ellipse ->
+                        ellipse.visibility = if (streakDays.contains(index)) {
+                            View.GONE // Elips disembunyikan untuk hari-hari dalam streak
+                        } else {
+                            View.VISIBLE
+                        }
                     }
-                }
 
-                // Hitung progress
-                val progressPerDay = 100
+                    // --- 2. Calculate Today's Progress (0-100) ---
+                    val progressPerDay = 100
+                    val totalDaysInWeek = 7
+                    val tasksToday = TaskRepository.getTasksByDate(todayCalendar)
+                    val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
 
-                // FIX: Progress bar dimulai dari posisi hari streak dimulai
-                val streakDays = dayOfWeek - streakStartDayOfWeek + 1
+                    val todayProgress = if (tasksToday.isNotEmpty()) {
+                        ((completedToday.size.toFloat() / tasksToday.size.toFloat()) * progressPerDay).toInt().coerceIn(0, 100)
+                    } else {
+                        // Jika tidak ada tugas, asumsikan 100% progres jika hari ini adalah bagian dari streak
+                        if (streakDays.contains(todayDayOfWeek)) progressPerDay else 0
+                    }
 
-                // Hitung progress hari ini
-                val tasksToday = TaskRepository.getTasksByDate(todayCalendar)
-                val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
-                val todayProgress = if (tasksToday.isNotEmpty()) {
-                    ((completedToday.size.toFloat() / tasksToday.size.toFloat()) * progressPerDay).toInt()
+                    // --- 3. Calculate Progress Bar Fill and Runner Position ---
+
+                    // Jarak progres dari hari awal streak (minStreakDay) hingga hari ini
+                    val daysInSegment = todayDayOfWeek - minStreakDay
+
+                    // Total progres *aktual* dalam segmen yang terlihat
+                    val segmentProgressLength = (daysInSegment * progressPerDay) + todayProgress
+
+                    // Offset awal untuk menggeser progress bar
+                    val startProgressValue = minStreakDay * progressPerDay
+
+                    fullWeekProgressBar.max = totalDaysInWeek * progressPerDay // Max 700
+
+                    // Mengatur Progress Bar untuk mengisi sepanjang segmen streak
+                    fullWeekProgressBar.progress = segmentProgressLength
+
+                    // --- 4. Menggeser Progress Bar & Posisi Runner ---
+                    val layoutDays = findViewById<View>(R.id.layoutDays)
+                    layoutDays.post {
+                        val parentContainer = layoutDays as? ViewGroup
+
+                        if (parentContainer != null && parentContainer.childCount > 0) {
+                            val parentWidth = parentContainer.getChildAt(0).width
+
+                            val trackStartMargin = 10.dp
+                            val trackWidth = parentWidth - (2 * trackStartMargin)
+                            val runnerIconHalfWidth = runnerIcon.width / 2
+
+                            // Geser Progress Bar ke kanan sesuai offset awal streak (minStreakDay)
+                            val offsetRatio = startProgressValue.toFloat() / 700f
+                            val progressBarTranslationX = (offsetRatio * trackWidth).toInt()
+
+                            fullWeekProgressBar.translationX = progressBarTranslationX.toFloat()
+
+                            // Posisi Runner dihitung dari ujung kiri PABRIK (posisi 0)
+                            val totalEndProgressValue = (todayDayOfWeek * progressPerDay) + todayProgress
+                            val totalProgressRatio = totalEndProgressValue.toFloat() / 700f
+
+                            // Runner Translation adalah dari ujung kiri track parent
+                            val runnerTranslationXCorrected = (totalProgressRatio * trackWidth).toInt() + trackStartMargin - runnerIconHalfWidth
+
+                            runnerIcon.translationX = runnerTranslationXCorrected.toFloat()
+                        } else {
+                            Log.e("HomeActivity", "layoutDays is not a valid ViewGroup or has no children.")
+                        }
+                    }
+
                 } else {
-                    0
+                    fullWeekProgressBar.visibility = View.INVISIBLE
+                    runnerIcon.visibility = View.GONE
+                    fullWeekProgressBar.translationX = 0f // Reset translation
                 }
-
-                // Total progress = hari-hari sebelumnya (penuh) + progress hari ini
-                val completedDaysProgress = (streakDays - 1) * progressPerDay
-                val totalProgress = completedDaysProgress + todayProgress
-
-                // Set progress bar
-                fullWeekProgressBar.max = 700  // 7 hari × 100
-                fullWeekProgressBar.progress = (streakStartDayOfWeek * progressPerDay) + totalProgress
-
-                // FIX: Posisikan runner icon berdasarkan progress aktual
-                val progressBarWidth = resources.displayMetrics.widthPixels - 40.dp
-                val runnerPosition = ((streakStartDayOfWeek * progressPerDay + totalProgress).toFloat() / 700f) * progressBarWidth
-                runnerIcon.translationX = runnerPosition
-
-            } else {
-                // Tidak ada streak aktif - sembunyikan progress bar dan runner
+            } else { // No streak yet or streak is 0
                 fullWeekProgressBar.visibility = View.INVISIBLE
                 runnerIcon.visibility = View.GONE
-                // Ellipse sudah di-reset ke VISIBLE di atas
+                fullWeekProgressBar.translationX = 0f // Reset translation
             }
         }
     }

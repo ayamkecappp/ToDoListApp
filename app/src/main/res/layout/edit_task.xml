@@ -30,7 +30,7 @@
         android:id="@+id/tvNewReminderTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Edit Reminder"
+        android:text="Edit Task"
         android:textColor="@color/black"
         android:textSize="22sp"
         android:fontFamily="@font/lexend"

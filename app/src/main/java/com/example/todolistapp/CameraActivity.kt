@@ -90,7 +90,10 @@ class CameraActivity : AppCompatActivity() {
                 it.setSurfaceProvider(previewView.surfaceProvider)
             }
 
-            imageCapture = ImageCapture.Builder().build()
+            // Atur target rotation pada ImageCapture
+            imageCapture = ImageCapture.Builder()
+                .setTargetRotation(previewView.display.rotation)
+                .build()
 
             try {
                 cameraProvider.unbindAll()
@@ -98,9 +101,9 @@ class CameraActivity : AppCompatActivity() {
                     this, cameraSelector, preview, imageCapture
                 )
 
-                // BARU: Terapkan efek mirroring pada live preview
+                // Terapkan efek mirroring pada live preview (untuk umpan balik selfie yang benar)
                 if (cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA) {
-                    previewView.scaleX = -1f // Mirroring untuk selfie
+                    previewView.scaleX = -1f // Mirroring untuk live preview
                 } else {
                     previewView.scaleX = 1f // Normal untuk kamera belakang
                 }
@@ -149,9 +152,11 @@ class CameraActivity : AppCompatActivity() {
         if (uri == null) return
         ivPreview.setImageURI(uri)
 
-        // BARU: Terapkan efek mirroring pada ImageView pratinjau
+        // BARU: Jika kamera depan, biarkan pratinjau hasil foto (ivPreview) menjadi mirror
+        // Jika ImageCapture (default) membalik gambar saat menyimpan,
+        // maka pratinjau hasil (ivPreview) harus dibalik agar terlihat mirror/selfie.
         if (cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA) {
-            ivPreview.scaleX = -1f // Mirroring untuk selfie
+            ivPreview.scaleX = -1f // Mirroring untuk pratinjau hasil foto kamera depan
         } else {
             ivPreview.scaleX = 1f // Normal untuk kamera belakang
         }

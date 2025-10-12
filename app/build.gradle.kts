@@ -75,6 +75,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     implementation("com.google.android.material:material:1.9.0")
     implementation("de.hdodenhof:circleimageview:3.1.0")
+    implementation("com.google.code.gson:gson:2.10.1")
 
     val cameraxVersion = "1.2.3"
     implementation("androidx.camera:camera-core:$cameraxVersion")

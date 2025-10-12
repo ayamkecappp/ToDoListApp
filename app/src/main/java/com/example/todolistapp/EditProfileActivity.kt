@@ -44,15 +44,20 @@ class EditProfileActivity : AppCompatActivity() {
                 try {
                     ivProfilePicture.setImageURI(currentImageUri)
 
+                    // PERBAIKAN: Hapus baris ini yang menyebabkan error pada file:// URI.
+                    // Izin sementara sudah diberikan melalui Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    // yang disetel di CameraActivity.
+                    /*
                     currentImageUri?.let {
                         contentResolver.takePersistableUriPermission(
                             it,
                             Intent.FLAG_GRANT_READ_URI_PERMISSION
                         )
                     }
+                    */
                     Toast.makeText(this, "Foto profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
-                    Log.e("EditProfile", "Error setting image URI from camera or taking permission: ${e.message}")
+                    Log.e("EditProfile", "Error setting image URI from camera: ${e.message}")
                     Toast.makeText(this, "Gagal memuat gambar dari kamera. Coba lagi.", Toast.LENGTH_SHORT).show()
                 }
             }

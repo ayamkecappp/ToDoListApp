@@ -1,29 +1,40 @@
 package com.example.todolistapp
 
-import android.app.Activity
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.content.Intent
+import android.os.Bundle
+import android.os.Handler
+import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import kotlin.math.hypot
+import android.app.Activity
+import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
-import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
+import android.widget.Button
+import android.util.Log
+import android.os.Looper
+import android.view.animation.AnimationUtils
 
 class TaskActivity : AppCompatActivity() {
 
@@ -35,36 +46,54 @@ class TaskActivity : AppCompatActivity() {
     private lateinit var calendarMain: HorizontalScrollView
     private lateinit var dateItemsContainer: LinearLayout
 
-    // Calendar yang mewakili TANGGAL SAAT INI (Today)
     private lateinit var currentCalendar: Calendar
-    // Calendar yang mewakili TANGGAL YANG DIPILIH (gunakan 'var' agar bisa diubah)
     private var selectedDate: Calendar = Calendar.getInstance()
 
-    // Flag untuk memastikan scroll awal hanya terjadi sekali
     private var hasScrolledToToday = false
 
     private val COLOR_ACTIVE_SELECTION = Color.parseColor("#283F6D")
     private val COLOR_DEFAULT_TEXT = Color.BLACK
     private val COLOR_SELECTED_TEXT = Color.WHITE
-    // NEW: Warna untuk dot
     private val COLOR_DOT_INDICATOR = Color.parseColor("#283F6D")
-    private val CORNER_RADIUS_DP = 16  // Corner radius untuk kelengkungan
-    private val BORDER_WIDTH_DP = 2    // Ketebalan border
-    private val BORDER_COLOR = Color.parseColor("#E0E0E0")  // Warna border abu-abu terang
+    private val CORNER_RADIUS_DP = 20
+    private val BORDER_WIDTH_DP = 2
+    private val BORDER_COLOR = Color.parseColor("#E0E0E0")
     private val ITEM_WIDTH_DP = 68
     private val NUM_DAYS_TO_SHOW = 365
 
     private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
+
+    // Streak SharedPreferences
+    private val PREFS_NAME = "TimyTimePrefs"
+    private val KEY_STREAK = "current_streak"
+    private val KEY_LAST_DATE = "last_completion_date"
+    private val KEY_STREAK_DAYS = "streak_days"
+
+    companion object {
+        const val RESULT_TASK_DELETED = 101
+    }
+
+    private val taskEditLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK || result.resultCode == RESULT_TASK_DELETED) {
+            TaskRepository.processTasksForMissed()
+            loadTasksForSelectedDate()
+            // Update kalender untuk refresh titik indikator
+            generateYearlyCalendarViews()
+        }
+    }
 
     private val addTaskLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             loadTasksForSelectedDate()
+            // Update kalender untuk menampilkan titik di tanggal baru
+            generateYearlyCalendarViews()
         }
     }
 
-    // Map untuk memetakan Priority ke Resource Color ID
     private val priorityColorMap = mapOf(
         "Low" to R.color.low_priority,
         "Medium" to R.color.medium_priority,
@@ -75,7 +104,9 @@ class TaskActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.task)
 
-        // --- Inisialisasi Views ---
+        // PENTING: Inisialisasi TaskRepository untuk load data tersimpan
+        TaskRepository.initialize(applicationContext)
+
         tasksContainer = findViewById(R.id.tasksContainer)
         tvNoActivity = findViewById(R.id.tvNoActivity)
         octoberText = findViewById(R.id.octoberText)
@@ -85,9 +116,7 @@ class TaskActivity : AppCompatActivity() {
         bottomNav = findViewById(R.id.bottomNav)
         bottomNav.itemIconTintList = null
 
-        // Inisialisasi Calendar untuk hari ini - REALTIME
         currentCalendar = Calendar.getInstance()
-        // Set selectedDate ke hari ini juga
         selectedDate = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
@@ -95,12 +124,10 @@ class TaskActivity : AppCompatActivity() {
             set(Calendar.MILLISECOND, 0)
         }
 
-        // --- Setup Kalender & Navigasi ---
         generateYearlyCalendarViews()
         setDynamicMonthYear()
         handleIncomingTaskIntent(intent)
 
-        // Scroll otomatis ke hari ini saat pertama kali membuka app
         calendarMain.post {
             if (!hasScrolledToToday) {
                 scrollToSelectedDate(smooth = false)
@@ -108,7 +135,6 @@ class TaskActivity : AppCompatActivity() {
             }
         }
 
-        // Listener Tombol
         findViewById<ImageView?>(R.id.btn_search)?.setOnClickListener {
             startActivity(Intent(this, SearchFilterActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -128,7 +154,6 @@ class TaskActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // Bottom Navigation
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
@@ -144,7 +169,6 @@ class TaskActivity : AppCompatActivity() {
             }
         }
 
-        // PENTING: Proses missed tasks di awal
         TaskRepository.processTasksForMissed()
         loadTasksForSelectedDate()
     }
@@ -157,13 +181,11 @@ class TaskActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
-        // Update currentCalendar ke waktu REALTIME sekarang
         currentCalendar = Calendar.getInstance()
 
         TaskRepository.processTasksForMissed()
         loadTasksForSelectedDate()
 
-        // Refresh tampilan kalender
         generateYearlyCalendarViews()
         setDynamicMonthYear()
 
@@ -172,13 +194,8 @@ class TaskActivity : AppCompatActivity() {
         }
     }
 
-    // ===========================================
-    // LOGIKA KALENDER
-    // ===========================================
-
-    // NEW: Function to create a small dot drawable
     private fun createDotDrawable(color: Int): GradientDrawable {
-        val size = 6.dp // Ukuran dot 6dp
+        val size = 6.dp
         return GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(color)
@@ -201,7 +218,6 @@ class TaskActivity : AppCompatActivity() {
             val month = SimpleDateFormat("MMM", Locale("in", "ID")).format(cal.time).lowercase()
             val dayOfWeek = SimpleDateFormat("EEE", Locale("en", "US")).format(cal.time)
 
-            // Tentukan apakah tanggal ini adalah tanggal yang dipilih
             val isSelected = (cal.get(Calendar.YEAR) == selectedDate.get(Calendar.YEAR) &&
                     cal.get(Calendar.DAY_OF_YEAR) == selectedDate.get(Calendar.DAY_OF_YEAR))
 
@@ -219,22 +235,21 @@ class TaskActivity : AppCompatActivity() {
     ): View {
         val context = this
 
-        // 1. Tentukan tanggal untuk pengecekan Task
         val dateForCheck = Calendar.getInstance().apply { timeInMillis = dayMillis }
         dateForCheck.set(Calendar.HOUR_OF_DAY, 0)
         dateForCheck.set(Calendar.MINUTE, 0)
         dateForCheck.set(Calendar.SECOND, 0)
         dateForCheck.set(Calendar.MILLISECOND, 0)
-        // Pengecekan Task
+
+        TaskRepository.processTasksForMissed()
         val hasTasks = TaskRepository.hasTasksOnDate(dateForCheck)
 
-        // Atur warna latar dan teks
         val backgroundColor = if (isSelected) COLOR_ACTIVE_SELECTION else Color.WHITE
         val textColor = if (isSelected) COLOR_SELECTED_TEXT else COLOR_DEFAULT_TEXT
 
         val containerLayoutParams = LinearLayout.LayoutParams(
             ITEM_WIDTH_DP.dp,
-            90.dp
+            70.dp
         ).apply {
             setMargins(4.dp, 0, 4.dp, 0)
         }
@@ -243,10 +258,9 @@ class TaskActivity : AppCompatActivity() {
             layoutParams = containerLayoutParams
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            // Background dengan border melengkung
             background = createRoundedBackgroundWithBorder(backgroundColor, isSelected)
             elevation = 4f
-            setPadding(6.dp, 10.dp, 6.dp, 10.dp)
+            setPadding(6.dp, 6.dp, 6.dp, 6.dp)
             tag = dayMillis
         }
 
@@ -254,10 +268,9 @@ class TaskActivity : AppCompatActivity() {
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        // 1. Month (okt)
         val monthText = TextView(context).apply {
             text = month
-            textSize = 10f
+            textSize = 12f
             typeface = ResourcesCompat.getFont(context, R.font.lexend)
             setTextColor(textColor)
             gravity = Gravity.CENTER_HORIZONTAL
@@ -265,10 +278,9 @@ class TaskActivity : AppCompatActivity() {
         }
         container.addView(monthText)
 
-        // 2. Day of Week (Sat/Sun)
         val dayOfWeekText = TextView(context).apply {
             text = dayOfWeek
-            textSize = 12f
+            textSize = 11f
             typeface = ResourcesCompat.getFont(context, R.font.lexend)
             setTextColor(textColor)
             gravity = Gravity.CENTER_HORIZONTAL
@@ -276,21 +288,18 @@ class TaskActivity : AppCompatActivity() {
         }
         container.addView(dayOfWeekText)
 
-        // 3. Day of Month (4/5)
         val dayNumberText = TextView(context).apply {
             text = dayOfMonth.toString()
-            textSize = 22f
+            textSize = 15f
             val font = ResourcesCompat.getFont(context, R.font.lexend)
             typeface = Typeface.create(font, Typeface.BOLD)
             setTextColor(textColor)
             gravity = Gravity.CENTER_HORIZONTAL
             layoutParams = textLayoutParams
-            // Hapus padding bawah default agar titik bisa diletakkan lebih dekat
-            setPadding(0, 0, 0, 2.dp)
+            setPadding(0, 0, 0, 1.dp)
         }
         container.addView(dayNumberText)
 
-        // 4. NEW: Dot Indicator
         if (hasTasks) {
             val dotColor = if (isSelected) Color.WHITE else COLOR_DOT_INDICATOR
             val dotView = View(context).apply {
@@ -306,14 +315,12 @@ class TaskActivity : AppCompatActivity() {
             container.addView(dotView)
         }
 
-
         container.setOnClickListener {
             val newSelectedMillis = it.tag as Long
 
             val newSelectedDate = selectedDate.clone() as Calendar
             newSelectedDate.timeInMillis = newSelectedMillis
 
-            // Atur waktu ke 00:00:00
             newSelectedDate.set(Calendar.HOUR_OF_DAY, 0)
             newSelectedDate.set(Calendar.MINUTE, 0)
             newSelectedDate.set(Calendar.SECOND, 0)
@@ -338,13 +345,11 @@ class TaskActivity : AppCompatActivity() {
         startCal.set(Calendar.SECOND, 0)
         startCal.set(Calendar.MILLISECOND, 0)
 
-        // Hitung selisih hari dari startCal ke selectedDate
         val diffMillis = selectedDate.timeInMillis - startCal.timeInMillis
         val daysDifference = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
 
         val itemWidthPx = ITEM_WIDTH_DP.dp + 8.dp
 
-        // Hitung posisi scroll agar tanggal berada di tengah layar
         val centerOffset = (calendarMain.width / 2) - (ITEM_WIDTH_DP.dp / 2)
         val scrollPosition = (daysDifference * itemWidthPx) - centerOffset
 
@@ -354,10 +359,6 @@ class TaskActivity : AppCompatActivity() {
             calendarMain.scrollTo(scrollPosition.coerceAtLeast(0), 0)
         }
     }
-
-    // ===========================================
-    // FUNGSI UMUM LAINNYA
-    // ===========================================
 
     private fun loadTasksForSelectedDate() {
         tasksContainer.removeAllViews()
@@ -381,7 +382,6 @@ class TaskActivity : AppCompatActivity() {
         octoberText.text = sdf.format(selectedDate.time)
     }
 
-    // PERBAIKAN: Background dengan border melengkung
     private fun createRoundedBackgroundWithBorder(fillColor: Int, isSelected: Boolean): GradientDrawable {
         val cornerRadiusPx = CORNER_RADIUS_DP.dp.toFloat()
         val borderWidthPx = BORDER_WIDTH_DP.dp
@@ -391,7 +391,6 @@ class TaskActivity : AppCompatActivity() {
             setColor(fillColor)
             cornerRadius = cornerRadiusPx
 
-            // Tambahkan border hanya untuk kotak yang tidak dipilih
             if (!isSelected) {
                 setStroke(borderWidthPx, BORDER_COLOR)
             }
@@ -430,11 +429,149 @@ class TaskActivity : AppCompatActivity() {
         }
     }
 
+    private fun showStreakSuccessDialog(newStreak: Int) {
+        val layoutResId = resources.getIdentifier("dialog_streak_success", "layout", packageName)
+
+        if (layoutResId == 0) {
+            Log.e("TaskActivity", "FATAL: Layout 'dialog_streak_success.xml' not found. Dialog cannot be shown.")
+            return
+        }
+
+        try {
+            val dialogView = LayoutInflater.from(this).inflate(layoutResId, null)
+
+            val tvStreakMessage = dialogView.findViewById<TextView>(R.id.tv_streak_message)
+            val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
+
+            if (tvStreakMessage == null || btnOk == null) {
+                Log.e("TaskActivity", "FATAL: Views inside dialog_streak_success not found (tv_streak_message or btn_ok). Check IDs.")
+                return
+            }
+
+            tvStreakMessage.text = "$newStreak streak"
+            tvStreakMessage.setTextColor(Color.parseColor("#FFC107"))
+
+            val alertDialog = AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create()
+
+            alertDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+            btnOk.setOnClickListener {
+                alertDialog.dismiss()
+            }
+
+            alertDialog.show()
+        } catch (e: Exception) {
+            Log.e("TaskActivity", "Error showing streak dialog: ${e.message}", e)
+        }
+    }
+
+    private fun updateStreakOnTaskComplete(): Int {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val todayStr = sdf.format(Date())
+        val todayCalendar = Calendar.getInstance()
+
+        val oldStreak = prefs.getInt(KEY_STREAK, 0)
+        val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+
+        val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
+        val hasCompletedToday = completedToday.isNotEmpty()
+
+        var newStreak = oldStreak
+        var shouldUpdate = false
+        var streakIncreased = false
+
+        when {
+            lastDateStr == null -> {
+                if (hasCompletedToday) {
+                    newStreak = 1
+                    shouldUpdate = true
+                    streakIncreased = true
+                }
+            }
+
+            lastDateStr == todayStr -> {
+                // Streak tidak bertambah
+            }
+
+            isYesterday(lastDateStr, todayStr) -> {
+                if (hasCompletedToday) {
+                    newStreak = oldStreak + 1
+                    shouldUpdate = true
+                    streakIncreased = true
+                }
+            }
+
+            else -> {
+                if (hasCompletedToday) {
+                    newStreak = 1
+                    shouldUpdate = true
+                    streakIncreased = true
+                } else {
+                    newStreak = 0
+                    shouldUpdate = true
+                }
+            }
+        }
+
+        if (shouldUpdate) {
+            val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+            val currentDay = getCurrentDayOfWeek()
+            val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+
+            val newStreakDays = if (newStreak > oldStreak) {
+                if (!existingDays.contains(currentDay)) {
+                    if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
+                } else {
+                    streakDays
+                }
+            } else if (newStreak == 1) {
+                currentDay.toString()
+            } else {
+                ""
+            }
+
+            prefs.edit().apply {
+                putInt(KEY_STREAK, newStreak)
+                putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
+                putString(KEY_STREAK_DAYS, newStreakDays)
+                apply()
+            }
+        }
+
+        return if (streakIncreased) newStreak else oldStreak
+    }
+
+    private fun getCurrentDayOfWeek(): Int {
+        val calendar = Calendar.getInstance()
+        return when (calendar.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> 0
+            Calendar.TUESDAY -> 1
+            Calendar.WEDNESDAY -> 2
+            Calendar.THURSDAY -> 3
+            Calendar.FRIDAY -> 4
+            Calendar.SATURDAY -> 5
+            Calendar.SUNDAY -> 6
+            else -> 0
+        }
+    }
+
+    private fun isYesterday(lastDateStr: String?, todayStr: String): Boolean {
+        if (lastDateStr == null) return false
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+        val yesterdayStr = sdf.format(yesterday.time)
+        return lastDateStr == yesterdayStr
+    }
+
     private fun addNewTaskToUI(task: Task) {
         val context = this
         val marginPx = 16.dp
+        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val oldStreak = sharedPrefs.getInt(KEY_STREAK, 0)
 
-        // --- Container Utama Vertikal ---
         val mainContainer = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -444,7 +581,6 @@ class TaskActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
         }
 
-        // --- 1. Item Tugas ---
         val taskItem = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 80.dp
@@ -456,7 +592,6 @@ class TaskActivity : AppCompatActivity() {
             setPadding(16.dp, 12.dp, 16.dp, 12.dp)
         }
 
-        // Checklist/Status
         val checklistBox = View(context).apply {
             layoutParams = LinearLayout.LayoutParams(24.dp, 24.dp).apply {
                 marginEnd = 16.dp
@@ -466,9 +601,18 @@ class TaskActivity : AppCompatActivity() {
             setOnClickListener {
                 val success = TaskRepository.completeTask(task.id)
                 if (success) {
-                    showConfirmationDialog(task.title, "selesai")
-                    (mainContainer.parent as? ViewGroup)?.removeView(mainContainer)
-                    loadTasksForSelectedDate()
+                    val newStreak = updateStreakOnTaskComplete()
+                    showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
+
+                    val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
+                    mainContainer.startAnimation(slideRight)
+
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        tasksContainer.removeView(mainContainer)
+                        loadTasksForSelectedDate()
+                        // Update kalender untuk menghapus titik jika tidak ada task
+                        generateYearlyCalendarViews()
+                    }, 300)
                 } else {
                     Toast.makeText(context, "Gagal menandai tugas selesai.", Toast.LENGTH_SHORT).show()
                 }
@@ -476,7 +620,6 @@ class TaskActivity : AppCompatActivity() {
         }
         taskItem.addView(checklistBox)
 
-        // Container Judul & Ikon Prioritas
         val titleAndPriorityContainer = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -485,7 +628,6 @@ class TaskActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        // Title
         val taskTitle = TextView(context).apply {
             text = task.title
             textSize = 16f
@@ -494,7 +636,6 @@ class TaskActivity : AppCompatActivity() {
         }
         titleAndPriorityContainer.addView(taskTitle)
 
-        // Ikon Prioritas
         if (task.priority != "None") {
             val colorResId = priorityColorMap[task.priority] ?: R.color.dark_blue
             val colorInt = ContextCompat.getColor(context, colorResId)
@@ -511,7 +652,6 @@ class TaskActivity : AppCompatActivity() {
             titleAndPriorityContainer.addView(exclamationIcon)
         }
 
-        // Container Detail (Waktu & Kategori)
         val detailWrapper = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f
@@ -521,12 +661,11 @@ class TaskActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
         }
 
-        // Waktu
         val taskTime = TextView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
-            text = task.time
+            text = task.time.ifEmpty { "" }
             textSize = 12f
             setTextColor(Color.parseColor("#283F6D"))
             typeface = ResourcesCompat.getFont(context, R.font.lexend)
@@ -534,12 +673,11 @@ class TaskActivity : AppCompatActivity() {
         }
         detailWrapper.addView(taskTime)
 
-        // Kategori
         val taskCategory = TextView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
-            text = task.category
+            text = task.category.ifEmpty { "" }
             textSize = 12f
             setTextColor(Color.parseColor("#283F6D"))
             typeface = ResourcesCompat.getFont(context, R.font.lexend)
@@ -550,7 +688,6 @@ class TaskActivity : AppCompatActivity() {
         taskItem.addView(titleAndPriorityContainer)
         taskItem.addView(detailWrapper)
 
-        // Arrow
         val arrowRight = ImageView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -566,7 +703,6 @@ class TaskActivity : AppCompatActivity() {
 
         mainContainer.addView(taskItem)
 
-        // --- 2. Tombol Aksi ---
         val actionButtonsContainer = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -615,23 +751,33 @@ class TaskActivity : AppCompatActivity() {
         val flowTimerButton = createActionButton(R.drawable.ic_alarm, "Flow Timer") {
             val intent = Intent(context, FlowTimerActivity::class.java).apply {
                 putExtra(FlowTimerActivity.EXTRA_TASK_NAME, task.title)
+                putExtra(FlowTimerActivity.EXTRA_FLOW_DURATION, task.flowDurationMillis)
             }
             startActivity(intent)
         }
 
         val editButton = createActionButton(R.drawable.ic_edit, "Edit") {
             val intent = Intent(context, EditTaskActivity::class.java).apply {
-                putExtra("EXTRA_TASK_ID", task.id)
+                putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
             }
-            startActivity(intent)
+            taskEditLauncher.launch(intent)
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
         val deleteButton = createActionButton(R.drawable.ic_trash, "Delete") {
             val success = TaskRepository.deleteTask(task.id)
             if (success) {
-                showConfirmationDialog(task.title, "dihapus")
-                loadTasksForSelectedDate()
+                showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1)
+
+                val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
+                mainContainer.startAnimation(slideRight)
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    tasksContainer.removeView(mainContainer)
+                    loadTasksForSelectedDate()
+                    // Update kalender untuk menghapus titik jika tidak ada task
+                    generateYearlyCalendarViews()
+                }, 300)
             } else {
                 Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
             }
@@ -643,7 +789,6 @@ class TaskActivity : AppCompatActivity() {
 
         mainContainer.addView(actionButtonsContainer)
 
-        // --- 3. Logika Klik untuk Expand/Collapse ---
         taskItem.setOnClickListener {
             if (actionButtonsContainer.visibility == View.GONE) {
                 actionButtonsContainer.visibility = View.VISIBLE
@@ -661,7 +806,7 @@ class TaskActivity : AppCompatActivity() {
         tvNoActivity.visibility = if (taskCount == 0) View.VISIBLE else View.GONE
     }
 
-    private fun showConfirmationDialog(taskTitle: String, action: String) {
+    private fun showConfirmationDialogWithStreakCheck(taskTitle: String, action: String, newStreak: Int, oldStreak: Int) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_save_success, null)
 
         val dialog = AlertDialog.Builder(this)
@@ -687,6 +832,10 @@ class TaskActivity : AppCompatActivity() {
 
         val dismissListener = View.OnClickListener {
             dialog.dismiss()
+
+            if (action == "selesai" && newStreak > oldStreak) {
+                showStreakSuccessDialog(newStreak)
+            }
         }
 
         btnConfirm1.text = "OK"
