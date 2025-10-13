@@ -11,6 +11,11 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.facebook.login.LoginManager
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.FirebaseAuth
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -20,80 +25,72 @@ class SettingsActivity : AppCompatActivity() {
     private val BACK_TRANSITION_IN = R.anim.slide_in_left
     private val BACK_TRANSITION_OUT = R.anim.slide_out_right
 
+    private lateinit var auth: FirebaseAuth
+    private lateinit var googleSignInClient: GoogleSignInClient
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.settings)
 
+        // Inisialisasi Firebase Auth
+        auth = FirebaseAuth.getInstance()
+
+        // Konfigurasi Google Sign-In
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+        // --- PENGATURAN ONCLICK LISTENER ---
+
         // 1. Tombol Kembali
-        val backArrow = findViewById<ImageView>(R.id.ivBackArrow)
-        backArrow.setOnClickListener {
+        findViewById<ImageView>(R.id.ivBackArrow).setOnClickListener {
             finish()
         }
 
-        // --- SECTION GENERAL ---
-
-        // Streak Badge -> StreakBadgeActivity (rectangleSettings1)
-        val rectStreakBadge = findViewById<View>(R.id.rectangleSettings1)
-        rectStreakBadge.setOnClickListener {
-            val intent = Intent(this, StreakBadgeActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(FORWARD_TRANSITION_IN, FORWARD_TRANSITION_OUT)
+        // Streak Badge
+        findViewById<View>(R.id.rectangleSettings1).setOnClickListener {
+            startActivityWithTransition(StreakBadgeActivity::class.java)
         }
 
-        // --- SECTION ACCOUNT ---
-
-        // Log Out -> Menampilkan Custom Dialog Konfirmasi (rectangleSettings6)
-        val rectLogOut = findViewById<View>(R.id.rectangleSettings6)
-        rectLogOut.setOnClickListener {
+        // Log Out -> Menampilkan Custom Dialog Konfirmasi
+        findViewById<View>(R.id.rectangleSettings6).setOnClickListener {
+            showCustomLogoutDialog()
+        }
+        // Anda juga bisa memasang listener di TextView jika perlu
+        findViewById<TextView>(R.id.tvLogOut).setOnClickListener {
             showCustomLogoutDialog()
         }
 
-        // Delete Account (Placeholder Toast) (rectangleSettings7)
-        val rectDeleteAccount = findViewById<View>(R.id.rectangleSettings7)
-        rectDeleteAccount.setOnClickListener {
+        // Delete Account (Placeholder)
+        findViewById<View>(R.id.rectangleSettings7).setOnClickListener {
             Toast.makeText(this, "Fungsionalitas Hapus Akun dipicu.", Toast.LENGTH_SHORT).show()
         }
 
-        // --- SECTION SUPPORT ---
-
-        // Report a Bug -> ReportBugActivity (rectangleSettings8)
-        val rectReportBug = findViewById<View>(R.id.rectangleSettings8)
-        rectReportBug.setOnClickListener {
-            val intent = Intent(this, ReportBugActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(FORWARD_TRANSITION_IN, FORWARD_TRANSITION_OUT)
+        // Report a Bug
+        findViewById<View>(R.id.rectangleSettings8).setOnClickListener {
+            startActivityWithTransition(ReportBugActivity::class.java)
         }
 
-        // Send Feedback -> SendFeedbackActivity (rectangleSettings9)
-        val rectSendFeedback = findViewById<View>(R.id.rectangleSettings9)
-        rectSendFeedback.setOnClickListener {
-            // Memastikan navigasi ke SendFeedbackActivity
-            val intent = Intent(this, SendFeedbackActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(FORWARD_TRANSITION_IN, FORWARD_TRANSITION_OUT)
+        // Send Feedback
+        findViewById<View>(R.id.rectangleSettings9).setOnClickListener {
+            startActivityWithTransition(SendFeedbackActivity::class.java)
         }
 
-        // --- SECTION MORE ---
-
-        // About Us -> AboutUsActivity (rectangleSettings10)
-        val rectAboutUs = findViewById<View>(R.id.rectangleSettings10)
-        rectAboutUs.setOnClickListener {
-            val intent = Intent(this, AboutUsActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(FORWARD_TRANSITION_IN, FORWARD_TRANSITION_OUT)
+        // About Us
+        findViewById<View>(R.id.rectangleSettings10).setOnClickListener {
+            startActivityWithTransition(AboutUsActivity::class.java)
         }
 
-        // Privacy Policy -> PrivacyPolicyActivity (rectangleSettings11)
-        val rectPrivacyPolicy = findViewById<View>(R.id.rectangleSettings11)
-        rectPrivacyPolicy.setOnClickListener {
-            val intent = Intent(this, PrivacyPolicyActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(FORWARD_TRANSITION_IN, FORWARD_TRANSITION_OUT)
+        // Privacy Policy
+        findViewById<View>(R.id.rectangleSettings11).setOnClickListener {
+            startActivityWithTransition(PrivacyPolicyActivity::class.java)
         }
     }
 
     /**
-     * Menampilkan custom dialog konfirmasi Logout menggunakan ID yang benar dari dialog_save_success.xml.
+     * Menampilkan custom dialog konfirmasi Logout.
      */
     private fun showCustomLogoutDialog() {
         val dialog = Dialog(this)
@@ -102,29 +99,23 @@ class SettingsActivity : AppCompatActivity() {
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.setCancelable(true)
 
-        // Menggunakan ID yang benar dari dialog_save_success.xml
         val tvMessage = dialog.findViewById<TextView>(R.id.tvMessageTitle)
         val btnYes = dialog.findViewById<TextView>(R.id.btnView)
         val btnNo = dialog.findViewById<TextView>(R.id.btnIgnore)
 
-        // Mengatur konten dialog untuk konfirmasi Logout
         tvMessage?.text = "Apakah Anda yakin ingin keluar dari akun?"
         tvMessage?.setTextColor(resources.getColor(R.color.dark_blue, theme))
 
-        // Mengatur teks tombol
         btnYes?.text = "Ya"
         btnNo?.text = "Tidak"
-
         btnYes?.setTextColor(resources.getColor(R.color.dark_blue, theme))
         btnNo?.setTextColor(resources.getColor(R.color.dark_blue, theme))
 
-        // Listener untuk tombol Ya (Logout)
         btnYes?.setOnClickListener {
             dialog.dismiss()
-            performLogout()
+            performLogout() // Panggil fungsi logout yang sudah benar
         }
 
-        // Listener untuk tombol Tidak (Batal)
         btnNo?.setOnClickListener {
             dialog.dismiss()
         }
@@ -133,16 +124,32 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     /**
-     * Menjalankan proses logout dan menavigasi ke LoginActivity.
+     * Menjalankan proses logout dari semua layanan dan kembali ke LoginActivity.
      */
     private fun performLogout() {
-        // Navigasi ke LoginActivity dan hapus semua Activity sebelumnya
-        val intent = Intent(this, LoginActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        // 1. Logout dari Firebase
+        auth.signOut()
+
+        // 2. Logout dari Google dan Facebook
+        googleSignInClient.signOut().addOnCompleteListener(this) {
+            // Logout dari Facebook (dijalankan setelah Google selesai)
+            LoginManager.getInstance().logOut()
+
+            // 3. Arahkan kembali ke LoginActivity
+            val intent = Intent(this, LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
+            finish()
         }
-        startActivity(intent)
     }
 
+    // Fungsi bantuan untuk memulai Activity dengan transisi
+    private fun <T> startActivityWithTransition(activityClass: Class<T>) {
+        val intent = Intent(this, activityClass)
+        startActivity(intent)
+        overridePendingTransition(FORWARD_TRANSITION_IN, FORWARD_TRANSITION_OUT)
+    }
 
     override fun finish() {
         super.finish()

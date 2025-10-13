@@ -20,6 +20,14 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var googleSignInHandler: GoogleSignInHandler
     private lateinit var facebookLoginHandler: FacebookLoginHandler
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        // Teruskan hasil login ke FacebookLoginHandler
+        facebookLoginHandler.onActivityResult(requestCode, resultCode, data)
+
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login)
@@ -64,6 +72,8 @@ class LoginActivity : AppCompatActivity() {
                 .setDuration(500)
                 .start()
         }
+
+
 
         loginButton.setOnClickListener {
             val email = emailEditText.text.toString().trim()

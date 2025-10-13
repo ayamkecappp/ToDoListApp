@@ -8,7 +8,7 @@
     <string name="some_id2">3</string>
     <string name="timy_time">Timy Time</string>
         <string name="signup_prompt"><![CDATA[Don\'t have account? <b>Sign Up</b>]]></string>
-    <string name="facebook_app_id">YOUR_FACEBOOK_APP_ID</string>
-    <string name="fb_login_protocol_scheme">806597808475801</string>
+    <string name="facebook_app_id">1369267061292795</string>
+    <string name="fb_login_protocol_scheme">1369267061292795</string>
     <string name="facebook_client_token">f98579a831896133862f8957ada2dcf2</string>
 </resources>
