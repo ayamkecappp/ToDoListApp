@@ -1,28 +1,22 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
-    ```
-    <!-- Layer 1: Gradient dari atas (putih) ke tengah (biru muda) -->
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:startColor="#FFFFFF"
                 android:endColor="#CADEF7"
-                android:angle="270"/> <!-- atas ke bawah -->
-            <corners
-                android:bottomLeftRadius="30dp"
-                android:bottomRightRadius="30dp"/>
+                android:angle="270"/> <corners
+            android:bottomLeftRadius="30dp"
+            android:bottomRightRadius="30dp"/>
         </shape>
     </item>
 
-    <!-- Layer 2: Solid biru bagian bawah -->
-    <item android:top="490dp"> <!-- atur nilai top agar pas posisinya -->
-        <shape android:shape="rectangle">
-            <solid android:color="#9AC1F0"/>
-            <corners
-                android:bottomLeftRadius="30dp"
-                android:bottomRightRadius="30dp"/>
-        </shape>
+    <item android:top="490dp"> <shape android:shape="rectangle">
+        <solid android:color="#9AC1F0"/>
+        <corners
+            android:bottomLeftRadius="30dp"
+            android:bottomRightRadius="30dp"/>
+    </shape>
     </item>
-    ```
 
 </layer-list>

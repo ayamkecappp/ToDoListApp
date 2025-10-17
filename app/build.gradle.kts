@@ -49,11 +49,13 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation("com.google.guava:guava:31.0.1-android")
 
     // --- FIREBASE (Authentication) ---
     // Firebase BoM (Bill of Materials) - Mengelola versi library Firebase secara otomatis
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
 
     // --- LAYANAN LOGIN PIHAK KETIGA ---
     // Google Sign-In

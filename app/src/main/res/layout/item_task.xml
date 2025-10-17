@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="8dp"
+    android:background="@drawable/bg_task"
+    android:elevation="4dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/taskItemContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <CheckBox
+            android:id="@+id/checkboxTask"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_checklist"
+            android:button="@null"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+
+        <TextView
+            android:id="@+id/tvTaskTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:fontFamily="@font/lexend"
+            android:textColor="@color/dark_blue"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@+id/tvTaskTime"
+            app:layout_constraintStart_toEndOf="@id/checkboxTask"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Design Task Management" />
+
+        <ImageView
+            android:id="@+id/ivPriority"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="8dp"
+            android:src="@drawable/ic_exclamation_circle"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/tvTaskTitle"
+            app:layout_constraintStart_toEndOf="@id/tvTaskTitle"
+            app:layout_constraintTop_toTopOf="@id/tvTaskTitle"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tvTaskTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:fontFamily="@font/lexend"
+            android:textColor="#919CA8"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toStartOf="@id/ivArrowToggle"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="12:00 - 13:00" />
+
+        <TextView
+            android:id="@+id/tvTaskCategory"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/lexend"
+            android:textColor="#919CA8"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="@id/tvTaskTime"
+            app:layout_constraintTop_toBottomOf="@id/tvTaskTime"
+            tools:text="Home" />
+
+        <ImageView
+            android:id="@+id/ivArrowToggle"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_panah_bawah"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <LinearLayout
+        android:id="@+id/actionButtonsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingBottom="12dp"
+        android:paddingHorizontal="16dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <Button
+            android:id="@+id/btnFlowTimer"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:drawableTop="@drawable/ic_alarm"
+            android:fontFamily="@font/lexend"
+            android:text="Flow Timer"
+            android:textAllCaps="false"
+            android:textColor="@color/dark_blue" />
+
+        <Button
+            android:id="@+id/btnEdit"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:drawableTop="@drawable/ic_edit"
+            android:fontFamily="@font/lexend"
+            android:text="Edit"
+            android:textAllCaps="false"
+            android:textColor="@color/dark_blue" />
+
+        <Button
+            android:id="@+id/btnDelete"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:drawableTop="@drawable/ic_trash"
+            android:fontFamily="@font/lexend"
+            android:text="Delete"
+            android:textAllCaps="false"
+            android:textColor="@color/dark_blue" />
+    </LinearLayout>
+
+</LinearLayout>

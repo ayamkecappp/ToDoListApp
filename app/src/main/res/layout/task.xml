@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#f0f4f9">
+    android:background="#f0f4f9"
+    tools:context=".TaskActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/headerText"
-        android:layout_width="412dp"
+        android:layout_width="0dp"
         android:layout_height="252dp"
         android:background="@drawable/bg_card"
         app:layout_constraintEnd_toEndOf="parent"
@@ -37,11 +39,11 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="112dp"
             android:fontFamily="@font/lexend"
-            android:text=""
             android:textColor="#000000"
             android:textSize="20sp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="17 October 2025" />
 
         <ImageView
             android:id="@+id/btn_calendar"
@@ -67,7 +69,7 @@
 
         <HorizontalScrollView
             android:id="@+id/calendar_main"
-            android:layout_width="408dp"
+            android:layout_width="0dp"
             android:layout_height="73dp"
             android:layout_marginTop="12dp"
             android:clipToPadding="false"
@@ -83,39 +85,33 @@
                 android:layout_height="match_parent"
                 android:gravity="center_vertical"
                 android:orientation="horizontal" />
-
         </HorizontalScrollView>
-
-
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <TextView
         android:id="@+id/myReminderText"
-        android:layout_width="147dp"
-        android:layout_height="30dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:fontFamily="@font/lexend"
         android:text="My Reminder"
         android:textColor="#14142A"
         android:textSize="20sp"
-        android:fontFamily="@font/lexend"
-        android:textStyle="normal"
-        app:layout_constraintTop_toBottomOf="@id/headerText"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="24dp"
-        android:layout_marginStart="16dp"/>
-
+        app:layout_constraintTop_toBottomOf="@id/headerText" />
 
     <RelativeLayout
         android:id="@+id/reminderContainer"
         android:layout_width="127dp"
         android:layout_height="26dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="16dp"
         android:background="@drawable/bg_new_reminder_with_add"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        app:layout_constraintTop_toBottomOf="@id/headerText"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp"
-        android:layout_marginEnd="16dp">
-
+        app:layout_constraintTop_toBottomOf="@id/headerText">
 
         <TextView
             android:id="@+id/tvNewReminder"
@@ -123,63 +119,52 @@
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
             android:layout_marginStart="25dp"
+            android:fontFamily="@font/lexend"
             android:text="New Reminder"
             android:textColor="#FFFFFF"
-            android:textSize="10dp"
-            android:fontFamily="@font/lexend"
-            android:textStyle="normal" />
+            android:textSize="10sp" />
     </RelativeLayout>
 
-    <ScrollView
-        android:id="@+id/task_scrollview"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/tasksRecyclerView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="16dp"
-        app:layout_constraintTop_toBottomOf="@id/myReminderText"
+        android:clipToPadding="false"
+        android:paddingBottom="8dp"
         app:layout_constraintBottom_toTopOf="@id/bottomNav"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <LinearLayout
-            android:id="@+id/tasksContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-        </LinearLayout>
-
-    </ScrollView>
+        app:layout_constraintTop_toBottomOf="@id/myReminderText"
+        tools:listitem="@layout/item_task" />
 
     <TextView
         android:id="@+id/tvNoActivity"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="You don't have remainder"
+        android:fontFamily="@font/lexend"
+        android:text="You don't have any reminders"
         android:textColor="#919ca8"
         android:textSize="18sp"
-        android:fontFamily="@font/lexend"
-        app:layout_constraintBottom_toBottomOf="@id/task_scrollview"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/bottomNav"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@id/task_scrollview"
-        android:visibility="gone"
-        />
+        app:layout_constraintTop_toBottomOf="@id/myReminderText" />
 
-    <!-- Bottom navigation -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
+        style="@style/CustomBottomNav"
         android:layout_width="match_parent"
         android:layout_height="93dp"
-        app:itemIconSize="40dp"
         android:layout_gravity="bottom"
-        style="@style/CustomBottomNav"
         android:background="@drawable/bg_bottom_nav"
-        app:menu="@menu/menu_bottom"
-        app:labelVisibilityMode="unlabeled"
+        app:itemIconSize="40dp"
         app:itemRippleColor="@android:color/transparent"
+        app:labelVisibilityMode="unlabeled"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
+        app:menu="@menu/menu_bottom" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

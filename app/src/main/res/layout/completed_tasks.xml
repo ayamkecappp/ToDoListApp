@@ -2,7 +2,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/settings"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#FFFFFF"
@@ -56,25 +56,24 @@
         android:paddingTop="120dp"
         android:clipChildren="false">
 
-        <androidx.core.widget.NestedScrollView
-            android:id="@+id/tasks_scroll_view"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvCompletedTasks"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginStart="16dp"
+            android:layout_marginTop="20dp"
             android:layout_marginEnd="16dp"
             android:layout_marginBottom="20dp"
-            android:layout_marginTop="20dp"
             android:background="@drawable/bg_settings"
-            app:layout_constraintTop_toTopOf="parent"
+            android:clipToPadding="false"
+            android:padding="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-            <LinearLayout
-                android:id="@+id/tasks_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"/>
-        </androidx.core.widget.NestedScrollView>
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
+            tools:listitem="@layout/item_task" />
 
         <LinearLayout
             android:id="@+id/empty_state_container"
@@ -103,7 +102,6 @@
                 android:layout_marginTop="-60dp"/>
         </LinearLayout>
 
-        <!-- Timy di dalam content_container -->
         <ImageView
             android:id="@+id/ivTimyTasks"
             android:layout_width="wrap_content"
