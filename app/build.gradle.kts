@@ -114,7 +114,7 @@ dependencies {
     // Gson (untuk konversi objek Java ke JSON dan sebaliknya)
     implementation("com.google.code.gson:gson:2.10.1")
     // CameraX (untuk fungsionalitas kamera)
-    val cameraxVersion = "1.2.3"
+
     implementation("androidx.camera:camera-core:$cameraxVersion")
     implementation("androidx.camera:camera-camera2:$cameraxVersion")
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
