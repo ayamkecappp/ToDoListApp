@@ -18,17 +18,19 @@ import java.util.*
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
 import androidx.appcompat.app.AlertDialog
-import androidx.core.content.ContextCompat
 import android.view.LayoutInflater
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import android.graphics.Typeface
 import android.widget.Toast
 import android.app.Dialog
 import android.view.Window
-import android.view.animation.AnimationUtils
-import android.content.Context
 import android.animation.AnimatorListenerAdapter
 import android.animation.Animator
+import android.graphics.Typeface
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import androidx.core.content.ContextCompat
+import android.content.Context
 
 class CalendarActivity : AppCompatActivity() {
 
@@ -53,7 +55,6 @@ class CalendarActivity : AppCompatActivity() {
         "High" to R.color.high_priority
     )
 
-    // Streak SharedPreferences (sama seperti TaskActivity)
     private val PREFS_NAME = "TimyTimePrefs"
     private val KEY_STREAK = "current_streak"
     private val KEY_LAST_DATE = "last_completion_date"
@@ -73,10 +74,7 @@ class CalendarActivity : AppCompatActivity() {
         if (result.resultCode == Activity.RESULT_OK) {
             val taskIntent = Intent(this, TaskActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                result.data?.let { data ->
-                    putExtras(data.extras ?: Bundle())
-                }
-                putExtra("SHOULD_ADD_TASK", true)
+                putExtra("SHOULD_REFRESH_TASK", true)
             }
             startActivity(taskIntent)
         }
@@ -85,6 +83,8 @@ class CalendarActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.calendar)
+
+        runBlocking { TaskRepository.updateMissedTasks() }
 
         monthText = findViewById(R.id.month_text)
         calendarGrid = findViewById(R.id.calendar_grid)
@@ -110,7 +110,9 @@ class CalendarActivity : AppCompatActivity() {
 
         addReminderButton.setOnClickListener {
             val intent = Intent(this, AddTaskActivity::class.java).apply {
-                putExtra(EXTRA_SELECTED_DATE_MILLIS, selectedDate.timeInMillis)
+                val selectedDayStart = selectedDate.clone() as Calendar
+                selectedDayStart.set(Calendar.HOUR_OF_DAY, 12)
+                putExtra(EXTRA_SELECTED_DATE_MILLIS, selectedDayStart.timeInMillis)
             }
             addTaskFromCalendarLauncher.launch(intent)
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -151,55 +153,72 @@ class CalendarActivity : AppCompatActivity() {
         }
     }
 
-    // ==========================================
-    // FUNGSI STREAK - DIPANGGIL SAAT COMPLETE TASK
-    // ==========================================
     private fun updateStreakOnTaskComplete() {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val todayStr = sdf.format(Date())
+        runBlocking {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val todayStr = sdf.format(Date())
 
-        val currentStreak = prefs.getInt(KEY_STREAK, 0)
-        val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+            val currentStreak = prefs.getInt(KEY_STREAK, 0)
+            val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
 
-        when {
-            lastDateStr == null -> {
-                prefs.edit().apply {
-                    putInt(KEY_STREAK, 1)
-                    putString(KEY_LAST_DATE, todayStr)
-                    putString(KEY_STREAK_DAYS, getCurrentDayOfWeek().toString())
-                    apply()
+            val completedToday = TaskRepository.getCompletedTasksByDate(Calendar.getInstance())
+            val hasCompletedToday = completedToday.isNotEmpty()
+
+            var newStreak = currentStreak
+            var shouldUpdate = false
+            var streakIncreased = false
+
+            when {
+                lastDateStr == null -> {
+                    if (hasCompletedToday) {
+                        newStreak = 1
+                        shouldUpdate = true
+                        streakIncreased = true
+                    }
+                }
+                lastDateStr == todayStr -> {
+                }
+                isYesterday(lastDateStr, todayStr) -> {
+                    if (hasCompletedToday) {
+                        newStreak = currentStreak + 1
+                        shouldUpdate = true
+                        streakIncreased = true
+                    }
+                }
+                else -> {
+                    if (hasCompletedToday) {
+                        newStreak = 1
+                        shouldUpdate = true
+                        streakIncreased = true
+                    } else {
+                        newStreak = 0
+                        shouldUpdate = true
+                    }
                 }
             }
 
-            lastDateStr == todayStr -> {
-                // Sudah di-update hari ini, tidak perlu action
-            }
-
-            isYesterday(lastDateStr, todayStr) -> {
+            if (shouldUpdate) {
                 val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
                 val currentDay = getCurrentDayOfWeek()
                 val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
 
-                val newStreakDays = if (!existingDays.contains(currentDay)) {
-                    if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
+                val newStreakDays = if (newStreak > currentStreak) {
+                    if (!existingDays.contains(currentDay)) {
+                        if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
+                    } else {
+                        streakDays
+                    }
+                } else if (newStreak == 1) {
+                    currentDay.toString()
                 } else {
-                    streakDays
+                    ""
                 }
 
                 prefs.edit().apply {
-                    putInt(KEY_STREAK, currentStreak + 1)
-                    putString(KEY_LAST_DATE, todayStr)
+                    putInt(KEY_STREAK, newStreak)
+                    putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
                     putString(KEY_STREAK_DAYS, newStreakDays)
-                    apply()
-                }
-            }
-
-            else -> {
-                prefs.edit().apply {
-                    putInt(KEY_STREAK, 1)
-                    putString(KEY_LAST_DATE, todayStr)
-                    putString(KEY_STREAK_DAYS, getCurrentDayOfWeek().toString())
                     apply()
                 }
             }
@@ -228,23 +247,17 @@ class CalendarActivity : AppCompatActivity() {
         return lastDateStr == yesterdayStr
     }
 
-    /**
-     * Menjalankan animasi slide-out dan menutup dialog.
-     */
     private fun performCloseAnimation(dialog: Dialog, overlay: LinearLayout, sheet: LinearLayout) {
-        // 1. Animasi Slide Out Sheet
         sheet.animate()
             .translationX(sheet.width.toFloat())
             .setDuration(300)
             .setListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    // 2. Tutup dialog setelah animasi selesai
                     dialog.dismiss()
                 }
             })
             .start()
 
-        // 3. Animasi Fade Out Overlay
         overlay.animate()
             .alpha(0f)
             .setDuration(250)
@@ -252,11 +265,8 @@ class CalendarActivity : AppCompatActivity() {
     }
 
 
-    /**
-     * MENAMPILKAN RIGHT SHEET DIALOG DAFTAR TUGAS (DRAWER DARI KANAN)
-     * TERMASUK LOGIKA ANIMASI SLIDE-IN DAN SLIDE-OUT.
-     */
     private fun showTaskRightSheet(date: Calendar, tasks: List<Task>) {
+        val lexendFont = ResourcesCompat.getFont(this, R.font.lexend)
         val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
 
@@ -268,9 +278,6 @@ class CalendarActivity : AppCompatActivity() {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(Color.parseColor("#80000000"))
             gravity = Gravity.END
-
-            // Mengatasi masalah Unresolved reference: Kita akan menambahkan sheetContainer setelahnya
-            // dan menggunakan variabel akhir di listeners.
         }
 
         val sheetContainer = LinearLayout(this).apply {
@@ -281,14 +288,11 @@ class CalendarActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.WHITE)
             elevation = 8f
-
-            setOnClickListener { } // Mencegah klik menyebar ke overlay
+            setOnClickListener { }
         }
 
-        // Tambahkan sheetContainer ke overlayContainer sekarang juga
         overlayContainer.addView(sheetContainer)
 
-        // --- Konten Sheet (Header, ScrollView, Tasks) ---
         val headerContainer = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -307,7 +311,6 @@ class CalendarActivity : AppCompatActivity() {
             setPadding(6.dp, 6.dp, 6.dp, 6.dp)
             isClickable = true
             isFocusable = true
-            // Animasi Slide Out saat tombol ditutup
             setOnClickListener {
                 performCloseAnimation(dialog, overlayContainer, sheetContainer)
             }
@@ -323,8 +326,7 @@ class CalendarActivity : AppCompatActivity() {
             text = "Tasks on ${uiDateFormat.format(date.time)}"
             textSize = 18f
             setTextColor(Color.parseColor("#14142A"))
-            val customFont = ResourcesCompat.getFont(context, R.font.lexend)
-            setTypeface(Typeface.create(customFont, Typeface.BOLD))
+            typeface = Typeface.create(lexendFont, Typeface.BOLD)
         }
         headerContainer.addView(tvDrawerTitle)
 
@@ -358,7 +360,7 @@ class CalendarActivity : AppCompatActivity() {
                 text = "Tidak ada tugas aktif di tanggal ini."
                 textSize = 14f
                 setTextColor(Color.parseColor("#98A8C8"))
-                typeface = ResourcesCompat.getFont(context, R.font.lexend)
+                typeface = lexendFont
                 gravity = Gravity.CENTER_HORIZONTAL
             }
             tasksContainer.addView(noTask)
@@ -371,12 +373,9 @@ class CalendarActivity : AppCompatActivity() {
         scrollView.addView(tasksContainer)
         sheetContainer.addView(scrollView)
 
-        // Panggil setContentView dengan overlayContainer
         dialog.setContentView(overlayContainer)
 
-        // PERBAIKAN: Setelah sheetContainer ditambahkan, kita bisa setOnClickListener pada overlayContainer
         overlayContainer.setOnClickListener {
-            // Animasi Slide Out saat overlay diklik (menggantikan yang dikomentari di atas)
             performCloseAnimation(dialog, overlayContainer, sheetContainer)
         }
 
@@ -386,7 +385,6 @@ class CalendarActivity : AppCompatActivity() {
             setBackgroundDrawableResource(android.R.color.transparent)
         }
 
-        // --- ANIMASI SLIDE-IN (Sheet masuk dari kanan) ---
         sheetContainer.translationX = sheetContainer.layoutParams.width.toFloat()
         sheetContainer.post {
             sheetContainer.animate()
@@ -399,14 +397,11 @@ class CalendarActivity : AppCompatActivity() {
     }
 
 
-    /**
-     * MEMBUAT ITEM TUGAS INTERAKTIF
-     */
     private fun createInteractiveTaskItem(container: LinearLayout, task: Task, dialog: Dialog) {
         val context = this
+        val lexendFont = ResourcesCompat.getFont(this, R.font.lexend)
         val marginPx = 16.dp
 
-        // Dapatkan referensi yang diperlukan untuk performCloseAnimation
         val decorView = dialog.window?.decorView as? ViewGroup
         val overlayContainerView = decorView?.getChildAt(0) as? LinearLayout
         val sheetContainerView = overlayContainerView?.getChildAt(0) as? LinearLayout
@@ -441,19 +436,20 @@ class CalendarActivity : AppCompatActivity() {
             background = ResourcesCompat.getDrawable(context.resources, R.drawable.bg_checklist, null)
 
             setOnClickListener {
-                val success = TaskRepository.completeTask(task.id)
-                if (success) {
-                    updateStreakOnTaskComplete() // UPDATE STREAK
-                    // Gunakan animasi penutup sebelum dismiss
-                    if (overlayContainerView != null && sheetContainerView != null) {
-                        performCloseAnimation(dialog, overlayContainerView, sheetContainerView)
+                GlobalScope.launch(Dispatchers.Main) {
+                    val success = TaskRepository.completeTask(task.id)
+                    if (success) {
+                        updateStreakOnTaskComplete()
+                        if (overlayContainerView != null && sheetContainerView != null) {
+                            performCloseAnimation(dialog, overlayContainerView, sheetContainerView)
+                        } else {
+                            dialog.dismiss()
+                        }
+                        showConfirmationDialog(task.title, "selesai")
+                        updateCalendar()
                     } else {
-                        dialog.dismiss()
+                        Toast.makeText(context, "Gagal menandai tugas selesai. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
                     }
-                    showConfirmationDialog(task.title, "selesai")
-                    updateCalendar()
-                } else {
-                    Toast.makeText(context, "Gagal menandai tugas selesai.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -479,7 +475,7 @@ class CalendarActivity : AppCompatActivity() {
             text = task.title
             textSize = 16f
             setTextColor(Color.parseColor("#14142A"))
-            typeface = ResourcesCompat.getFont(context, R.font.lexend)
+            typeface = lexendFont
         }
         titleAndPriorityContainer.addView(taskTitle)
 
@@ -516,7 +512,7 @@ class CalendarActivity : AppCompatActivity() {
 
             textSize = 12f
             setTextColor(Color.parseColor("#283F6D"))
-            typeface = ResourcesCompat.getFont(context, R.font.lexend)
+            typeface = lexendFont
         }
         titleAndDetailContainer.addView(taskTimeCategory)
 
@@ -578,7 +574,7 @@ class CalendarActivity : AppCompatActivity() {
                     text = buttonText
                     textSize = 10f
                     setTextColor(Color.parseColor("#283F6D"))
-                    typeface = ResourcesCompat.getFont(context, R.font.lexend)
+                    typeface = lexendFont
                     gravity = Gravity.CENTER_HORIZONTAL
                 })
             }
@@ -611,17 +607,19 @@ class CalendarActivity : AppCompatActivity() {
         }
 
         val deleteButton = createActionButton(R.drawable.ic_trash, "Delete") {
-            val success = TaskRepository.deleteTask(task.id)
-            if (success) {
-                if (overlayContainerView != null && sheetContainerView != null) {
-                    performCloseAnimation(dialog, overlayContainerView, sheetContainerView)
+            GlobalScope.launch(Dispatchers.Main) {
+                val success = TaskRepository.deleteTask(task.id)
+                if (success) {
+                    if (overlayContainerView != null && sheetContainerView != null) {
+                        performCloseAnimation(dialog, overlayContainerView, sheetContainerView)
+                    } else {
+                        dialog.dismiss()
+                    }
+                    showConfirmationDialog(task.title, "dihapus")
+                    updateCalendar()
                 } else {
-                    dialog.dismiss()
+                    Toast.makeText(context, "Gagal menghapus tugas. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
                 }
-                showConfirmationDialog(task.title, "dihapus")
-                updateCalendar()
-            } else {
-                Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -672,25 +670,19 @@ class CalendarActivity : AppCompatActivity() {
             dialog.dismiss()
         }
 
-        // --- LOGIKA TOMBOL HANYA DI KANAN ---
-        // Ambil container tombol (LinearLayout index 2)
         val buttonContainer = dialogView.getChildAt(2) as LinearLayout
-        // Vertical Divider (index 1 dari buttonContainer)
         val verticalDivider = buttonContainer.getChildAt(1)
 
-        // 1. NONAKTIFKAN TOMBOL KIRI DAN DIVIDER VERTIKAL
         btnConfirm1.visibility = View.GONE
         verticalDivider.visibility = View.GONE
 
-        // 2. ATUR TOMBOL KANAN (btnConfirm2/btnView) sebagai tombol OK tunggal
         btnConfirm2.text = "OK"
 
-        // Buat tombol kanan mengisi seluruh lebar container (weightSum=2)
         val viewParams = btnConfirm2.layoutParams as LinearLayout.LayoutParams
         viewParams.width = 0
         viewParams.weight = 2.0f
         btnConfirm2.layoutParams = viewParams
-        btnConfirm2.gravity = Gravity.CENTER // Pastikan teks "OK" di tengah
+        btnConfirm2.gravity = Gravity.CENTER
 
         btnConfirm2.setOnClickListener(dismissListener)
 
@@ -731,6 +723,8 @@ class CalendarActivity : AppCompatActivity() {
         val marginDp = 4
         val marginPx = marginDp.dp
 
+        val lexendFont = ResourcesCompat.getFont(this, R.font.lexend)
+
         for (i in 0 until totalCells) {
             val cellContainer = LinearLayout(this).apply {
                 layoutParams = GridLayout.LayoutParams().apply {
@@ -752,7 +746,7 @@ class CalendarActivity : AppCompatActivity() {
                 )
                 gravity = Gravity.CENTER
                 textSize = 16f
-                typeface = ResourcesCompat.getFont(context, R.font.lexend)
+                typeface = lexendFont
             }
             cellContainer.addView(dayView)
 
@@ -780,7 +774,7 @@ class CalendarActivity : AppCompatActivity() {
                 dateForCheck.set(Calendar.SECOND, 0)
                 dateForCheck.set(Calendar.MILLISECOND, 0)
 
-                TaskRepository.processTasksForMissed()
+                // Menggunakan wrapper sinkron
                 val hasTasks = TaskRepository.hasTasksOnDate(dateForCheck)
 
                 if (hasTasks) {
@@ -809,20 +803,18 @@ class CalendarActivity : AppCompatActivity() {
                 }
 
                 cellContainer.setOnClickListener {
-                    val newSelectedDate = currentCalendar.clone() as Calendar
-                    newSelectedDate.set(Calendar.DAY_OF_MONTH, dayNumber)
-                    newSelectedDate.set(Calendar.HOUR_OF_DAY, 0)
-                    newSelectedDate.set(Calendar.MINUTE, 0)
-                    newSelectedDate.set(Calendar.SECOND, 0)
-                    newSelectedDate.set(Calendar.MILLISECOND, 0)
+                    val newSelectedDate = dateForCheck
 
-                    val tasksOnDate = TaskRepository.getTasksByDate(newSelectedDate)
-                    if (tasksOnDate.isNotEmpty()) {
-                        showTaskRightSheet(newSelectedDate, tasksOnDate)
+                    GlobalScope.launch(Dispatchers.Main) {
+                        val tasksOnDate = TaskRepository.getTasksByDateSync(newSelectedDate)
+
+                        if (tasksOnDate.isNotEmpty()) {
+                            showTaskRightSheet(newSelectedDate, tasksOnDate)
+                        }
+
+                        selectedDate = newSelectedDate.clone() as Calendar
+                        updateCalendar()
                     }
-
-                    selectedDate = newSelectedDate
-                    updateCalendar()
                 }
 
                 calendarGrid.addView(cellContainer)

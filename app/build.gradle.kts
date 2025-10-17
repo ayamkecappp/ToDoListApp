@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    // ✅ PERBAIKAN: Apply plugin dengan benar
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -17,7 +19,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-
     buildFeatures {
         viewBinding = true
     }
@@ -31,49 +32,68 @@ android {
             )
         }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "1.8"
     }
 }
 
 dependencies {
+    // Definisikan versi
+    val cameraxVersion = "1.3.1"
+    val coroutinesVersion = "1.7.3"
+    val glideVersion = "4.16.0"
 
+    // --- FIREBASE & COROUTINES ---
+    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
+
+    // Firebase
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx")
+
+    // ✅ TAMBAHAN: Kotlinx Coroutines Play Services (untuk .await())
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:$coroutinesVersion")
+
+    // Kotlin Coroutines & Lifecycle KTX
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+
+    // --- CAMERA X dependencies ---
+    implementation("androidx.camera:camera-core:$cameraxVersion")
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
+    implementation("androidx.camera:camera-extensions:$cameraxVersion")
+
+    // ✅ TAMBAHAN: Guava (untuk ListenableFuture)
+    implementation("com.google.guava:guava:31.1-android")
+
+    // --- LIBRARIES LAINNYA ---
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation("com.google.android.material:material:1.9.0")
+
+    // Custom Libraries
+    implementation("de.hdodenhof:circleimageview:3.1.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+
+    // Glide
+    implementation("com.github.bumptech.glide:glide:$glideVersion")
+    annotationProcessor("com.github.bumptech.glide:compiler:$glideVersion")
+
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation("com.google.android.material:material:1.9.0")
-    implementation("de.hdodenhof:circleimageview:3.1.0")
-    implementation("com.google.code.gson:gson:2.10.1")
-
-    val cameraxVersion = "1.2.3"
-    implementation("androidx.camera:camera-core:$cameraxVersion")
-    implementation("androidx.camera:camera-camera2:$cameraxVersion")
-    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
-    implementation("androidx.camera:camera-view:1.2.0-alpha02")
-
-    // BARU: Tambahkan baris ini untuk SwipeRefreshLayout
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-    // Tambahkan Glide untuk memuat gambar dan GIF
-    implementation("com.github.bumptech.glide:glide:4.16.0")
-    // Jika Anda menggunakan Kotlin/KSP, tambahkan annotation processor
-    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
-
-    // 2. KOTLIN COROUTINES (Untuk logika looping chat: Job, CoroutineScope, delay)
-    // Gunakan versi sesuai dengan versi Kotlin Anda. Versi berikut umum digunakan:
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-
-    // Coroutines LifeCycle KTX (Penting untuk CoroutineScope dan lifecycle)
-    // Versi ini biasanya cocok dengan versi Coroutines di atas
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
-
 }

@@ -17,6 +17,9 @@ import android.graphics.Color
 import android.view.animation.AnimationUtils
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 
 class MissedTasksActivity : AppCompatActivity() {
 
@@ -27,13 +30,10 @@ class MissedTasksActivity : AppCompatActivity() {
     private lateinit var ivTimyTasks: ImageView
     private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
 
-    // Launcher untuk Edit Task Activity (Reschedule)
     private val rescheduleTaskLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            // Reload missed tasks setelah reschedule
-            TaskRepository.processTasksForMissed()
             loadMissedTasks()
         }
     }
@@ -55,50 +55,50 @@ class MissedTasksActivity : AppCompatActivity() {
             finish()
         }
 
-        TaskRepository.processTasksForMissed()
         loadMissedTasks()
     }
 
     override fun onResume() {
         super.onResume()
-        TaskRepository.processTasksForMissed()
         loadMissedTasks()
     }
 
     private fun loadMissedTasks() {
         tasksContainer.removeAllViews()
-        val missedTasks = TaskRepository.getMissedTasks()
 
-        if (missedTasks.isEmpty()) {
-            scrollView.visibility = View.GONE
-            ivTimyTasks.visibility = View.GONE
-            emptyStateContainer.visibility = View.VISIBLE
-        } else {
-            scrollView.visibility = View.VISIBLE
-            ivTimyTasks.visibility = View.VISIBLE
-            emptyStateContainer.visibility = View.GONE
+        GlobalScope.launch(Dispatchers.Main) {
+            val missedTasks = TaskRepository.getMissedTasks()
 
-            val groupedTasks = missedTasks.groupBy {
-                // MODIFIED: Group by actionDateMillis (missed date)
-                val timeToUse = it.actionDateMillis ?: if (it.endTimeMillis != 0L) it.endTimeMillis else it.id
-                Calendar.getInstance().apply { timeInMillis = timeToUse }.get(Calendar.DAY_OF_YEAR)
-            }
+            if (missedTasks.isEmpty()) {
+                scrollView.visibility = View.GONE
+                ivTimyTasks.visibility = View.GONE
+                emptyStateContainer.visibility = View.VISIBLE
+            } else {
+                scrollView.visibility = View.VISIBLE
+                ivTimyTasks.visibility = View.VISIBLE
+                emptyStateContainer.visibility = View.GONE
 
-            val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
-
-            for ((_, tasks) in sortedGroups) {
-                // MODIFIED: Display actionDateMillis
-                val timeToUse = tasks.first().actionDateMillis ?: if (tasks.first().endTimeMillis != 0L) tasks.first().endTimeMillis else tasks.first().id
-                val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
-                addDateHeader(dateLabel)
-
-                for (task in tasks) {
-                    createMissedTaskItem(task)
+                val groupedTasks = missedTasks.groupBy {
+                    // Menggunakan missedAt (Timestamp)
+                    val timeToUse = it.missedAt?.toDate()?.time ?: it.dueDate.toDate().time
+                    Calendar.getInstance().apply { timeInMillis = timeToUse }.get(Calendar.DAY_OF_YEAR)
                 }
-            }
 
-            val slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_bounce)
-            contentContainer.startAnimation(slideDown)
+                val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
+
+                for ((_, tasks) in sortedGroups) {
+                    val timeToUse = tasks.first().missedAt?.toDate()?.time ?: tasks.first().dueDate.toDate().time
+                    val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
+                    addDateHeader(dateLabel)
+
+                    for (task in tasks) {
+                        createMissedTaskItem(task)
+                    }
+                }
+
+                val slideDown = AnimationUtils.loadAnimation(this@MissedTasksActivity, R.anim.slide_down_bounce)
+                contentContainer.startAnimation(slideDown)
+            }
         }
     }
 
@@ -129,7 +129,7 @@ class MissedTasksActivity : AppCompatActivity() {
             setBackgroundResource(R.drawable.rectangle_settings)
         }
 
-        // TextView for Task Title
+        // TextView for Task Title (Dibutuhkan untuk ConstraintLayout)
         val tvTaskTitle = TextView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
@@ -163,8 +163,8 @@ class MissedTasksActivity : AppCompatActivity() {
             // FITUR RESCHEDULE
             setOnClickListener {
                 val intent = Intent(context, EditTaskActivity::class.java).apply {
-                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
-                    putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true) // Mode reschedule
+                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id) // ID sekarang String
+                    putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true)
                 }
                 rescheduleTaskLauncher.launch(intent)
                 (context as AppCompatActivity).overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)

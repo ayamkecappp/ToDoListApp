@@ -15,6 +15,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.graphics.Color
 import android.view.animation.AnimationUtils
+import kotlinx.coroutines.GlobalScope // Import GlobalScope
+import kotlinx.coroutines.launch // Import launch
+import kotlinx.coroutines.Dispatchers // Import Dispatchers
+import android.util.Log
 
 class DeletedTasksActivity : AppCompatActivity() {
 
@@ -47,43 +51,44 @@ class DeletedTasksActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Refresh list ketika kembali dari EditTaskActivity
         loadDeletedTasks()
     }
 
     private fun loadDeletedTasks() {
         tasksContainer.removeAllViews()
-        val deletedTasks = TaskRepository.getDeletedTasks()
 
-        if (deletedTasks.isEmpty()) {
-            scrollView.visibility = View.GONE
-            ivTimyTasks.visibility = View.GONE
-            emptyStateContainer.visibility = View.VISIBLE
-        } else {
-            scrollView.visibility = View.VISIBLE
-            ivTimyTasks.visibility = View.VISIBLE
-            emptyStateContainer.visibility = View.GONE
+        GlobalScope.launch(Dispatchers.Main) {
+            val deletedTasks = TaskRepository.getDeletedTasks()
 
-            val groupedTasks = deletedTasks.groupBy {
-                // MODIFIED: Group by actionDateMillis (deletion date)
-                val timeToUse = it.actionDateMillis ?: it.id // Fallback to original ID if somehow null
-                Calendar.getInstance().apply { timeInMillis = timeToUse }.get(Calendar.DAY_OF_YEAR)
-            }
-            // Sort groups by date descending (latest deletion date first)
-            val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
+            if (deletedTasks.isEmpty()) {
+                scrollView.visibility = View.GONE
+                ivTimyTasks.visibility = View.GONE
+                emptyStateContainer.visibility = View.VISIBLE
+            } else {
+                scrollView.visibility = View.VISIBLE
+                ivTimyTasks.visibility = View.VISIBLE
+                emptyStateContainer.visibility = View.GONE
 
-            for ((_, tasks) in sortedGroups) {
-                // MODIFIED: Display actionDateMillis
-                val timeToUse = tasks.first().actionDateMillis ?: tasks.first().id
-                val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
-                addDateHeader(dateLabel)
-                for (task in tasks) {
-                    createDeletedTaskItem(task)
+                val groupedTasks = deletedTasks.groupBy {
+                    // Menggunakan deletedAt (Timestamp)
+                    val timeToUse = it.deletedAt?.toDate()?.time ?: it.dueDate.toDate().time
+                    Calendar.getInstance().apply { timeInMillis = timeToUse }.get(Calendar.DAY_OF_YEAR)
                 }
-            }
 
-            val slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down_bounce)
-            contentContainer.startAnimation(slideDown)
+                val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
+
+                for ((_, tasks) in sortedGroups) {
+                    val timeToUse = tasks.first().deletedAt?.toDate()?.time ?: tasks.first().dueDate.toDate().time
+                    val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
+                    addDateHeader(dateLabel)
+                    for (task in tasks) {
+                        createDeletedTaskItem(task)
+                    }
+                }
+
+                val slideDown = AnimationUtils.loadAnimation(this@DeletedTasksActivity, R.anim.slide_down_bounce)
+                contentContainer.startAnimation(slideDown)
+            }
         }
     }
 
@@ -113,18 +118,17 @@ class DeletedTasksActivity : AppCompatActivity() {
             }
             setBackgroundResource(R.drawable.rectangle_settings)
 
-            // Tambahkan click listener untuk whole item - arahkan ke reschedule/restore
+            // Menggunakan Task.id yang sekarang String
             setOnClickListener {
                 val intent = Intent(context, EditTaskActivity::class.java).apply {
-                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id) // Menggunakan konstanta
-                    putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true) // Menggunakan mode reschedule untuk restore/pindah ke active
+                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
+                    putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true)
                 }
                 startActivity(intent)
                 overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
             }
         }
 
-        // ImageView for Reschedule/Restore Button Background (rectangle_5) - BUAT DULU
         val ivRescheduleBg = ImageView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
@@ -141,7 +145,7 @@ class DeletedTasksActivity : AppCompatActivity() {
             // Click listener untuk button restore (sama dengan parent)
             setOnClickListener {
                 val intent = Intent(context, EditTaskActivity::class.java).apply {
-                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id) // Menggunakan konstanta
+                    putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
                     putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true)
                 }
                 startActivity(intent)
@@ -150,11 +154,11 @@ class DeletedTasksActivity : AppCompatActivity() {
         }
         taskItemContainer.addView(ivRescheduleBg)
 
-        // TextView for Task Title - BUAT SETELAH ivRescheduleBg
+        // TextView for Task Title
         val tvTaskTitle = TextView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
-                0, // width 0 dengan constraint = match_constraint
+                0,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
                 startToStart = ConstraintLayout.LayoutParams.PARENT_ID
@@ -183,12 +187,10 @@ class DeletedTasksActivity : AppCompatActivity() {
                 bottomToBottom = ivRescheduleBg.id
                 marginStart = 13.dp
             }
-            // PERBAIKAN: Mengganti teks menjadi "Restore"
             text = "Restore"
             setTextAppearance(context, R.style.deletedTasksLabel)
             typeface = ResourcesCompat.getFont(context, R.font.lexend)
 
-            // Nonaktifkan click untuk text agar click diteruskan ke parent
             isClickable = false
         }
         taskItemContainer.addView(tvRescheduleText)

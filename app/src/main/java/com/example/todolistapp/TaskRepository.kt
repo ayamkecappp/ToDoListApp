@@ -1,366 +1,333 @@
 package com.example.todolistapp
 
-import android.content.Context
-import android.content.SharedPreferences
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import java.util.Collections
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.toObjects
+import kotlinx.coroutines.tasks.await
 import java.util.Calendar
+import com.google.firebase.Timestamp
+import java.util.UUID
+import kotlinx.coroutines.runBlocking
+import android.util.Log
+import java.util.Date
 
+// Data Class Task yang kompatibel dengan Firestore
 data class Task(
-    val id: Long = System.currentTimeMillis(),
-    val title: String,
-    val time: String,
-    val category: String,
-    val priority: String,
-    val endTimeMillis: Long = 0L,
-    val monthAdded: Int = Calendar.getInstance().apply { timeInMillis = id }.get(Calendar.MONTH),
-    val flowDurationMillis: Long = 0L,
+    // ID Unik (Document ID) - Harus var agar bisa diubah
+    var id: String = UUID.randomUUID().toString(),
+    // Field yang wajib ada untuk query/ownership - Harus var
+    var userId: String = "",
+    var status: String = "pending", // Status: pending, completed, missed, deleted
+    // DueDate sebagai Timestamp (wajib untuk query Firebase) - Harus var
+    var dueDate: Timestamp = Timestamp.now(),
+    var completedAt: Timestamp? = null,
+    var deletedAt: Timestamp? = null, // Tambahan untuk tracking delete time
+    var missedAt: Timestamp? = null, // Tambahan untuk tracking missed time
+
+    // Field dari Task lama
+    val title: String = "",
+    val time: String = "", // String representasi waktu (e.g., "10:00 - 11:00" atau "30m (Flow)")
+    val category: String = "", // Location
+    val priority: String = "None",
+    val endTimeMillis: Long = 0L, // Digunakan hanya jika time adalah range/manual time
+    val flowDurationMillis: Long = 0L, // Durasi Flow Timer
     val details: String = "",
-    val actionDateMillis: Long? = null
-)
+) {
+    // Konstruktor tanpa argumen untuk deserialisasi Firebase
+    constructor() : this(id = UUID.randomUUID().toString())
+}
 
 object TaskRepository {
-    private val tasks: MutableList<Task> = Collections.synchronizedList(mutableListOf())
-    private val deletedTasks: MutableList<Task> = Collections.synchronizedList(mutableListOf())
-    private val missedTasks: MutableList<Task> = Collections.synchronizedList(mutableListOf())
-    private val completedTasks: MutableList<Task> = Collections.synchronizedList(mutableListOf())
+    private const val TAG = "TaskRepository"
 
-    private var sharedPreferences: SharedPreferences? = null
-    private val gson = Gson()
+    private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
 
-    private const val PREFS_NAME = "TaskRepositoryPrefs"
-    private const val KEY_TASKS = "tasks"
-    private const val KEY_DELETED_TASKS = "deleted_tasks"
-    private const val KEY_MISSED_TASKS = "missed_tasks"
-    private const val KEY_COMPLETED_TASKS = "completed_tasks"
-
-    /**
-     * Inisialisasi repository dengan context
-     * WAJIB dipanggil di onCreate() setiap Activity yang menggunakan TaskRepository
-     */
-    fun initialize(context: Context) {
-        sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        loadAllData()
+    // Helper untuk mendapatkan referensi ke koleksi task milik user yang sedang login
+    private fun getTasksCollection() = auth.currentUser?.uid?.let { uid ->
+        db.collection("users").document(uid).collection("tasks")
     }
 
-    /**
-     * Helper untuk load list task dari JSON string
-     */
-    private fun loadTaskList(prefs: SharedPreferences, key: String): List<Task> {
-        val json = prefs.getString(key, null) ?: return emptyList()
+    // ===============================================
+    // SUSPEND FUNCTIONS (FIREBASE ASYNC)
+    // ===============================================
+
+    suspend fun addTask(task: Task) {
+        val collection = getTasksCollection() ?: throw IllegalStateException("User not logged in.")
+        if (auth.currentUser == null) throw IllegalStateException("User not logged in.")
+        task.userId = auth.currentUser!!.uid
+        collection.document(task.id).set(task).await()
+        Log.d(TAG, "Task added/updated in Firestore: ${task.id}")
+    }
+
+    suspend fun updateTask(task: Task) {
+        val collection = getTasksCollection() ?: throw IllegalStateException("User not logged in.")
+        if (task.id.isNotEmpty()) {
+            collection.document(task.id).set(task).await()
+            Log.d(TAG, "Task updated in Firestore: ${task.id}")
+        }
+    }
+
+    suspend fun getTaskById(taskId: String): Task? {
+        val collection = getTasksCollection() ?: return null
         return try {
-            val type = object : TypeToken<List<Task>>() {}.type
-            gson.fromJson(json, type) ?: emptyList()
+            val documentSnapshot = collection.document(taskId).get().await()
+            documentSnapshot.toObject(Task::class.java)
         } catch (e: Exception) {
+            Log.e(TAG, "Error fetching task by ID: $taskId", e)
+            null
+        }
+    }
+
+    suspend fun updateTaskStatus(taskId: String, newStatus: String) {
+        val collection = getTasksCollection() ?: return
+        val updates = mutableMapOf<String, Any>("status" to newStatus)
+        val now = Timestamp.now()
+
+        if (newStatus == "completed") {
+            updates["completedAt"] = now
+        }
+        if (newStatus == "deleted") {
+            updates["deletedAt"] = now
+        }
+        if (newStatus == "missed") {
+            updates["missedAt"] = now
+        }
+
+        collection.document(taskId).update(updates).await()
+        Log.d(TAG, "Task status updated to $newStatus for ID: $taskId")
+    }
+
+    // Fungsi untuk MENDAPATKAN SEMUA task berdasarkan statusnya
+    suspend fun getTasksByStatus(status: String): List<Task> {
+        val collection = getTasksCollection() ?: return emptyList()
+        return try {
+            val snapshot = collection
+                .whereEqualTo("status", status)
+                .get()
+                .await()
+            snapshot.toObjects()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching tasks by status: $status", e)
             emptyList()
         }
     }
 
-    /**
-     * Load semua data dari SharedPreferences
-     */
-    private fun loadAllData() {
-        sharedPreferences?.let { prefs ->
-            tasks.clear()
-            tasks.addAll(loadTaskList(prefs, KEY_TASKS))
+    // Fungsi untuk MENDAPATKAN task pada tanggal tertentu (status pending/missed)
+    suspend fun getTasksByDate(selectedDate: Calendar): List<Task> {
+        val collection = getTasksCollection() ?: return emptyList()
 
-            deletedTasks.clear()
-            deletedTasks.addAll(loadTaskList(prefs, KEY_DELETED_TASKS))
+        val startOfDay = (selectedDate.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val endOfDay = (selectedDate.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        val startTimestamp = Timestamp(startOfDay.time)
+        val endTimestamp = Timestamp(endOfDay.time)
 
-            missedTasks.clear()
-            missedTasks.addAll(loadTaskList(prefs, KEY_MISSED_TASKS))
-
-            completedTasks.clear()
-            completedTasks.addAll(loadTaskList(prefs, KEY_COMPLETED_TASKS))
+        return try {
+            val snapshot = collection
+                .whereIn("status", listOf("pending", "missed"))
+                .whereGreaterThanOrEqualTo("dueDate", startTimestamp)
+                .whereLessThanOrEqualTo("dueDate", endTimestamp)
+                .get()
+                .await()
+            snapshot.toObjects()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching tasks by date", e)
+            emptyList()
         }
     }
 
-    /**
-     * Save semua data ke SharedPreferences
-     * Dipanggil otomatis setiap kali ada perubahan data
-     */
-    private fun saveAllData() {
-        sharedPreferences?.edit()?.apply {
-            putString(KEY_TASKS, gson.toJson(tasks))
-            putString(KEY_DELETED_TASKS, gson.toJson(deletedTasks))
-            putString(KEY_MISSED_TASKS, gson.toJson(missedTasks))
-            putString(KEY_COMPLETED_TASKS, gson.toJson(completedTasks))
-            apply()
+    // Fungsi untuk MENDAPATKAN task yang sudah selesai pada tanggal tertentu
+    suspend fun getCompletedTasksByDate(selectedDate: Calendar): List<Task> {
+        val collection = getTasksCollection() ?: return emptyList()
+
+        val startOfDay = (selectedDate.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val endOfDay = (selectedDate.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        val startTimestamp = Timestamp(startOfDay.time)
+        val endTimestamp = Timestamp(endOfDay.time)
+
+        return try {
+            val snapshot = collection
+                .whereEqualTo("status", "completed")
+                .whereGreaterThanOrEqualTo("completedAt", startTimestamp)
+                .whereLessThanOrEqualTo("completedAt", endTimestamp)
+                .get()
+                .await()
+            snapshot.toObjects()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching completed tasks by date", e)
+            emptyList()
         }
     }
 
-    /**
-     * Menambahkan task baru ke repository
-     */
-    fun addTask(task: Task) {
-        tasks.add(0, task)
-        saveAllData()
-    }
+    suspend fun updateMissedTasks() {
+        val collection = getTasksCollection() ?: return
+        try {
+            val pendingTasksSnapshot = collection
+                .whereEqualTo("status", "pending")
+                .get()
+                .await()
 
-    /**
-     * Mengambil task berdasarkan ID
-     * Mencari di tasks, missedTasks, dan deletedTasks
-     */
-    fun getTaskById(taskId: Long): Task? {
-        val activeTask = tasks.find { it.id == taskId }
-        if (activeTask != null) return activeTask
+            val pendingTasks = pendingTasksSnapshot.toObjects(Task::class.java)
+            val now = com.google.firebase.Timestamp.now()
 
-        val missedTask = missedTasks.find { it.id == taskId }
-        if (missedTask != null) return missedTask
-
-        return deletedTasks.find { it.id == taskId }
-    }
-
-    /**
-     * Update task yang sudah ada
-     * Bisa dari tasks, missedTasks, atau deletedTasks
-     * Task yang di-update akan dipindahkan ke tasks (active)
-     */
-    fun updateTask(originalTaskId: Long, updatedTask: Task): Boolean {
-        synchronized(tasks) {
-            val activeIndex = tasks.indexOfFirst { it.id == originalTaskId }
-            if (activeIndex != -1) {
-                tasks.removeAt(activeIndex)
-                tasks.add(0, updatedTask)
-                saveAllData()
-                return true
-            }
-
-            val missedIndex = missedTasks.indexOfFirst { it.id == originalTaskId }
-            if (missedIndex != -1) {
-                missedTasks.removeAt(missedIndex)
-                tasks.add(0, updatedTask)
-                saveAllData()
-                return true
-            }
-
-            val deletedIndex = deletedTasks.indexOfFirst { it.id == originalTaskId }
-            if (deletedIndex != -1) {
-                deletedTasks.removeAt(deletedIndex)
-                tasks.add(0, updatedTask)
-                saveAllData()
-                return true
-            }
-
-            return false
-        }
-    }
-
-    /**
-     * Menandai task sebagai selesai
-     * Task dipindahkan dari tasks ke completedTasks
-     */
-    fun completeTask(taskId: Long): Boolean {
-        val taskToRemove = tasks.find { it.id == taskId }
-        if (taskToRemove != null) {
-            tasks.remove(taskToRemove)
-            val completedTask = taskToRemove.copy(actionDateMillis = System.currentTimeMillis())
-            completedTasks.add(0, completedTask)
-            saveAllData()
-            return true
-        }
-        return false
-    }
-
-    /**
-     * Mengambil semua task yang sudah selesai
-     */
-    fun getCompletedTasks(): List<Task> {
-        return completedTasks.toList()
-    }
-
-    /**
-     * Mengambil task yang selesai pada tanggal tertentu
-     * Digunakan untuk streak calculation
-     */
-    fun getCompletedTasksByDate(selectedDate: Calendar): List<Task> {
-        val selectedYear = selectedDate.get(Calendar.YEAR)
-        val selectedMonth = selectedDate.get(Calendar.MONTH)
-        val selectedDay = selectedDate.get(Calendar.DAY_OF_MONTH)
-
-        return completedTasks.filter { task ->
-            val timeToUse = task.actionDateMillis ?: task.id
-            val taskCalendar = Calendar.getInstance().apply { timeInMillis = timeToUse }
-
-            taskCalendar.get(Calendar.YEAR) == selectedYear &&
-                    taskCalendar.get(Calendar.MONTH) == selectedMonth &&
-                    taskCalendar.get(Calendar.DAY_OF_MONTH) == selectedDay
-        }
-    }
-
-    /**
-     * Mengambil semua task aktif
-     */
-    fun getAllTasks(): List<Task> {
-        return tasks.toList()
-    }
-
-    /**
-     * Memproses task yang sudah melewati deadline (missed)
-     * Dipanggil otomatis saat load tasks
-     */
-    fun processTasksForMissed() {
-        val now = System.currentTimeMillis()
-        val missedTime = now
-
-        val tasksToKeep = mutableListOf<Task>()
-        val updatedMissedTasks = mutableListOf<Task>()
-
-        for (task in tasks) {
-            val isFlowTimer = task.time.contains("(Flow)")
-
-            val isMissed = if (isFlowTimer) {
-                // Flow Timer: Cek berdasarkan tanggal task
-                val taskDate = Calendar.getInstance().apply {
-                    timeInMillis = task.id
-                    set(Calendar.HOUR_OF_DAY, 23)
-                    set(Calendar.MINUTE, 59)
-                    set(Calendar.SECOND, 59)
-                    set(Calendar.MILLISECOND, 999)
+            for (task in pendingTasks) {
+                // Menggunakan waktu dueDate untuk perbandingan missed
+                if (task.dueDate.toDate().time < now.toDate().time) {
+                    collection.document(task.id).update("status", "missed", "missedAt", now).await()
+                    Log.d(TAG, "Task marked as missed: ${task.id}")
                 }
-                taskDate.timeInMillis < now
-            } else if (task.endTimeMillis != 0L) {
-                // Time Range: Cek berdasarkan endTimeMillis
-                task.endTimeMillis < now
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating missed tasks", e)
+        }
+    }
+
+    // ===============================================
+    // SYNCHRONOUS WRAPPER FUNCTIONS (Untuk kompatibilitas UI Thread)
+    // ===============================================
+
+    // Mengganti getCompletedTasks (untuk CompletedTasksActivity)
+    fun getCompletedTasks(): List<Task> = runBlocking {
+        getTasksByStatus("completed").sortedByDescending { it.completedAt?.toDate()?.time ?: 0L }
+    }
+
+    // Mengganti getMissedTasks (untuk MissedTasksActivity)
+    fun getMissedTasks(): List<Task> = runBlocking {
+        updateMissedTasks()
+        getTasksByStatus("missed").sortedByDescending { it.missedAt?.toDate()?.time ?: 0L }
+    }
+
+    // Mengganti getDeletedTasks (untuk DeletedTasksActivity)
+    fun getDeletedTasks(): List<Task> = runBlocking {
+        getTasksByStatus("deleted").sortedByDescending { it.deletedAt?.toDate()?.time ?: 0L }
+    }
+
+    // Mengganti getTasksByDateSync untuk TaskActivity/CalendarActivity
+    fun getTasksByDateSync(selectedDate: Calendar): List<Task> = runBlocking {
+        updateMissedTasks()
+        getTasksByDate(selectedDate)
+    }
+
+    // Mengganti processTasksForMissed() untuk Compatibility
+    fun processTasksForMissed() = runBlocking {
+        updateMissedTasks()
+    }
+
+    // Mengganti completeTask(taskId: Long) untuk Compatibility (ID sekarang String)
+    fun completeTask(taskId: String): Boolean = runBlocking {
+        try {
+            updateTaskStatus(taskId, "completed")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to complete task: $taskId", e)
+            false
+        }
+    }
+
+    // Mengganti deleteTask(taskId: Long) untuk Compatibility (ID sekarang String)
+    fun deleteTask(taskId: String): Boolean = runBlocking {
+        try {
+            updateTaskStatus(taskId, "deleted")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete task: $taskId", e)
+            false
+        }
+    }
+
+    // Mengganti getTaskById(taskId: Long) untuk Compatibility (ID sekarang String)
+    fun getTaskByIdSync(taskId: String): Task? = runBlocking {
+        getTaskById(taskId)
+    }
+
+    // Mengganti updateTask(originalTaskId: Long, updatedTask: Task) untuk Compatibility
+    fun updateTaskSync(originalTaskId: String, updatedTask: Task): Boolean = runBlocking {
+        try {
+            val existingTask = getTaskById(originalTaskId)
+            if (existingTask == null) return@runBlocking false
+
+            if (originalTaskId != updatedTask.id) {
+                // Skenario Reschedule (ID baru)
+                db.collection("users").document(auth.currentUser!!.uid).collection("tasks").document(originalTaskId).delete().await()
+                addTask(updatedTask)
             } else {
-                // No Time: Cek berdasarkan tanggal task
-                val taskDate = Calendar.getInstance().apply {
-                    timeInMillis = task.id
-                    set(Calendar.HOUR_OF_DAY, 23)
-                    set(Calendar.MINUTE, 59)
-                    set(Calendar.SECOND, 59)
-                    set(Calendar.MILLISECOND, 999)
-                }
-                taskDate.timeInMillis < now
+                // Skenario Update Konten (ID tetap)
+                updateTask(updatedTask)
             }
-
-            if (isMissed) {
-                updatedMissedTasks.add(task.copy(actionDateMillis = missedTime))
-            } else {
-                tasksToKeep.add(task)
-            }
-        }
-
-        tasks.clear()
-        tasks.addAll(tasksToKeep)
-        missedTasks.addAll(updatedMissedTasks)
-        saveAllData()
-    }
-
-    /**
-     * Mengambil semua task yang missed
-     * Diurutkan berdasarkan actionDateMillis terbaru
-     */
-    fun getMissedTasks(): List<Task> {
-        return missedTasks.sortedByDescending {
-            it.actionDateMillis ?: if (it.endTimeMillis != 0L) it.endTimeMillis else it.id
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update task sync: $originalTaskId", e)
+            false
         }
     }
 
-    /**
-     * Menghapus task (soft delete)
-     * Task dipindahkan ke deletedTasks
-     */
-    fun deleteTask(taskId: Long): Boolean {
-        val taskToRemove = tasks.find { it.id == taskId }
-        if (taskToRemove != null) {
-            tasks.remove(taskToRemove)
-            val deletedTask = taskToRemove.copy(actionDateMillis = System.currentTimeMillis())
-            deletedTasks.add(0, deletedTask)
-            saveAllData()
-            return true
-        }
-        return false
+    // Mengganti hasTasksOnDate untuk CalendarActivity
+    fun hasTasksOnDate(date: Calendar): Boolean = runBlocking {
+        // Hanya perlu task pending
+        val pendingTasks = getTasksByDate(date).filter { it.status == "pending" }
+        pendingTasks.isNotEmpty()
     }
 
-    /**
-     * Mengambil semua task yang dihapus
-     */
-    fun getDeletedTasks(): List<Task> {
-        return deletedTasks.toList()
-    }
-
-    /**
-     * Reschedule task yang dihapus
-     * Task dipindahkan dari deletedTasks ke tasks
-     */
-    fun rescheduleDeletedTask(taskId: Long, newTask: Task): Boolean {
-        synchronized(deletedTasks) {
-            val deletedTask = deletedTasks.find { it.id == taskId }
-            if (deletedTask != null) {
-                deletedTasks.remove(deletedTask)
-                tasks.add(0, newTask)
-                saveAllData()
-                return true
-            }
-            return false
-        }
-    }
-
-    /**
-     * Mengambil task berdasarkan tanggal tertentu
-     * Otomatis memproses missed tasks sebelumnya
-     */
-    fun getTasksByDate(selectedDate: Calendar): List<Task> {
-        processTasksForMissed()
-
-        val selectedYear = selectedDate.get(Calendar.YEAR)
-        val selectedMonth = selectedDate.get(Calendar.MONTH)
-        val selectedDay = selectedDate.get(Calendar.DAY_OF_MONTH)
-
-        return tasks.filter { task ->
-            val taskCalendar = Calendar.getInstance().apply { timeInMillis = task.id }
-
-            taskCalendar.get(Calendar.YEAR) == selectedYear &&
-                    taskCalendar.get(Calendar.MONTH) == selectedMonth &&
-                    taskCalendar.get(Calendar.DAY_OF_MONTH) == selectedDay
-        }
-    }
-
-    /**
-     * Cek apakah ada task pada tanggal tertentu
-     * Digunakan untuk menampilkan titik indikator di kalender
-     */
-    fun hasTasksOnDate(date: Calendar): Boolean {
-        val startOfDay = date.clone() as Calendar
-        startOfDay.set(Calendar.HOUR_OF_DAY, 0)
-        startOfDay.set(Calendar.MINUTE, 0)
-        startOfDay.set(Calendar.SECOND, 0)
-        startOfDay.set(Calendar.MILLISECOND, 0)
-
-        val startOfDayMillis = startOfDay.timeInMillis
-
-        return tasks.any { task ->
-            val taskCalendar = Calendar.getInstance().apply { timeInMillis = task.id }
-            taskCalendar.set(Calendar.HOUR_OF_DAY, 0)
-            taskCalendar.set(Calendar.MINUTE, 0)
-            taskCalendar.set(Calendar.SECOND, 0)
-            taskCalendar.set(Calendar.MILLISECOND, 0)
-
-            taskCalendar.timeInMillis == startOfDayMillis
-        }
-    }
-
-    /**
-     * Mencari task berdasarkan query dan filter bulan
-     * Otomatis memproses missed tasks sebelumnya
-     */
-    fun searchTasks(query: String, monthFilter: Int): List<Task> {
-        processTasksForMissed()
+    // Mengganti searchTasks untuk SearchFilterActivity
+    fun searchTasks(query: String, monthFilter: Int): List<Task> = runBlocking {
+        // Logika sederhana: ambil semua pending/missed lalu filter di klien
+        val allTasks = getTasksByStatus("pending") + getTasksByStatus("missed")
 
         val lowerCaseQuery = query.trim().lowercase()
 
-        return tasks.filter { task ->
+        return@runBlocking allTasks.filter { task ->
             val matchesTitle = task.title.lowercase().contains(lowerCaseQuery)
 
+            // Menggunakan extension function
+            val taskMonth = task.dueDate.toDate().get(Calendar.MONTH)
             val matchesMonth = if (monthFilter == -1) {
                 true
             } else {
-                task.monthAdded == monthFilter
+                taskMonth == monthFilter
             }
 
             matchesTitle && matchesMonth
         }
     }
+
+    // Mengganti rescheduleDeletedTask untuk DeletedTasksActivity (Reschedule/Restore)
+    fun rescheduleDeletedTask(taskId: String, newTask: Task): Boolean = runBlocking {
+        try {
+            // Hapus dokumen lama (status deleted)
+            db.collection("users").document(auth.currentUser!!.uid).collection("tasks").document(taskId).delete().await()
+            // Tambahkan sebagai task baru (status pending)
+            addTask(newTask.copy(status = "pending"))
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to reschedule deleted task: $taskId", e)
+            false
+        }
+    }
+}
+
+// Extension function untuk mengonversi Date ke Calendar
+fun Date.get(field: Int): Int {
+    val cal = Calendar.getInstance()
+    cal.time = this
+    return cal.get(field)
 }

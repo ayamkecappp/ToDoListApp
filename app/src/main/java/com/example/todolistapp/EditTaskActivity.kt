@@ -27,6 +27,13 @@ import android.app.TimePickerDialog
 import android.app.DatePickerDialog
 import android.widget.NumberPicker
 import android.graphics.drawable.ColorDrawable
+import com.google.firebase.Timestamp
+import kotlinx.coroutines.GlobalScope // Import GlobalScope
+import kotlinx.coroutines.launch // Import launch
+import kotlinx.coroutines.Dispatchers // Import Dispatchers
+import kotlinx.coroutines.runBlocking
+import android.util.Log
+import java.util.UUID
 
 class EditTaskActivity : AppCompatActivity() {
 
@@ -37,15 +44,16 @@ class EditTaskActivity : AppCompatActivity() {
     private lateinit var inputDetails: EditText
     private lateinit var inputDate: EditText
     private lateinit var tvAddFlowTimer: TextView
+    private lateinit var btnSave: Button
 
-    private var taskIdToEdit: Long = -1L // ID ASLI dari task yang sedang diedit
+    private var taskIdToEdit: String = "" // ID ASLI dari task yang sedang diedit (String)
     private var taskDateMillis: Long = System.currentTimeMillis() // Tanggal yang dipilih (bisa berubah)
     private var originalTaskDateMillis: Long = System.currentTimeMillis() // Tanggal ASLI task (tidak berubah)
     private var taskEndTimeMillis: Long = 0L // End Time asli
 
 
     companion object {
-        const val EXTRA_TASK_ID = "EXTRA_TASK_ID"
+        const val EXTRA_TASK_ID = "EXTRA_TASK_ID" // Sekarang menampung String ID
         const val EXTRA_RESCHEDULE_MODE = "EXTRA_RESCHEDULE_MODE"
         const val DEFAULT_FLOW_TIMER_DURATION = 30 * 60 * 1000L // 30 menit default
     }
@@ -55,7 +63,6 @@ class EditTaskActivity : AppCompatActivity() {
     private var currentSelectedPriority: String = "None"
     private val priorities = arrayOf("None", "Low", "Medium", "High")
 
-    // Flow Timer Properties
     private var flowTimerDurationMillis: Long = 0L
     private val MILLIS_IN_HOUR = 60 * 60 * 1000L
     private val MILLIS_IN_MINUTE = 60 * 1000L
@@ -67,7 +74,7 @@ class EditTaskActivity : AppCompatActivity() {
         setContentView(R.layout.edit_task)
 
         val btnBack = findViewById<ImageView>(R.id.btnBack)
-        val btnSave = findViewById<Button>(R.id.btnSave)
+        btnSave = findViewById(R.id.btnSave)
 
         inputActivity = findViewById(R.id.inputActivity)
         inputTime = findViewById(R.id.inputTime)
@@ -77,15 +84,21 @@ class EditTaskActivity : AppCompatActivity() {
         inputDate = findViewById(R.id.inputDate)
         tvAddFlowTimer = findViewById(R.id.tvAddFlowTimer)
 
-        // 1. Ambil Task ID dan Mode Reschedule dari Intent
-        taskIdToEdit = intent.getLongExtra(EXTRA_TASK_ID, -1L)
+        // 1. Ambil Task ID dan Mode Reschedule dari Intent (ID sekarang String)
+        taskIdToEdit = intent.getStringExtra(EXTRA_TASK_ID) ?: ""
         val isRescheduleMode = intent.getBooleanExtra(EXTRA_RESCHEDULE_MODE, false)
 
-        // 2. Muat Data Tugas yang Ada menggunakan ID yang unik
-        val existingTask = TaskRepository.getTaskById(taskIdToEdit)
+        if (taskIdToEdit.isEmpty()) {
+            Toast.makeText(this, "Error: Task ID tidak valid.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
+        // 2. Muat Data Tugas yang Ada (Menggunakan wrapper sinkron)
+        val existingTask = TaskRepository.getTaskByIdSync(taskIdToEdit)
 
         if (existingTask != null) {
-            // Isi form dengan data tugas yang ada
+            // --- Mengisi Form ---
             inputActivity.setText(existingTask.title)
             inputTime.setText(existingTask.time)
             inputLocation.setText(existingTask.category)
@@ -94,9 +107,9 @@ class EditTaskActivity : AppCompatActivity() {
 
             currentSelectedPriority = existingTask.priority
 
-            // Simpan ID asli dan tanggal asli
-            originalTaskDateMillis = existingTask.id // Tanggal ASLI task (tidak berubah)
-            taskDateMillis = existingTask.id // Tanggal yang bisa diubah user
+            // Simpan tanggal asli dari Firebase Timestamp
+            originalTaskDateMillis = existingTask.dueDate.toDate().time
+            taskDateMillis = existingTask.dueDate.toDate().time
             taskEndTimeMillis = existingTask.endTimeMillis
 
             // Set Data: Menggunakan tanggal asli
@@ -107,15 +120,15 @@ class EditTaskActivity : AppCompatActivity() {
             flowTimerDurationMillis = existingTask.flowDurationMillis.coerceAtLeast(DEFAULT_FLOW_TIMER_DURATION)
             val timeDisplayString = formatDurationToString(flowTimerDurationMillis)
 
-            // Cek apakah ini Flow Timer atau Time Range atau None
             if (existingTask.time.contains("(Flow)")) {
                 tvAddFlowTimer.text = "Flow Timer Set (${timeDisplayString})"
-                inputTime.tag = true // Flow Timer aktif
+                inputTime.tag = true
+                inputTime.setText(existingTask.time)
             } else if (existingTask.endTimeMillis > 0L && existingTask.time.isNotEmpty()) {
-                inputTime.tag = existingTask.endTimeMillis // Time Range aktif
+                inputTime.tag = existingTask.endTimeMillis
                 tvAddFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
             } else {
-                inputTime.tag = null // Tidak ada waktu aktif
+                inputTime.tag = null
                 tvAddFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
             }
 
@@ -150,96 +163,7 @@ class EditTaskActivity : AppCompatActivity() {
         }
 
         btnSave.setOnClickListener {
-            val title = inputActivity.text.toString().trim()
-            val location = inputLocation.text.toString().trim()
-            val priority = currentSelectedPriority
-            val details = inputDetails.text.toString().trim()
-
-            var time: String
-            var newEndTimeMillis: Long = 0L
-            var savedFlowDuration: Long = 0L
-
-            // Ambil endTimeMillis dari tag (jika diubah oleh Time Picker) atau Flow Timer state
-            val isTimeRangeSet = inputTime.tag is Long
-            val isFlowTimerActive = inputTime.tag is Boolean && inputTime.tag as Boolean
-
-            if (title.isEmpty()) {
-                Toast.makeText(this, "Nama Aktivitas tidak boleh kosong!", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            if (isTimeRangeSet) {
-                newEndTimeMillis = inputTime.tag as Long
-                time = inputTime.text.toString().trim()
-                savedFlowDuration = flowTimerDurationMillis
-            } else if (isFlowTimerActive && flowTimerDurationMillis > 0L) {
-                newEndTimeMillis = 0L // Biarkan 0L agar tidak bentrok dengan Flow Timer visual
-                val timeDisplay = formatDurationToString(flowTimerDurationMillis) + " (Flow)"
-                time = timeDisplay
-                savedFlowDuration = flowTimerDurationMillis
-            } else {
-                time = ""
-                newEndTimeMillis = 0L
-                savedFlowDuration = flowTimerDurationMillis
-            }
-
-            // Dapatkan bulan yang benar berdasarkan taskDateMillis yang baru
-            val calendarForNewDate = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
-            val updatedMonthAdded = calendarForNewDate.get(Calendar.MONTH)
-
-            // Cek apakah tanggal berubah
-            val isDateChanged = !isSameDay(taskDateMillis, originalTaskDateMillis)
-
-            // Tentukan ID untuk task yang akan disimpan
-            val newTaskId = if (isRescheduleMode || isDateChanged) {
-                // Jika mode reschedule atau tanggal berubah, gunakan tanggal baru sebagai ID
-                calendarForNewDate.apply {
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }.timeInMillis
-            } else {
-                // Jika tanggal tidak berubah, gunakan ID asli
-                taskIdToEdit
-            }
-
-            // Buat objek Task baru
-            val updatedTask = Task(
-                id = newTaskId,
-                title = title,
-                time = time.ifEmpty { "" },
-                category = location.ifEmpty { "" },
-                priority = priority,
-                endTimeMillis = newEndTimeMillis,
-                monthAdded = updatedMonthAdded,
-                flowDurationMillis = savedFlowDuration,
-                details = details,
-                actionDateMillis = null
-            )
-
-            val success = if (isRescheduleMode || isDateChanged) {
-                // Hapus task lama dan buat task baru di tanggal yang baru
-                TaskRepository.deleteTask(taskIdToEdit)
-                TaskRepository.addTask(updatedTask)
-                true
-            } else {
-                // Update task yang ada dengan ID yang sama
-                TaskRepository.updateTask(taskIdToEdit, updatedTask)
-            }
-
-            if (success) {
-                val message = if (isDateChanged && !isRescheduleMode) {
-                    "Task berhasil dipindahkan ke ${uiDateFormat.format(Date(taskDateMillis))}"
-                } else if (isRescheduleMode) {
-                    "Task berhasil dijadwalkan ulang"
-                } else {
-                    "Task berhasil diperbarui"
-                }
-                showConfirmationDialog(updatedTask, message)
-            } else {
-                Toast.makeText(this, "Gagal menyimpan pembaruan tugas.", Toast.LENGTH_SHORT).show()
-            }
+            saveChanges(isRescheduleMode)
         }
 
         inputPriority.setOnClickListener {
@@ -260,6 +184,99 @@ class EditTaskActivity : AppCompatActivity() {
 
         tvAddFlowTimer.setOnClickListener {
             showFlowTimerDialog()
+        }
+    }
+
+    private fun saveChanges(isRescheduleMode: Boolean) {
+        val title = inputActivity.text.toString().trim()
+        val location = inputLocation.text.toString().trim()
+        val priority = currentSelectedPriority
+        val details = inputDetails.text.toString().trim()
+
+        var time: String
+        var newEndTimeMillis: Long = 0L
+        var savedFlowDuration: Long = 0L
+
+        val isTimeRangeSet = inputTime.tag is Long
+        val isFlowTimerActive = inputTime.tag is Boolean && inputTime.tag as Boolean
+
+        if (title.isEmpty()) {
+            Toast.makeText(this, "Nama Aktivitas tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val selectedDayCalendar = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
+
+        if (isTimeRangeSet) {
+            newEndTimeMillis = inputTime.tag as Long
+            time = inputTime.text.toString().trim()
+            savedFlowDuration = flowTimerDurationMillis
+            selectedDayCalendar.timeInMillis = newEndTimeMillis
+        } else if (isFlowTimerActive && flowTimerDurationMillis > 0L) {
+            val flowEndTime = System.currentTimeMillis() + flowTimerDurationMillis
+            newEndTimeMillis = flowEndTime
+            val timeDisplay = formatDurationToString(flowTimerDurationMillis) + " (Flow)"
+            time = timeDisplay
+            savedFlowDuration = flowTimerDurationMillis
+            selectedDayCalendar.timeInMillis = flowEndTime
+        } else {
+            time = ""
+            newEndTimeMillis = 0L
+            savedFlowDuration = flowTimerDurationMillis
+            // Set DueDate ke akhir hari (23:59:59) jika tidak ada waktu spesifik
+            selectedDayCalendar.set(Calendar.HOUR_OF_DAY, 23)
+            selectedDayCalendar.set(Calendar.MINUTE, 59)
+            selectedDayCalendar.set(Calendar.SECOND, 59)
+            selectedDayCalendar.set(Calendar.MILLISECOND, 999)
+        }
+
+        val dueDateTimestamp = Timestamp(selectedDayCalendar.time)
+
+        // Tentukan ID baru jika tanggal berubah atau mode reschedule
+        val isDateChanged = !isSameDay(taskDateMillis, originalTaskDateMillis)
+        val newTaskId = if (isRescheduleMode || isDateChanged) {
+            UUID.randomUUID().toString()
+        } else {
+            taskIdToEdit // Pertahankan ID asli untuk update
+        }
+
+        // Buat objek Task baru
+        val updatedTask = Task(
+            id = newTaskId,
+            title = title,
+            time = time.ifEmpty { "" },
+            category = location.ifEmpty { "" },
+            priority = priority,
+            endTimeMillis = newEndTimeMillis,
+            flowDurationMillis = savedFlowDuration,
+            dueDate = dueDateTimestamp,
+            details = details,
+            status = "pending"
+        )
+
+        btnSave.isEnabled = false
+        GlobalScope.launch(Dispatchers.Main) {
+            try {
+                // Menggunakan ID String
+                val success = TaskRepository.updateTaskSync(taskIdToEdit, updatedTask)
+
+                if (success) {
+                    val message = if (isDateChanged && !isRescheduleMode) {
+                        "Task berhasil dipindahkan ke ${uiDateFormat.format(Date(taskDateMillis))}"
+                    } else if (isRescheduleMode) {
+                        "Task berhasil dijadwalkan ulang"
+                    } else {
+                        "Task berhasil diperbarui"
+                    }
+                    showConfirmationDialog(updatedTask, message)
+                } else {
+                    Toast.makeText(this@EditTaskActivity, "Gagal menyimpan pembaruan tugas.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@EditTaskActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            } finally {
+                btnSave.isEnabled = true
+            }
         }
     }
 
@@ -294,7 +311,6 @@ class EditTaskActivity : AppCompatActivity() {
                 taskDateMillis = calendar.timeInMillis
                 inputDate.setText(uiDateFormat.format(calendar.time))
 
-                // Beri notifikasi jika tanggal berubah
                 if (!isSameDay(taskDateMillis, originalTaskDateMillis)) {
                     Toast.makeText(this, "Tanggal diubah. Task akan dipindahkan ke tanggal baru.", Toast.LENGTH_SHORT).show()
                 }
@@ -318,7 +334,6 @@ class EditTaskActivity : AppCompatActivity() {
         val btnCancel = dialogView.findViewById<TextView>(R.id.btnCancel)
         val btnSave = dialogView.findViewById<TextView>(R.id.btnSave)
 
-        // Gunakan durasi yang tersimpan untuk pre-fill
         val currentDuration = flowTimerDurationMillis
 
         var initialHours = 0
@@ -362,7 +377,6 @@ class EditTaskActivity : AppCompatActivity() {
 
             flowTimerDurationMillis = totalMillis
 
-            // Tag disetel ke Boolean true untuk menandakan Flow Timer aktif
             inputTime.tag = true
 
             val timeDisplayString = formatDurationToString(totalMillis)
@@ -378,7 +392,6 @@ class EditTaskActivity : AppCompatActivity() {
     }
 
     private fun showTimeRangePicker() {
-        // Reset Flow Timer status
         inputTime.tag = null
         val timeDisplayString = formatDurationToString(flowTimerDurationMillis)
         tvAddFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
@@ -403,7 +416,6 @@ class EditTaskActivity : AppCompatActivity() {
                         val endTimeString = String.format(Locale.getDefault(), "%02d:%02d", endHourOfDay, endMinute)
                         inputTime.setText("$startTimeString - $endTimeString")
 
-                        // Gunakan tanggal yang dipilih sebagai basis
                         val selectedDayCalendar = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
                         val startHourInt = startTimeString.substringBefore(":").toIntOrNull() ?: 0
                         val startMinuteInt = startTimeString.substringAfter(":").toIntOrNull() ?: 0
@@ -425,7 +437,6 @@ class EditTaskActivity : AppCompatActivity() {
                         selectedDayCalendar.set(Calendar.SECOND, 0)
                         selectedDayCalendar.set(Calendar.MILLISECOND, 0)
 
-                        // Simpan newEndTimeMillis
                         inputTime.tag = selectedDayCalendar.timeInMillis
                     },
                     currentHour,
@@ -481,13 +492,7 @@ class EditTaskActivity : AppCompatActivity() {
         tvMessageTitle.text = message
         tvMessageTitle.setTextColor(Color.parseColor("#283F6D"))
 
-        val createResultIntent = {
-            Intent().apply {
-                putExtra("EXTRA_TASK_TITLE", task.title)
-                putExtra("EXTRA_TASK_TIME", task.time)
-                putExtra("EXTRA_TASK_CATEGORY", task.category)
-            }
-        }
+        val createResultIntent = { Intent().apply { putExtra("SHOULD_REFRESH_TASK", true) } }
 
         btnClose.text = "Tutup"
         btnView.text = "Lihat Tugas"
