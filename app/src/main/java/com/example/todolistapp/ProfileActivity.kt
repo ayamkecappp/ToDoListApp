@@ -10,7 +10,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.bottomnavigation.BottomNavigationView // Ditambahkan
 import de.hdodenhof.circleimageview.CircleImageView
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
@@ -18,8 +18,10 @@ import android.util.Log
 import java.lang.Exception
 import com.google.android.material.tabs.TabLayout
 import androidx.viewpager2.widget.ViewPager2
-import com.google.android.material.tabs.TabLayoutMediator // Import ini penting
-import androidx.fragment.app.FragmentActivity // Digunakan oleh Adapter
+import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 
 class ProfileActivity : AppCompatActivity() {
 
@@ -30,14 +32,12 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var tvUsername: TextView
     private lateinit var ivProfilePicture: CircleImageView
     private lateinit var sharedPrefs: SharedPreferences
-    private lateinit var bottomNav: BottomNavigationView
+    private lateinit var bottomNav: BottomNavigationView // Menggunakan BottomNavigationView
 
-    // DEKLARASI untuk label hitungan tugas
     private lateinit var tvCompletedTasksLabel: TextView
     private lateinit var tvMissedTasksLabel: TextView
     private lateinit var tvDeletedTasksLabel: TextView
 
-    // Activity Result Launcher untuk CameraActivity
     private val cameraLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -45,8 +45,8 @@ class ProfileActivity : AppCompatActivity() {
             val uriString = result.data?.getStringExtra("PROFILE_PHOTO_URI")
             if (uriString != null) {
                 val imageUri = Uri.parse(uriString)
-                setProfileImage(imageUri) // Tampilkan foto yang baru diambil
-                saveProfileImageUri(imageUri) // Simpan URI ke SharedPrefs
+                setProfileImage(imageUri)
+                saveProfileImageUri(imageUri)
             } else {
                 Toast.makeText(this, "Gagal mendapatkan foto profil.", Toast.LENGTH_SHORT).show()
             }
@@ -58,20 +58,13 @@ class ProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile)
 
-        // Inisialisasi SharedPreferences (Harus Paling Awal)
         sharedPrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
 
-        // ===============================================
-        // 1. INISIALISASI SEMUA VIEW PENTING TERLEBIH DAHULU
-        // ===============================================
+        tabLayout = findViewById(R.id.tabLayout)
+        viewPager = findViewById(R.id.viewPager)
 
-        // Hubungkan Views untuk Tab dan Pager
-        tabLayout = findViewById<TabLayout>(R.id.tabLayout)
-        viewPager = findViewById<ViewPager2>(R.id.viewPager)
-
-        // Hubungkan Views
         tvUsername = findViewById(R.id.tvUsername)
-        bottomNav = findViewById(R.id.bottomNav) // Inisialisasi BottomNav
+        bottomNav = findViewById(R.id.bottomNav) // Inisialisasi
         ivProfilePicture = findViewById(R.id.ivProfile)
 
         val ivSettings = findViewById<ImageView>(R.id.ivSettings)
@@ -79,30 +72,21 @@ class ProfileActivity : AppCompatActivity() {
         val CompletedTasks = findViewById<LinearLayout>(R.id.CompletedTasks)
         val MissedTasks = findViewById<LinearLayout>(R.id.MissedTasks)
         val DeletedTasks = findViewById<LinearLayout>(R.id.DeletedTasks)
-        val ivCamera = findViewById<ImageView>(R.id.ivCamera) // Ikon Kamera
+        val ivCamera = findViewById<ImageView>(R.id.ivCamera)
 
-        // INISIALISASI untuk label hitungan tugas (mengambil TextView pertama di dalam LinearLayout)
         tvCompletedTasksLabel = CompletedTasks.getChildAt(0) as TextView
         tvMissedTasksLabel = MissedTasks.getChildAt(0) as TextView
         tvDeletedTasksLabel = DeletedTasks.getChildAt(0) as TextView
 
-        // Hapus tint default pada ikon
-        bottomNav.itemIconTintList = null
-
-        // Hapus tint default pada ikon
+        // Perbaikan: BottomNavigationView.itemIconTintList adalah property
         bottomNav.itemIconTintList = null
 
 
-        // ===============================================
-        // 2. LOGIKA VIEWPAGER (Sekarang viewPager sudah aman digunakan)
-        // ===============================================
+        // 2. LOGIKA VIEWPAGER
 
-        // 1. Setup Adapter untuk ViewPager2
         val adapter = ProductivityStatsAdapter(this)
         viewPager.adapter = adapter
 
-
-        // 2. Sinkronisasi TabLayout dan ViewPager2
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             when (position) {
                 0 -> tab.text = "Daily"
@@ -111,7 +95,6 @@ class ProfileActivity : AppCompatActivity() {
             }
         }.attach()
 
-        // KUNCI 3: Listener Tab Instan
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 viewPager.setCurrentItem(tab.position, false)
@@ -120,10 +103,9 @@ class ProfileActivity : AppCompatActivity() {
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
 
-        // PENTING: Set item yang dipilih ke Daily (Indeks 0)
         viewPager.setCurrentItem(0, false)
 
-        // Listener navigasi navbar (Mempertahankan logika navigasi)
+        // Perbaikan: Menggunakan 'item.itemId' dan 'R.id.nav_home'
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home-> {
@@ -131,10 +113,9 @@ class ProfileActivity : AppCompatActivity() {
                         Intent(
                             this,
                             HomeActivity::class.java
-                        ).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION) // FLAG NO ANIMATION
+                        ).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
                     )
-                    finish() // Tutup Activity saat ini
-                    // MEMAKSA TRANSISI INSTAN (Hard Cut)
+                    finish()
                     overridePendingTransition(0, 0)
                     true
                 }
@@ -143,40 +124,34 @@ class ProfileActivity : AppCompatActivity() {
                         Intent(
                             this,
                             TaskActivity::class.java
-                        ).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION) // FLAG NO ANIMATION
+                        ).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
                     )
-                    finish() // Tutup Activity saat ini
-                    // MEMAKSA TRANSISI INSTAN (Hard Cut)
+                    finish()
                     overridePendingTransition(0, 0)
                     true
                 }
-                R.id.nav_profile -> true // Sudah di ProfileActivity
+                R.id.nav_profile -> true
                 else -> false
             }
         }
 
-        // Atur item yang dipilih saat Activity dibuat
         bottomNav.selectedItemId = R.id.nav_profile
 
-        // Listener untuk Settings
         ivSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // Klik Edit Profile
         btnEditProfile.setOnClickListener {
             startActivity(Intent(this, EditProfileActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // Listener untuk ikon kamera: Meluncurkan CameraActivity menggunakan Launcher
         ivCamera.setOnClickListener {
             val intent = Intent(this, CameraActivity::class.java)
             cameraLauncher.launch(intent)
         }
 
-        // Listener untuk daftar tugas di bawah
         CompletedTasks.setOnClickListener {
             startActivity(Intent(this, CompletedTasksActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -192,14 +167,13 @@ class ProfileActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // Muat data saat onCreate
         loadProfileData()
         updateTaskCounts()
     }
 
     override fun onStart() {
         super.onStart()
-        // Memastikan ikon Profile ditandai sebagai aktif setiap kali Activity menjadi terlihat
+        // Perbaikan: Menggunakan BottomNavigationView.selectedItemId
         bottomNav.selectedItemId = R.id.nav_profile
     }
 
@@ -207,43 +181,41 @@ class ProfileActivity : AppCompatActivity() {
         super.onResume()
         loadProfileData()
         updateTaskCounts()
-        // PERBAIKAN: Hapus overridePendingTransition di onResume untuk menghilangkan slide-in saat kembali
     }
 
-    // FUNGSI untuk memperbarui hitungan tugas
+    // FUNGSI untuk memperbarui hitungan tugas (Diubah ke Coroutine)
     private fun updateTaskCounts() {
-        // PENTING: Panggil processTasksForMissed untuk memastikan daftar missed terupdate
-        TaskRepository.processTasksForMissed()
+        GlobalScope.launch(Dispatchers.Main) {
+            try {
+                TaskRepository.processTasksForMissed()
 
-        val completedCount = TaskRepository.getCompletedTasks().size
-        val missedCount = TaskRepository.getMissedTasks().size
-        val deletedCount = TaskRepository.getDeletedTasks().size
+                val completedCount = TaskRepository.getCompletedTasks().size
+                val missedCount = TaskRepository.getMissedTasks().size
+                val deletedCount = TaskRepository.getDeletedTasks().size
 
-        tvCompletedTasksLabel.text = "Completed Tasks ($completedCount)"
-        tvMissedTasksLabel.text = "Missed Tasks ($missedCount)"
-        tvDeletedTasksLabel.text = "Deleted Tasks ($deletedCount)"
+                tvCompletedTasksLabel.text = "Completed Tasks ($completedCount)"
+                tvMissedTasksLabel.text = "Missed Tasks ($missedCount)"
+                tvDeletedTasksLabel.text = "Deleted Tasks ($deletedCount)"
+            } catch (e: Exception) {
+                Log.e("ProfileActivity", "Failed to update task counts: ${e.message}")
+            }
+        }
     }
 
 
     private fun loadProfileData() {
-        // Mengambil KEY_USERNAME untuk ditampilkan di tvUsername
         val username = sharedPrefs.getString(EditProfileActivity.KEY_USERNAME, "Username")
         val imageUriString = sharedPrefs.getString(EditProfileActivity.KEY_IMAGE_URI, null)
 
-        // Menampilkan USERNAME di field tvUsername
         tvUsername.text = username
 
-        // Muat gambar jika URI ada
         if (imageUriString != null) {
             val imageUri = Uri.parse(imageUriString)
             try {
-                // Coba tampilkan, jika gagal akan masuk ke catch.
                 ivProfilePicture.setImageURI(imageUri)
             } catch (e: Exception) {
-                // Jika URI gagal dimuat (misalnya, file cache terhapus), gunakan placeholder.
                 Log.e("ProfileActivity", "Gagal memuat foto dari URI: ${e.message}")
                 ivProfilePicture.setImageResource(R.drawable.ic_profile)
-                // Hapus URI yang rusak dari SharedPreferences
                 sharedPrefs.edit().remove(EditProfileActivity.KEY_IMAGE_URI).apply()
             }
         } else {
@@ -251,9 +223,6 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Memperbarui ImageView profil secara langsung.
-     */
     private fun setProfileImage(uri: Uri) {
         try {
             ivProfilePicture.setImageURI(uri)
@@ -264,15 +233,11 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Menyimpan URI gambar ke SharedPreferences agar persisten setelah Activity ditutup.
-     */
     private fun saveProfileImageUri(uri: Uri) {
         sharedPrefs.edit().apply {
             putString(EditProfileActivity.KEY_IMAGE_URI, uri.toString())
             apply()
         }
-        // Mengambil izin persisten agar URI foto dari kamera tetap dapat dibaca
         try {
             contentResolver.takePersistableUriPermission(
                 uri,
@@ -285,6 +250,5 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun finish() {
         super.finish()
-        // PERBAIKAN: Hapus overridePendingTransition di finish untuk menghilangkan slide-out saat keluar
     }
 }

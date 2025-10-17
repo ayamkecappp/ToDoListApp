@@ -12,7 +12,6 @@ import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.io.File
 import java.text.SimpleDateFormat
@@ -24,6 +23,7 @@ import android.widget.LinearLayout
 import android.widget.Button
 import android.content.Intent
 import android.app.Activity
+import com.google.common.util.concurrent.ListenableFuture // Import ListenableFuture
 
 class CameraActivity : AppCompatActivity() {
 
@@ -36,7 +36,6 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var btnSetProfile: Button
 
     private var imageCapture: ImageCapture? = null
-    // Mengubah default selector menjadi kamera depan
     private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
     private var capturedImageUri: Uri? = null
 
@@ -57,7 +56,7 @@ class CameraActivity : AppCompatActivity() {
         if (allPermissionsGranted()) {
             startCamera()
         } else {
-            requestPermissions(arrayOf(Manifest.permission.CAMERA), 10)
+            requestPermissionsLauncher.launch(Manifest.permission.CAMERA)
         }
 
         // --- Listeners ---
@@ -67,13 +66,10 @@ class CameraActivity : AppCompatActivity() {
         btnSetProfile.setOnClickListener { setAsProfilePhoto() }
     }
 
-    private fun allPermissionsGranted() = ContextCompat.checkSelfPermission(
-        this, Manifest.permission.CAMERA
-    ) == PackageManager.PERMISSION_GRANTED
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 10 && allPermissionsGranted()) {
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
             startCamera()
         } else {
             Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT).show()
@@ -81,16 +77,21 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
+
+    private fun allPermissionsGranted() = ContextCompat.checkSelfPermission(
+        this, Manifest.permission.CAMERA
+    ) == PackageManager.PERMISSION_GRANTED
+
     private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        val cameraProviderFuture: ListenableFuture<ProcessCameraProvider> = ProcessCameraProvider.getInstance(this)
+
         cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
+            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
             val preview = androidx.camera.core.Preview.Builder().build().also {
                 it.setSurfaceProvider(previewView.surfaceProvider)
             }
 
-            // Atur target rotation pada ImageCapture
             imageCapture = ImageCapture.Builder()
                 .setTargetRotation(previewView.display.rotation)
                 .build()
@@ -101,14 +102,13 @@ class CameraActivity : AppCompatActivity() {
                     this, cameraSelector, preview, imageCapture
                 )
 
-                // Terapkan efek mirroring pada live preview (untuk umpan balik selfie yang benar)
                 if (cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA) {
-                    previewView.scaleX = -1f // Mirroring untuk live preview
+                    previewView.scaleX = -1f
                 } else {
-                    previewView.scaleX = 1f // Normal untuk kamera belakang
+                    previewView.scaleX = 1f
                 }
 
-                setUiMode(false) // Mode Preview Camera
+                setUiMode(false)
             } catch (e: Exception) {
                 Toast.makeText(this, "Gagal membuka kamera: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -122,13 +122,12 @@ class CameraActivity : AppCompatActivity() {
         } else {
             CameraSelector.DEFAULT_FRONT_CAMERA
         }
-        startCamera() // Restart camera dengan selector baru
+        startCamera()
     }
 
     private fun takePhoto() {
         val imageCapture = imageCapture ?: return
 
-        // Buat file sementara di cache
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val photoFile = File(externalCacheDir, "IMG_$timestamp.jpg")
 
@@ -152,23 +151,19 @@ class CameraActivity : AppCompatActivity() {
         if (uri == null) return
         ivPreview.setImageURI(uri)
 
-        // BARU: Jika kamera depan, biarkan pratinjau hasil foto (ivPreview) menjadi mirror
-        // Jika ImageCapture (default) membalik gambar saat menyimpan,
-        // maka pratinjau hasil (ivPreview) harus dibalik agar terlihat mirror/selfie.
         if (cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA) {
-            ivPreview.scaleX = -1f // Mirroring untuk pratinjau hasil foto kamera depan
+            ivPreview.scaleX = -1f
         } else {
-            ivPreview.scaleX = 1f // Normal untuk kamera belakang
+            ivPreview.scaleX = 1f
         }
 
-        setUiMode(true) // Mode Pratinjau
+        setUiMode(true)
     }
 
     private fun restartCamera() {
-        // Hapus file sementara jika ada
         capturedImageUri?.path?.let { File(it).delete() }
         capturedImageUri = null
-        startCamera() // Kembali ke mode kamera
+        startCamera()
     }
 
     private fun setAsProfilePhoto() {
@@ -177,10 +172,8 @@ class CameraActivity : AppCompatActivity() {
             return
         }
 
-        // Kirim URI kembali ke ProfileActivity
         val resultIntent = Intent().apply {
             putExtra("PROFILE_PHOTO_URI", capturedImageUri.toString())
-            // Tambahkan izin baca agar ProfileActivity bisa mengakses file sementara ini
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         setResult(Activity.RESULT_OK, resultIntent)
@@ -189,7 +182,6 @@ class CameraActivity : AppCompatActivity() {
 
     /**
      * Mengatur visibility UI antara mode kamera dan mode pratinjau.
-     * @param isPreviewMode true jika ingin menampilkan pratinjau dan konfirmasi.
      */
     private fun setUiMode(isPreviewMode: Boolean) {
         if (isPreviewMode) {
@@ -209,7 +201,6 @@ class CameraActivity : AppCompatActivity() {
 
     override fun onBackPressed() {
         if (ivPreview.visibility == View.VISIBLE) {
-            // Jika di mode pratinjau, kembali ke mode kamera saat Back ditekan
             restartCamera()
         } else {
             super.onBackPressed()

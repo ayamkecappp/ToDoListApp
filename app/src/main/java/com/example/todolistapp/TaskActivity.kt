@@ -1,16 +1,12 @@
 package com.example.todolistapp
 
-import android.animation.AnimatorSet
-import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import kotlin.math.hypot
 import android.app.Activity
 import android.content.Context
 import android.graphics.Color
@@ -31,10 +27,14 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import android.widget.Button
 import android.util.Log
 import android.os.Looper
 import android.view.animation.AnimationUtils
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import android.widget.Button // Ditambahkan
 
 class TaskActivity : AppCompatActivity() {
 
@@ -63,7 +63,6 @@ class TaskActivity : AppCompatActivity() {
 
     private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
 
-    // Streak SharedPreferences
     private val PREFS_NAME = "TimyTimePrefs"
     private val KEY_STREAK = "current_streak"
     private val KEY_LAST_DATE = "last_completion_date"
@@ -77,9 +76,7 @@ class TaskActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK || result.resultCode == RESULT_TASK_DELETED) {
-            TaskRepository.processTasksForMissed()
             loadTasksForSelectedDate()
-            // Update kalender untuk refresh titik indikator
             generateYearlyCalendarViews()
         }
     }
@@ -89,7 +86,6 @@ class TaskActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             loadTasksForSelectedDate()
-            // Update kalender untuk menampilkan titik di tanggal baru
             generateYearlyCalendarViews()
         }
     }
@@ -104,8 +100,7 @@ class TaskActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.task)
 
-        // PENTING: Inisialisasi TaskRepository untuk load data tersimpan
-        TaskRepository.initialize(applicationContext)
+        runBlocking { TaskRepository.processTasksForMissed() }
 
         tasksContainer = findViewById(R.id.tasksContainer)
         tvNoActivity = findViewById(R.id.tvNoActivity)
@@ -124,9 +119,11 @@ class TaskActivity : AppCompatActivity() {
             set(Calendar.MILLISECOND, 0)
         }
 
+        handleIncomingTaskIntent(intent)
         generateYearlyCalendarViews()
         setDynamicMonthYear()
-        handleIncomingTaskIntent(intent)
+        loadTasksForSelectedDate()
+
 
         calendarMain.post {
             if (!hasScrolledToToday) {
@@ -154,6 +151,7 @@ class TaskActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
+        // Perbaikan: Menggunakan setOnItemSelectedListener yang benar
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
@@ -168,9 +166,6 @@ class TaskActivity : AppCompatActivity() {
                 else -> false
             }
         }
-
-        TaskRepository.processTasksForMissed()
-        loadTasksForSelectedDate()
     }
 
     override fun onStart() {
@@ -183,9 +178,7 @@ class TaskActivity : AppCompatActivity() {
 
         currentCalendar = Calendar.getInstance()
 
-        TaskRepository.processTasksForMissed()
         loadTasksForSelectedDate()
-
         generateYearlyCalendarViews()
         setDynamicMonthYear()
 
@@ -241,7 +234,6 @@ class TaskActivity : AppCompatActivity() {
         dateForCheck.set(Calendar.SECOND, 0)
         dateForCheck.set(Calendar.MILLISECOND, 0)
 
-        TaskRepository.processTasksForMissed()
         val hasTasks = TaskRepository.hasTasksOnDate(dateForCheck)
 
         val backgroundColor = if (isSelected) COLOR_ACTIVE_SELECTION else Color.WHITE
@@ -362,19 +354,19 @@ class TaskActivity : AppCompatActivity() {
 
     private fun loadTasksForSelectedDate() {
         tasksContainer.removeAllViews()
-        TaskRepository.processTasksForMissed()
 
-        val selectedDateLocal = selectedDate.clone() as Calendar
-        selectedDateLocal.set(Calendar.HOUR_OF_DAY, 0)
-        selectedDateLocal.set(Calendar.MINUTE, 0)
-        selectedDateLocal.set(Calendar.SECOND, 0)
-        selectedDateLocal.set(Calendar.MILLISECOND, 0)
+        GlobalScope.launch(Dispatchers.Main) {
+            TaskRepository.processTasksForMissed()
 
-        val tasks = TaskRepository.getTasksByDate(selectedDateLocal)
-        for (task in tasks) {
-            addNewTaskToUI(task)
+            val selectedDateLocal = selectedDate.clone() as Calendar
+
+            val tasks = TaskRepository.getTasksByDate(selectedDateLocal)
+
+            for (task in tasks) {
+                addNewTaskToUI(task)
+            }
+            updateEmptyState(tasks.size)
         }
-        updateEmptyState(tasks.size)
     }
 
     private fun setDynamicMonthYear() {
@@ -432,10 +424,7 @@ class TaskActivity : AppCompatActivity() {
     private fun showStreakSuccessDialog(newStreak: Int) {
         val layoutResId = resources.getIdentifier("dialog_streak_success", "layout", packageName)
 
-        if (layoutResId == 0) {
-            Log.e("TaskActivity", "FATAL: Layout 'dialog_streak_success.xml' not found. Dialog cannot be shown.")
-            return
-        }
+        if (layoutResId == 0) return
 
         try {
             val dialogView = LayoutInflater.from(this).inflate(layoutResId, null)
@@ -443,10 +432,7 @@ class TaskActivity : AppCompatActivity() {
             val tvStreakMessage = dialogView.findViewById<TextView>(R.id.tv_streak_message)
             val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
 
-            if (tvStreakMessage == null || btnOk == null) {
-                Log.e("TaskActivity", "FATAL: Views inside dialog_streak_success not found (tv_streak_message or btn_ok). Check IDs.")
-                return
-            }
+            if (tvStreakMessage == null || btnOk == null) return
 
             tvStreakMessage.text = "$newStreak streak"
             tvStreakMessage.setTextColor(Color.parseColor("#FFC107"))
@@ -463,11 +449,11 @@ class TaskActivity : AppCompatActivity() {
 
             alertDialog.show()
         } catch (e: Exception) {
-            Log.e("TaskActivity", "Error showing streak dialog: ${e.message}", e)
+            Log.e(TAG, "Error showing streak dialog: ${e.message}", e)
         }
     }
 
-    private fun updateStreakOnTaskComplete(): Int {
+    private fun updateStreakOnTaskComplete(): Int = runBlocking {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val todayStr = sdf.format(Date())
@@ -491,11 +477,8 @@ class TaskActivity : AppCompatActivity() {
                     streakIncreased = true
                 }
             }
-
             lastDateStr == todayStr -> {
-                // Streak tidak bertambah
             }
-
             isYesterday(lastDateStr, todayStr) -> {
                 if (hasCompletedToday) {
                     newStreak = oldStreak + 1
@@ -503,7 +486,6 @@ class TaskActivity : AppCompatActivity() {
                     streakIncreased = true
                 }
             }
-
             else -> {
                 if (hasCompletedToday) {
                     newStreak = 1
@@ -541,7 +523,7 @@ class TaskActivity : AppCompatActivity() {
             }
         }
 
-        return if (streakIncreased) newStreak else oldStreak
+        return@runBlocking if (streakIncreased) newStreak else oldStreak
     }
 
     private fun getCurrentDayOfWeek(): Int {
@@ -599,22 +581,23 @@ class TaskActivity : AppCompatActivity() {
             background = ResourcesCompat.getDrawable(context.resources, R.drawable.bg_checklist, null)
 
             setOnClickListener {
-                val success = TaskRepository.completeTask(task.id)
-                if (success) {
-                    val newStreak = updateStreakOnTaskComplete()
-                    showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
+                GlobalScope.launch(Dispatchers.Main) {
+                    val success = TaskRepository.completeTask(task.id)
+                    if (success) {
+                        val newStreak = updateStreakOnTaskComplete()
+                        showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
 
-                    val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
-                    mainContainer.startAnimation(slideRight)
+                        val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
+                        mainContainer.startAnimation(slideRight)
 
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        tasksContainer.removeView(mainContainer)
-                        loadTasksForSelectedDate()
-                        // Update kalender untuk menghapus titik jika tidak ada task
-                        generateYearlyCalendarViews()
-                    }, 300)
-                } else {
-                    Toast.makeText(context, "Gagal menandai tugas selesai.", Toast.LENGTH_SHORT).show()
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            tasksContainer.removeView(mainContainer)
+                            loadTasksForSelectedDate()
+                            generateYearlyCalendarViews()
+                        }, 300)
+                    } else {
+                        Toast.makeText(context, "Gagal menandai tugas selesai. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -765,21 +748,22 @@ class TaskActivity : AppCompatActivity() {
         }
 
         val deleteButton = createActionButton(R.drawable.ic_trash, "Delete") {
-            val success = TaskRepository.deleteTask(task.id)
-            if (success) {
-                showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1)
+            GlobalScope.launch(Dispatchers.Main) {
+                val success = TaskRepository.deleteTask(task.id)
+                if (success) {
+                    showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1)
 
-                val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
-                mainContainer.startAnimation(slideRight)
+                    val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
+                    mainContainer.startAnimation(slideRight)
 
-                Handler(Looper.getMainLooper()).postDelayed({
-                    tasksContainer.removeView(mainContainer)
-                    loadTasksForSelectedDate()
-                    // Update kalender untuk menghapus titik jika tidak ada task
-                    generateYearlyCalendarViews()
-                }, 300)
-            } else {
-                Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        tasksContainer.removeView(mainContainer)
+                        loadTasksForSelectedDate()
+                        generateYearlyCalendarViews()
+                    }, 300)
+                } else {
+                    Toast.makeText(context, "Gagal menghapus tugas. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
