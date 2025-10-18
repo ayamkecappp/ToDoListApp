@@ -35,6 +35,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
 import android.widget.Button
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.async
 
 class TaskActivity : AppCompatActivity() {
 
@@ -59,7 +61,7 @@ class TaskActivity : AppCompatActivity() {
     private val BORDER_WIDTH_DP = 2
     private val BORDER_COLOR = Color.parseColor("#E0E0E0")
     private val ITEM_WIDTH_DP = 68
-    private val NUM_DAYS_TO_SHOW = 365
+    private val NUM_DAYS_TO_SHOW = 7
 
     private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
 
@@ -165,51 +167,81 @@ class TaskActivity : AppCompatActivity() {
      * Mengambil data tasks dan calendar di background thread dan memperbarui UI di main thread.
      */
     private fun loadCalendarAndTasks() {
-        GlobalScope.launch(Dispatchers.IO) {
+        // Gunakan lifecycleScope alih-alih GlobalScope
+        lifecycleScope.launch {
             try {
-                // 1. Operasi I/O pertama: Memastikan missed tasks terbarui
-                TaskRepository.processTasksForMissed()
+                // Jalankan semua operasi I/O di Dispatchers.IO secara PARALEL
+                val calendarDataDeferred = async(Dispatchers.IO) { getCalendarData() }
+                val tasksDeferred = async(Dispatchers.IO) {
+                    // Pastikan ini adalah suspend fun, bukan ...Sync
+                    TaskRepository.getTasksByDate(selectedDate.clone() as Calendar)
+                }
+                val missedTaskJob = launch(Dispatchers.IO) {
+                    // Pastikan ini adalah suspend fun
+                    TaskRepository.processTasksForMissed()
+                }
 
-                // 2. Operasi I/O kedua: Mengumpulkan semua data yang dibutuhkan untuk UI
-                val calendarData = getCalendarData()
-                val tasks = TaskRepository.getTasksByDateSync(selectedDate.clone() as Calendar)
+                // Tunggu hasil yang diperlukan untuk UI
+                val calendarData = calendarDataDeferred.await()
+                val tasks = tasksDeferred.await()
+                missedTaskJob.join() // Pastikan ini juga selesai (opsional jika tidak kritis untuk UI)
 
-                withContext(Dispatchers.Main) {
-                    // 3. Update UI di Main Thread
+                // 3. Update UI di Main Thread
+                // (Tidak perlu 'withContext(Dispatchers.Main)' karena 'launch'
+                //  di sini sudah berjalan di Main thread secara default,
+                //  tetapi menggunakan 'async(Dispatchers.IO)' akan memindahkan
+                //  pekerjaan ke background)
 
-                    // a. Update Kalender
-                    dateItemsContainer.removeAllViews()
-                    calendarData.forEach { data ->
-                        val view = createDateItemView(
-                            data.month, data.dayOfWeek, data.dayOfMonth,
-                            data.isSelected, data.dayMillis, data.hasTasks
-                        )
-                        dateItemsContainer.addView(view)
-                    }
+                // Kode di bawah ini akan error jika 'launch' di atas
+                // tidak menggunakan 'Dispatchers.Main'.
+                // Cara yang benar adalah:
 
-                    // b. Update Daftar Tugas
-                    tasksContainer.removeAllViews()
-                    tasks.forEach { addNewTaskToUI(it) }
-                    updateEmptyState(tasks.size)
+                // lifecycleScope.launch(Dispatchers.Main) { // Mulai di Main
+                //     try {
+                //         val calendarData = withContext(Dispatchers.IO) { getCalendarData() }
+                //         val tasks = withContext(Dispatchers.IO) {
+                //             TaskRepository.getTasksByDate(selectedDate.clone() as Calendar)
+                //         }
+                //         withContext(Dispatchers.IO) {
+                //             TaskRepository.processTasksForMissed()
+                //         }
+                //         ... update UI di sini ...
+                //     }
+                // }
 
-                    // c. Update Header Bulan/Tahun
-                    setDynamicMonthYear()
+                // Namun, untuk paralelisasi yang benar:
+                // Lanjutkan dari 'launch' di atas (yang default-nya Main)
 
-                    // d. Scroll ke Tanggal Terpilih (memastikan UI sudah ter-layout)
-                    calendarMain.post {
-                        if (!hasScrolledToToday) {
-                            scrollToSelectedDate(smooth = false)
-                            hasScrolledToToday = true
-                        } else {
-                            scrollToSelectedDate(smooth = true)
-                        }
+                // ... (Kode 'await' dari atas) ...
+
+                // Update UI (ini sudah di Main thread)
+                dateItemsContainer.removeAllViews()
+                calendarData.forEach { data ->
+                    val view = createDateItemView(
+                        data.month, data.dayOfWeek, data.dayOfMonth,
+                        data.isSelected, data.dayMillis, data.hasTasks
+                    )
+                    dateItemsContainer.addView(view)
+                }
+
+                tasksContainer.removeAllViews()
+                tasks.forEach { addNewTaskToUI(it) }
+                updateEmptyState(tasks.size)
+                setDynamicMonthYear()
+
+                calendarMain.post {
+                    if (!hasScrolledToToday) {
+                        scrollToSelectedDate(smooth = false)
+                        hasScrolledToToday = true
+                    } else {
+                        scrollToSelectedDate(smooth = true)
                     }
                 }
+
             } catch (e: Exception) {
                 Log.e(TAG, "Error in loadCalendarAndTasks: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@TaskActivity, "Gagal memuat tugas: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                // Pastikan error handling juga di Main thread
+                Toast.makeText(this@TaskActivity, "Gagal memuat tugas: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -228,7 +260,7 @@ class TaskActivity : AppCompatActivity() {
      * Mengambil data tasks dari repository untuk setiap hari dalam range tampilan kalender.
      * Dijalankan di Dispatchers.IO.
      */
-    private fun getCalendarData(): List<CalendarDayData> {
+    private suspend fun getCalendarData(): List<CalendarDayData> {
         val dataList = mutableListOf<CalendarDayData>()
 
         val startCal = Calendar.getInstance()
