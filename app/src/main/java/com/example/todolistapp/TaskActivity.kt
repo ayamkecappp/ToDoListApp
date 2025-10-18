@@ -2,7 +2,6 @@ package com.example.todolistapp
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -33,8 +32,9 @@ import android.view.animation.AnimationUtils
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
-import android.widget.Button // Ditambahkan
+import android.widget.Button
 
 class TaskActivity : AppCompatActivity() {
 
@@ -76,8 +76,7 @@ class TaskActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK || result.resultCode == RESULT_TASK_DELETED) {
-            loadTasksForSelectedDate()
-            generateYearlyCalendarViews()
+            loadCalendarAndTasks()
         }
     }
 
@@ -85,8 +84,7 @@ class TaskActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            loadTasksForSelectedDate()
-            generateYearlyCalendarViews()
+            loadCalendarAndTasks()
         }
     }
 
@@ -99,8 +97,6 @@ class TaskActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.task)
-
-        runBlocking { TaskRepository.processTasksForMissed() }
 
         tasksContainer = findViewById(R.id.tasksContainer)
         tvNoActivity = findViewById(R.id.tvNoActivity)
@@ -120,17 +116,9 @@ class TaskActivity : AppCompatActivity() {
         }
 
         handleIncomingTaskIntent(intent)
-        generateYearlyCalendarViews()
         setDynamicMonthYear()
-        loadTasksForSelectedDate()
-
-
-        calendarMain.post {
-            if (!hasScrolledToToday) {
-                scrollToSelectedDate(smooth = false)
-                hasScrolledToToday = true
-            }
-        }
+        // Memuat konten secara asinkron di awal
+        loadCalendarAndTasks()
 
         findViewById<ImageView?>(R.id.btn_search)?.setOnClickListener {
             startActivity(Intent(this, SearchFilterActivity::class.java))
@@ -151,16 +139,21 @@ class TaskActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // Perbaikan: Menggunakan setOnItemSelectedListener yang benar
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
-                    startActivity(Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION))
+                    startActivity(
+                        Intent(this, HomeActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    )
                     true
                 }
                 R.id.nav_tasks -> true
                 R.id.nav_profile -> {
-                    startActivity(Intent(this, ProfileActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION))
+                    startActivity(
+                        Intent(this, ProfileActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    )
                     true
                 }
                 else -> false
@@ -168,36 +161,75 @@ class TaskActivity : AppCompatActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        bottomNav.selectedItemId = R.id.nav_tasks
-    }
+    /**
+     * Mengambil data tasks dan calendar di background thread dan memperbarui UI di main thread.
+     */
+    private fun loadCalendarAndTasks() {
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                // 1. Operasi I/O pertama: Memastikan missed tasks terbarui
+                TaskRepository.processTasksForMissed()
 
-    override fun onResume() {
-        super.onResume()
+                // 2. Operasi I/O kedua: Mengumpulkan semua data yang dibutuhkan untuk UI
+                val calendarData = getCalendarData()
+                val tasks = TaskRepository.getTasksByDateSync(selectedDate.clone() as Calendar)
 
-        currentCalendar = Calendar.getInstance()
+                withContext(Dispatchers.Main) {
+                    // 3. Update UI di Main Thread
 
-        loadTasksForSelectedDate()
-        generateYearlyCalendarViews()
-        setDynamicMonthYear()
+                    // a. Update Kalender
+                    dateItemsContainer.removeAllViews()
+                    calendarData.forEach { data ->
+                        val view = createDateItemView(
+                            data.month, data.dayOfWeek, data.dayOfMonth,
+                            data.isSelected, data.dayMillis, data.hasTasks
+                        )
+                        dateItemsContainer.addView(view)
+                    }
 
-        calendarMain.post {
-            scrollToSelectedDate(smooth = true)
+                    // b. Update Daftar Tugas
+                    tasksContainer.removeAllViews()
+                    tasks.forEach { addNewTaskToUI(it) }
+                    updateEmptyState(tasks.size)
+
+                    // c. Update Header Bulan/Tahun
+                    setDynamicMonthYear()
+
+                    // d. Scroll ke Tanggal Terpilih (memastikan UI sudah ter-layout)
+                    calendarMain.post {
+                        if (!hasScrolledToToday) {
+                            scrollToSelectedDate(smooth = false)
+                            hasScrolledToToday = true
+                        } else {
+                            scrollToSelectedDate(smooth = true)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in loadCalendarAndTasks: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@TaskActivity, "Gagal memuat tugas: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
-    private fun createDotDrawable(color: Int): GradientDrawable {
-        val size = 6.dp
-        return GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(color)
-            setSize(size, size)
-        }
-    }
+    // Data class untuk menampung data kalender
+    private data class CalendarDayData(
+        val month: String,
+        val dayOfWeek: String,
+        val dayOfMonth: Int,
+        val isSelected: Boolean,
+        val dayMillis: Long,
+        val hasTasks: Boolean
+    )
 
-    private fun generateYearlyCalendarViews() {
-        dateItemsContainer.removeAllViews()
+    /**
+     * Mengambil data tasks dari repository untuk setiap hari dalam range tampilan kalender.
+     * Dijalankan di Dispatchers.IO.
+     */
+    private fun getCalendarData(): List<CalendarDayData> {
+        val dataList = mutableListOf<CalendarDayData>()
 
         val startCal = Calendar.getInstance()
         val tempStartCal = startCal.clone() as Calendar
@@ -211,30 +243,58 @@ class TaskActivity : AppCompatActivity() {
             val month = SimpleDateFormat("MMM", Locale("in", "ID")).format(cal.time).lowercase()
             val dayOfWeek = SimpleDateFormat("EEE", Locale("en", "US")).format(cal.time)
 
+            // Pengecekan tanggal yang sedang aktif dipilih
             val isSelected = (cal.get(Calendar.YEAR) == selectedDate.get(Calendar.YEAR) &&
                     cal.get(Calendar.DAY_OF_YEAR) == selectedDate.get(Calendar.DAY_OF_YEAR))
 
-            val dayItemContainer = createDateItemView(month, dayOfWeek, dayOfMonth, isSelected, cal.timeInMillis)
-            dateItemsContainer.addView(dayItemContainer)
+            val dateForCheck = cal.clone() as Calendar
+            dateForCheck.set(Calendar.HOUR_OF_DAY, 0)
+            dateForCheck.set(Calendar.MINUTE, 0)
+            dateForCheck.set(Calendar.SECOND, 0)
+            dateForCheck.set(Calendar.MILLISECOND, 0)
+
+            // Panggilan data I/O yang cepat (runBlocking dari TaskRepository)
+            val hasTasks = TaskRepository.hasTasksOnDate(dateForCheck)
+
+            dataList.add(CalendarDayData(month, dayOfWeek, dayOfMonth, isSelected, cal.timeInMillis, hasTasks))
+        }
+        return dataList
+    }
+
+
+    override fun onStart() {
+        super.onStart()
+        bottomNav.selectedItemId = R.id.nav_tasks
+    }
+
+    override fun onResume() {
+        super.onResume()
+        currentCalendar = Calendar.getInstance()
+        // Panggil pemuatan data asinkron
+        loadCalendarAndTasks()
+    }
+
+    private fun createDotDrawable(color: Int): GradientDrawable {
+        val size = 6.dp
+        return GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(color)
+            setSize(size, size)
         }
     }
 
+    /**
+     * Membuat tampilan chip tanggal untuk kalender horizontal.
+     */
     private fun createDateItemView(
         month: String,
         dayOfWeek: String,
         dayOfMonth: Int,
         isSelected: Boolean,
-        dayMillis: Long
+        dayMillis: Long,
+        hasTasks: Boolean
     ): View {
         val context = this
-
-        val dateForCheck = Calendar.getInstance().apply { timeInMillis = dayMillis }
-        dateForCheck.set(Calendar.HOUR_OF_DAY, 0)
-        dateForCheck.set(Calendar.MINUTE, 0)
-        dateForCheck.set(Calendar.SECOND, 0)
-        dateForCheck.set(Calendar.MILLISECOND, 0)
-
-        val hasTasks = TaskRepository.hasTasksOnDate(dateForCheck)
 
         val backgroundColor = if (isSelected) COLOR_ACTIVE_SELECTION else Color.WHITE
         val textColor = if (isSelected) COLOR_SELECTED_TEXT else COLOR_DEFAULT_TEXT
@@ -307,6 +367,7 @@ class TaskActivity : AppCompatActivity() {
             container.addView(dotView)
         }
 
+        // LOGIKA KLIK: Mengubah tanggal yang dipilih dan memuat ulang data
         container.setOnClickListener {
             val newSelectedMillis = it.tag as Long
 
@@ -320,10 +381,8 @@ class TaskActivity : AppCompatActivity() {
 
             this@TaskActivity.selectedDate = newSelectedDate
 
-            generateYearlyCalendarViews()
-            setDynamicMonthYear()
-            loadTasksForSelectedDate()
-            scrollToSelectedDate(smooth = true)
+            // Memuat ulang kalender (untuk memindahkan highlight) dan tugas (untuk memfilter list)
+            loadCalendarAndTasks()
         }
 
         return container
@@ -349,23 +408,6 @@ class TaskActivity : AppCompatActivity() {
             calendarMain.smoothScrollTo(scrollPosition.coerceAtLeast(0), 0)
         } else {
             calendarMain.scrollTo(scrollPosition.coerceAtLeast(0), 0)
-        }
-    }
-
-    private fun loadTasksForSelectedDate() {
-        tasksContainer.removeAllViews()
-
-        GlobalScope.launch(Dispatchers.Main) {
-            TaskRepository.processTasksForMissed()
-
-            val selectedDateLocal = selectedDate.clone() as Calendar
-
-            val tasks = TaskRepository.getTasksByDate(selectedDateLocal)
-
-            for (task in tasks) {
-                addNewTaskToUI(task)
-            }
-            updateEmptyState(tasks.size)
         }
     }
 
@@ -416,7 +458,6 @@ class TaskActivity : AppCompatActivity() {
         }
 
         if (intent != null && intent.getBooleanExtra("SHOULD_ADD_TASK", false)) {
-            loadTasksForSelectedDate()
             intent.removeExtra("SHOULD_ADD_TASK")
         }
     }
@@ -427,7 +468,7 @@ class TaskActivity : AppCompatActivity() {
         if (layoutResId == 0) return
 
         try {
-            val dialogView = LayoutInflater.from(this).inflate(layoutResId, null)
+            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_streak_success, null)
 
             val tvStreakMessage = dialogView.findViewById<TextView>(R.id.tv_streak_message)
             val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
@@ -454,76 +495,78 @@ class TaskActivity : AppCompatActivity() {
     }
 
     private fun updateStreakOnTaskComplete(): Int = runBlocking {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val todayStr = sdf.format(Date())
-        val todayCalendar = Calendar.getInstance()
+        return@runBlocking withContext(Dispatchers.IO) {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val todayStr = sdf.format(Date())
+            val todayCalendar = Calendar.getInstance()
 
-        val oldStreak = prefs.getInt(KEY_STREAK, 0)
-        val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+            val oldStreak = prefs.getInt(KEY_STREAK, 0)
+            val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
 
-        val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
-        val hasCompletedToday = completedToday.isNotEmpty()
+            val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
+            val hasCompletedToday = completedToday.isNotEmpty()
 
-        var newStreak = oldStreak
-        var shouldUpdate = false
-        var streakIncreased = false
+            var newStreak = oldStreak
+            var shouldUpdate = false
+            var streakIncreased = false
 
-        when {
-            lastDateStr == null -> {
-                if (hasCompletedToday) {
-                    newStreak = 1
-                    shouldUpdate = true
-                    streakIncreased = true
+            when {
+                lastDateStr == null -> {
+                    if (hasCompletedToday) {
+                        newStreak = 1
+                        shouldUpdate = true
+                        streakIncreased = true
+                    }
+                }
+                lastDateStr == todayStr -> {
+                }
+                isYesterday(lastDateStr, todayStr) -> {
+                    if (hasCompletedToday) {
+                        newStreak = oldStreak + 1
+                        shouldUpdate = true
+                        streakIncreased = true
+                    }
+                }
+                else -> {
+                    if (hasCompletedToday) {
+                        newStreak = 1
+                        shouldUpdate = true
+                        streakIncreased = true
+                    } else {
+                        newStreak = 0
+                        shouldUpdate = true
+                    }
                 }
             }
-            lastDateStr == todayStr -> {
-            }
-            isYesterday(lastDateStr, todayStr) -> {
-                if (hasCompletedToday) {
-                    newStreak = oldStreak + 1
-                    shouldUpdate = true
-                    streakIncreased = true
-                }
-            }
-            else -> {
-                if (hasCompletedToday) {
-                    newStreak = 1
-                    shouldUpdate = true
-                    streakIncreased = true
+
+            if (shouldUpdate) {
+                val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+                val currentDay = getCurrentDayOfWeek()
+                val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+
+                val newStreakDays = if (newStreak > oldStreak) {
+                    if (!existingDays.contains(currentDay)) {
+                        if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
+                    } else {
+                        streakDays
+                    }
+                } else if (newStreak == 1) {
+                    currentDay.toString()
                 } else {
-                    newStreak = 0
-                    shouldUpdate = true
+                    ""
+                }
+
+                prefs.edit().apply {
+                    putInt(KEY_STREAK, newStreak)
+                    putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
+                    putString(KEY_STREAK_DAYS, newStreakDays)
+                    apply()
                 }
             }
+
+            return@withContext if (streakIncreased) newStreak else oldStreak
         }
-
-        if (shouldUpdate) {
-            val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
-            val currentDay = getCurrentDayOfWeek()
-            val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
-
-            val newStreakDays = if (newStreak > oldStreak) {
-                if (!existingDays.contains(currentDay)) {
-                    if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
-                } else {
-                    streakDays
-                }
-            } else if (newStreak == 1) {
-                currentDay.toString()
-            } else {
-                ""
-            }
-
-            prefs.edit().apply {
-                putInt(KEY_STREAK, newStreak)
-                putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
-                putString(KEY_STREAK_DAYS, newStreakDays)
-                apply()
-            }
-        }
-
-        return@runBlocking if (streakIncreased) newStreak else oldStreak
     }
 
     private fun getCurrentDayOfWeek(): Int {
@@ -581,22 +624,26 @@ class TaskActivity : AppCompatActivity() {
             background = ResourcesCompat.getDrawable(context.resources, R.drawable.bg_checklist, null)
 
             setOnClickListener {
-                GlobalScope.launch(Dispatchers.Main) {
+                GlobalScope.launch(Dispatchers.IO) {
                     val success = TaskRepository.completeTask(task.id)
                     if (success) {
                         val newStreak = updateStreakOnTaskComplete()
-                        showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
 
-                        val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
-                        mainContainer.startAnimation(slideRight)
+                        withContext(Dispatchers.Main) {
+                            showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
 
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            tasksContainer.removeView(mainContainer)
-                            loadTasksForSelectedDate()
-                            generateYearlyCalendarViews()
-                        }, 300)
+                            val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
+                            mainContainer.startAnimation(slideRight)
+
+                            android.os.Handler(Looper.getMainLooper()).postDelayed({
+                                tasksContainer.removeView(mainContainer)
+                                loadCalendarAndTasks()
+                            }, 300)
+                        }
                     } else {
-                        Toast.makeText(context, "Gagal menandai tugas selesai. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "Gagal menandai tugas selesai. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }
@@ -748,21 +795,24 @@ class TaskActivity : AppCompatActivity() {
         }
 
         val deleteButton = createActionButton(R.drawable.ic_trash, "Delete") {
-            GlobalScope.launch(Dispatchers.Main) {
+            GlobalScope.launch(Dispatchers.IO) {
                 val success = TaskRepository.deleteTask(task.id)
                 if (success) {
-                    showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1)
+                    withContext(Dispatchers.Main) {
+                        showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1)
 
-                    val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
-                    mainContainer.startAnimation(slideRight)
+                        val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
+                        mainContainer.startAnimation(slideRight)
 
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        tasksContainer.removeView(mainContainer)
-                        loadTasksForSelectedDate()
-                        generateYearlyCalendarViews()
-                    }, 300)
+                        android.os.Handler(Looper.getMainLooper()).postDelayed({
+                            tasksContainer.removeView(mainContainer)
+                            loadCalendarAndTasks()
+                        }, 300)
+                    }
                 } else {
-                    Toast.makeText(context, "Gagal menghapus tugas. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Gagal menghapus tugas. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -822,14 +872,20 @@ class TaskActivity : AppCompatActivity() {
             }
         }
 
-        btnConfirm1.text = "OK"
-        btnConfirm2.text = "Tutup"
+        // Memastikan hanya satu tombol OK yang muncul
+        btnConfirm2.visibility = View.GONE
+        val buttonContainer = dialogView.getChildAt(2) as LinearLayout
+        val verticalDivider = buttonContainer.getChildAt(1)
+        verticalDivider.visibility = View.GONE
 
+        btnConfirm1.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 2.0f).apply {
+            gravity = Gravity.CENTER
+        }
+
+        btnConfirm1.text = "OK"
         btnConfirm1.setTextColor(Color.parseColor("#283F6D"))
-        btnConfirm2.setTextColor(Color.parseColor("#283F6D"))
 
         btnConfirm1.setOnClickListener(dismissListener)
-        btnConfirm2.setOnClickListener(dismissListener)
 
         dialog.show()
     }
