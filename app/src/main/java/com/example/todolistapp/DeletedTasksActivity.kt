@@ -15,10 +15,12 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.graphics.Color
 import android.view.animation.AnimationUtils
-import kotlinx.coroutines.GlobalScope // Import GlobalScope
-import kotlinx.coroutines.launch // Import launch
-import kotlinx.coroutines.Dispatchers // Import Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.withContext
 import android.util.Log
+import java.util.Date
 
 class DeletedTasksActivity : AppCompatActivity() {
 
@@ -28,6 +30,7 @@ class DeletedTasksActivity : AppCompatActivity() {
     private lateinit var emptyStateContainer: LinearLayout
     private lateinit var ivTimyTasks: ImageView
     private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
+    private val groupingDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,37 +60,40 @@ class DeletedTasksActivity : AppCompatActivity() {
     private fun loadDeletedTasks() {
         tasksContainer.removeAllViews()
 
-        GlobalScope.launch(Dispatchers.Main) {
+        lifecycleScope.launch(Dispatchers.IO) { // Menggunakan lifecycleScope
             val deletedTasks = TaskRepository.getDeletedTasks()
 
-            if (deletedTasks.isEmpty()) {
-                scrollView.visibility = View.GONE
-                ivTimyTasks.visibility = View.GONE
-                emptyStateContainer.visibility = View.VISIBLE
-            } else {
-                scrollView.visibility = View.VISIBLE
-                ivTimyTasks.visibility = View.VISIBLE
-                emptyStateContainer.visibility = View.GONE
+            withContext(Dispatchers.Main) {
+                if (deletedTasks.isEmpty()) {
+                    scrollView.visibility = View.GONE
+                    ivTimyTasks.visibility = View.GONE
+                    emptyStateContainer.visibility = View.VISIBLE
+                } else {
+                    scrollView.visibility = View.VISIBLE
+                    ivTimyTasks.visibility = View.VISIBLE
+                    emptyStateContainer.visibility = View.GONE
 
-                val groupedTasks = deletedTasks.groupBy {
-                    // Menggunakan deletedAt (Timestamp)
-                    val timeToUse = it.deletedAt?.toDate()?.time ?: it.dueDate.toDate().time
-                    Calendar.getInstance().apply { timeInMillis = timeToUse }.get(Calendar.DAY_OF_YEAR)
-                }
-
-                val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
-
-                for ((_, tasks) in sortedGroups) {
-                    val timeToUse = tasks.first().deletedAt?.toDate()?.time ?: tasks.first().dueDate.toDate().time
-                    val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
-                    addDateHeader(dateLabel)
-                    for (task in tasks) {
-                        createDeletedTaskItem(task)
+                    val groupedTasks = deletedTasks.groupBy {
+                        // KOREKSI: Gunakan deletedAt sebagai kunci grouping
+                        val timeToUse = it.deletedAt?.toDate()?.time ?: it.dueDate.toDate().time
+                        groupingDateFormat.format(Date(timeToUse))
                     }
-                }
 
-                val slideDown = AnimationUtils.loadAnimation(this@DeletedTasksActivity, R.anim.slide_down_bounce)
-                contentContainer.startAnimation(slideDown)
+                    // KOREKSI: Sort berdasarkan tanggal string (descending)
+                    val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
+
+                    for ((_, tasks) in sortedGroups) {
+                        val timeToUse = tasks.first().deletedAt?.toDate()?.time ?: tasks.first().dueDate.toDate().time
+                        val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
+                        addDateHeader(dateLabel)
+                        for (task in tasks) {
+                            createDeletedTaskItem(task)
+                        }
+                    }
+
+                    val slideDown = AnimationUtils.loadAnimation(this@DeletedTasksActivity, R.anim.slide_down_bounce)
+                    contentContainer.startAnimation(slideDown)
+                }
             }
         }
     }

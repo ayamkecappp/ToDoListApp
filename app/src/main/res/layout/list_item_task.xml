@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="16dp">
+
+    <LinearLayout
+        android:id="@+id/taskItem"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:background="@drawable/bg_task"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:elevation="4dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="12dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <View
+            android:id="@+id/checklistBox"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/bg_checklist" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/taskTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"
+                        android:textColor="#14142A"
+                        android:fontFamily="@font/lexend"
+                        android:textStyle="normal"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:text=""/>
+
+                    <ImageView
+                        android:id="@+id/exclamationIcon"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginStart="8dp"
+                        android:src="@drawable/ic_missed"
+                        android:visibility="gone"
+                        android:contentDescription="Priority Icon"/>
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="end">
+
+                <TextView
+                    android:id="@+id/taskTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="#283F6D"
+                    android:fontFamily="@font/lexend"
+                    android:text=""/>
+
+                <TextView
+                    android:id="@+id/taskCategory"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="#283F6D"
+                    android:fontFamily="@font/lexend"
+                    android:text=""/>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/arrowRight"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/baseline_arrow_forward_ios_24"
+            app:tint="#283F6D"
+            android:rotation="0"
+            android:layout_marginStart="8dp"
+            android:contentDescription="Expand Details"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/actionButtonsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:background="@color/white"
+        android:elevation="0dp"
+        android:visibility="gone"
+        android:gravity="center_horizontal"
+        android:weightSum="3">
+
+        <LinearLayout
+            android:id="@+id/btnFlowTimer"
+            android:layout_width="0dp"
+            android:layout_height="65dp" android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/bg_task"
+            android:elevation="4dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="8dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_alarm"
+                app:tint="@color/dark_blue" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Flow Timer"
+                android:textSize="11sp"
+                android:textColor="@color/dark_blue"
+                android:fontFamily="@font/lexend"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/btnEdit"
+            android:layout_width="0dp"
+            android:layout_height="65dp" android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/bg_task"
+            android:elevation="4dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="8dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_edit"
+                app:tint="@color/dark_blue" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Edit"
+                android:textSize="11sp"
+                android:textColor="@color/dark_blue"
+                android:fontFamily="@font/lexend"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/btnDelete"
+            android:layout_width="0dp"
+            android:layout_height="65dp" android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/bg_task"
+            android:elevation="4dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="8dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_trash"
+                app:tint="@color/dark_blue" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Delete"
+                android:textSize="11sp"
+                android:textColor="@color/dark_blue"
+                android:fontFamily="@font/lexend"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+</LinearLayout>

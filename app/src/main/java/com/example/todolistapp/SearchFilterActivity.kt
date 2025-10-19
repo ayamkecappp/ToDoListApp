@@ -23,11 +23,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import android.util.Log
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SearchFilterActivity : AppCompatActivity() {
 
@@ -57,6 +58,14 @@ class SearchFilterActivity : AppCompatActivity() {
             performSearch(inputSearch.text.toString(), activeMonthFilter)
         }
     }
+
+    // Perbaikan: Tambahkan extension property untuk konversi dp ke pixel Int
+    private val Int.dp: Int
+        get() = (this * resources.displayMetrics.density).toInt()
+
+    // Perbaikan: Tambahkan extension property untuk konversi sp ke pixel Float
+    private val Int.sp: Float
+        get() = (this * resources.displayMetrics.scaledDensity)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,77 +111,78 @@ class SearchFilterActivity : AppCompatActivity() {
     }
 
     private fun updateStreakOnTaskComplete(): Int = runBlocking {
-        // ... (Logika streak sama dengan di TaskActivity, menggunakan runBlocking)
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val todayStr = sdf.format(Date())
-        val todayCalendar = Calendar.getInstance()
+        return@runBlocking withContext(Dispatchers.IO) {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val todayStr = sdf.format(Date())
+            val todayCalendar = Calendar.getInstance()
 
-        val oldStreak = prefs.getInt(KEY_STREAK, 0)
-        val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+            val oldStreak = prefs.getInt(KEY_STREAK, 0)
+            val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
 
-        val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
-        val hasCompletedToday = completedToday.isNotEmpty()
+            val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
+            val hasCompletedToday = completedToday.isNotEmpty()
 
-        var newStreak = oldStreak
-        var shouldUpdate = false
-        var streakIncreased = false
+            var newStreak = oldStreak
+            var shouldUpdate = false
+            var streakIncreased = false
 
-        when {
-            lastDateStr == null -> {
-                if (hasCompletedToday) {
-                    newStreak = 1
-                    shouldUpdate = true
-                    streakIncreased = true
+            when {
+                lastDateStr == null -> {
+                    if (hasCompletedToday) {
+                        newStreak = 1
+                        shouldUpdate = true
+                        streakIncreased = true
+                    }
+                }
+                lastDateStr == todayStr -> {
+                }
+                isYesterday(lastDateStr, todayStr) -> {
+                    if (hasCompletedToday) {
+                        newStreak = oldStreak + 1
+                        shouldUpdate = true
+                        streakIncreased = true
+                    }
+                }
+                else -> {
+                    if (hasCompletedToday) {
+                        newStreak = 1
+                        shouldUpdate = true
+                        streakIncreased = true
+                    } else {
+                        newStreak = 0
+                        shouldUpdate = true
+                    }
                 }
             }
-            lastDateStr == todayStr -> {
-            }
-            isYesterday(lastDateStr, todayStr) -> {
-                if (hasCompletedToday) {
-                    newStreak = oldStreak + 1
-                    shouldUpdate = true
-                    streakIncreased = true
-                }
-            }
-            else -> {
-                if (hasCompletedToday) {
-                    newStreak = 1
-                    shouldUpdate = true
-                    streakIncreased = true
+
+            if (shouldUpdate) {
+                val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+                val currentDay = getCurrentDayOfWeek()
+                val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+
+                val newStreakDays = if (newStreak > oldStreak) {
+                    if (!existingDays.contains(currentDay)) {
+                        if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
+                    } else {
+                        streakDays
+                    }
+                } else if (newStreak == 1) {
+                    currentDay.toString()
                 } else {
-                    newStreak = 0
-                    shouldUpdate = true
+                    ""
+                }
+
+                prefs.edit().apply {
+                    putInt(KEY_STREAK, newStreak)
+                    putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
+                    putString(KEY_STREAK_DAYS, newStreakDays)
+                    apply()
                 }
             }
+
+            return@withContext if (streakIncreased) newStreak else oldStreak
         }
-
-        if (shouldUpdate) {
-            val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
-            val currentDay = getCurrentDayOfWeek()
-            val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
-
-            val newStreakDays = if (newStreak > oldStreak) {
-                if (!existingDays.contains(currentDay)) {
-                    if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
-                } else {
-                    streakDays
-                }
-            } else if (newStreak == 1) {
-                currentDay.toString()
-            } else {
-                ""
-            }
-
-            prefs.edit().apply {
-                putInt(KEY_STREAK, newStreak)
-                putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
-                putString(KEY_STREAK_DAYS, newStreakDays)
-                apply()
-            }
-        }
-
-        return@runBlocking if (streakIncreased) newStreak else oldStreak
     }
 
     private fun getCurrentDayOfWeek(): Int {
@@ -198,7 +208,6 @@ class SearchFilterActivity : AppCompatActivity() {
     }
 
     private fun generateMonthChips() {
-        // ... (Logic sama)
         if (chipContainer.childCount > 1) {
             chipContainer.removeViews(1, chipContainer.childCount - 1)
         }
@@ -220,7 +229,7 @@ class SearchFilterActivity : AppCompatActivity() {
                 text = " ${monthNames[monthIndex]} "
                 setPaddingRelative(12.dp, 0, 12.dp, 0)
                 gravity = Gravity.CENTER
-                textSize = 14f
+                textSize = 14.sp // Perbaikan: Gunakan extension property 'sp'
                 setTextColor(Color.BLACK)
                 background = ResourcesCompat.getDrawable(resources, R.drawable.chip_unselected, null)
                 tag = monthIndex
@@ -235,7 +244,6 @@ class SearchFilterActivity : AppCompatActivity() {
     }
 
     private fun setActiveChip(monthIndex: Int, selectedView: View) {
-        // ... (Logic sama)
         activeMonthFilter = monthIndex
 
         for (i in 0 until chipContainer.childCount) {
@@ -257,7 +265,7 @@ class SearchFilterActivity : AppCompatActivity() {
 
     // Menggunakan wrapper sinkron
     private fun performSearch(query: String, monthFilter: Int) {
-        // Menggunakan wrapper sinkron
+        // searchTasks sekarang hanya mengembalikan tugas "pending"
         val filteredTasks = TaskRepository.searchTasks(query, monthFilter)
         taskResultsContainer.removeAllViews()
 
@@ -273,206 +281,131 @@ class SearchFilterActivity : AppCompatActivity() {
             taskResultsContainer.addView(noResults)
         } else {
             for (task in filteredTasks) {
-                addNewTaskToUI(taskResultsContainer, task)
+                // MENGGUNAKAN list_item_task.xml
+                createTaskItemUsingLayout(taskResultsContainer, task)
             }
         }
     }
 
-    // Menggunakan Task.id (String)
-    private fun addNewTaskToUI(container: LinearLayout, task: Task) {
+    /**
+     * MENGGANTIKAN addNewTaskToUI DENGAN LOGIKA BERDASARKAN list_item_task.xml
+     */
+    private fun createTaskItemUsingLayout(container: LinearLayout, task: Task) {
         val context = this
-        val marginPx = 8.dp
         val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val oldStreak = sharedPrefs.getInt(KEY_STREAK, 0)
 
-        // ... (Layout initialization sama)
-        val mainContainer = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 0, 0, marginPx)
-            }
-            orientation = LinearLayout.VERTICAL
+        // 1. Muat layout item tugas
+        val mainContainer = LayoutInflater.from(context).inflate(R.layout.list_item_task, container, false) as LinearLayout
+        mainContainer.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            setMargins(0, 0, 0, 8.dp) // Sesuaikan margin bawah
+            // Hapus margin samping karena parent sudah ada padding
+            marginStart = 0
+            marginEnd = 0
         }
 
-        val taskItem = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 64.dp
-            )
-            background = ResourcesCompat.getDrawable(context.resources, R.drawable.bg_task, null)
-            gravity = Gravity.CENTER_VERTICAL
-            orientation = LinearLayout.HORIZONTAL
-            elevation = 4f
-            setPadding(12.dp, 12.dp, 12.dp, 12.dp)
+        // 2. Dapatkan referensi views dari layout item
+        val taskItem = mainContainer.findViewById<LinearLayout>(R.id.taskItem)
+        val checklistBox = mainContainer.findViewById<View>(R.id.checklistBox)
+        val taskTitle = mainContainer.findViewById<TextView>(R.id.taskTitle)
+        val taskTime = mainContainer.findViewById<TextView>(R.id.taskTime)
+        val taskCategory = mainContainer.findViewById<TextView>(R.id.taskCategory)
+        val exclamationIcon = mainContainer.findViewById<ImageView>(R.id.exclamationIcon)
+        val arrowRight = mainContainer.findViewById<ImageView>(R.id.arrowRight)
+        val actionButtonsContainer = mainContainer.findViewById<LinearLayout>(R.id.actionButtonsContainer)
+
+        val btnFlowTimer = mainContainer.findViewById<LinearLayout>(R.id.btnFlowTimer)
+        val btnEdit = mainContainer.findViewById<LinearLayout>(R.id.btnEdit)
+        val btnDelete = mainContainer.findViewById<LinearLayout>(R.id.btnDelete)
+
+        // 3. Mengisi data
+        taskTitle.text = task.title
+
+        // Menggabungkan Time & Category jika perlu
+        val timeCategoryText = if (task.category.isNotEmpty()) {
+            if (task.time.isNotEmpty()) "${task.time}\n${task.category}" else task.category
+        } else {
+            task.time
+        }
+        taskTime.text = timeCategoryText
+
+        // Tambahkan info bulan di bawah waktu/kategori (khusus untuk SearchFilter)
+        val dateText = TextView(context).apply {
+            layoutParams = taskCategory.layoutParams
+            // Menggunakan Calendar.MONTH dari dueDate Timestamp
+            val monthIndex = task.dueDate.toDate().get(Calendar.MONTH)
+            val dayOfMonth = task.dueDate.toDate().get(Calendar.DAY_OF_MONTH)
+            text = "${dayOfMonth} ${monthNames[monthIndex]}"
+            textSize = 12.sp // Perbaikan: Gunakan extension property 'sp'
+            setTextColor(Color.parseColor("#283F6D"))
+            typeface = ResourcesCompat.getFont(context, R.font.lexend)
+            gravity = Gravity.END
+        }
+        (taskTime.parent as LinearLayout).addView(dateText)
+        (taskTime.parent as LinearLayout).removeView(taskCategory) // Hapus yang asli
+
+        // 4. Logika prioritas
+        if (task.priority != "None") {
+            val colorResId = priorityColorMap[task.priority] ?: R.color.dark_blue
+            val colorInt = ContextCompat.getColor(context, colorResId)
+            exclamationIcon.visibility = View.VISIBLE
+            exclamationIcon.setColorFilter(colorInt)
+            exclamationIcon.contentDescription = "${task.priority} Priority"
+        } else {
+            exclamationIcon.visibility = View.GONE
         }
 
-        // ✅ CHECKLIST BOX - LANGSUNG COMPLETE TASK
-        val checklistBox = View(context).apply {
-            layoutParams = LinearLayout.LayoutParams(24.dp, 24.dp).apply {
-                marginEnd = 16.dp
-                marginStart = 4.dp
-            }
-            background = ResourcesCompat.getDrawable(context.resources, R.drawable.bg_checklist, null)
-
-            setOnClickListener {
-                GlobalScope.launch(Dispatchers.Main) {
-                    // ID sekarang String
-                    val success = TaskRepository.completeTask(task.id)
-                    if (success) {
-                        val newStreak = updateStreakOnTaskComplete()
+        // 5. Setup Listeners
+        checklistBox.setOnClickListener {
+            lifecycleScope.launch(Dispatchers.IO) {
+                val success = TaskRepository.completeTask(task.id)
+                if (success) {
+                    val newStreak = updateStreakOnTaskComplete()
+                    withContext(Dispatchers.Main) {
                         showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
                         performSearch(inputSearch.text.toString(), activeMonthFilter)
-                    } else {
-                        Toast.makeText(context, "Gagal menandai tugas selesai. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Gagal menandai tugas selesai.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
-        taskItem.addView(checklistBox)
 
-        // ... (Layout Title & Priority sama)
-        val titleAndPriorityContainer = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f
-            )
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        val taskTitle = TextView(context).apply {
-            text = task.title
-            textSize = 16f
-            setTextColor(Color.parseColor("#14142A"))
-            typeface = ResourcesCompat.getFont(context, R.font.lexend)
-        }
-        titleAndPriorityContainer.addView(taskTitle)
-
-        if (task.priority != "None") {
-            val colorResId = priorityColorMap[task.priority] ?: R.color.dark_blue
-            val colorInt = ContextCompat.getColor(context, colorResId)
-
-            val exclamationIcon = ImageView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(16.dp, 16.dp).apply {
-                    marginStart = 8.dp
-                    gravity = Gravity.CENTER_VERTICAL
-                }
-                setImageResource(R.drawable.ic_missed)
-                contentDescription = "${task.priority} Priority"
-                setColorFilter(colorInt)
-            }
-            titleAndPriorityContainer.addView(exclamationIcon)
-        }
-        taskItem.addView(titleAndPriorityContainer)
-
-        val taskMonth = TextView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            // Menggunakan Calendar.MONTH dari dueDate Timestamp
-            val monthIndex = task.dueDate.toDate().get(Calendar.MONTH)
-            text = monthNames[monthIndex]
-            textSize = 14f
-            setTextColor(Color.parseColor("#283F6D"))
-            typeface = ResourcesCompat.getFont(context, R.font.lexend)
-            setPadding(0, 0, 12.dp, 0)
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        taskItem.addView(taskMonth)
-
-        // ... (Layout Arrow sama)
-        val arrowRight = ImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                marginStart = 8.dp
-            }
-            setImageResource(R.drawable.baseline_arrow_forward_ios_24)
-            setColorFilter(Color.parseColor("#283F6D"))
-            rotation = 0f
-        }
-        taskItem.addView(arrowRight)
-
-        mainContainer.addView(taskItem)
-
-        val actionButtonsContainer = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(16.dp, 12.dp, 16.dp, 12.dp)
-            setBackgroundColor(Color.TRANSPARENT)
-            visibility = View.GONE
-        }
-
-        fun createActionButton(iconResId: Int, buttonText: String, onClick: () -> Unit): LinearLayout {
-            // ... (Logic createActionButton sama)
-            return LinearLayout(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f
-                ).apply {
-                    setMargins(4.dp, 0, 4.dp, 0)
-                }
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setOnClickListener { onClick() }
-
-                background = ResourcesCompat.getDrawable(context.resources, R.drawable.bg_task, null)
-                setPadding(8.dp, 12.dp, 8.dp, 12.dp)
-
-                addView(ImageView(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(32.dp, 32.dp)
-                    setImageResource(iconResId)
-                    setColorFilter(Color.parseColor("#283F6D"))
-                })
-
-                addView(TextView(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                    )
-                    text = buttonText
-                    textSize = 10f
-                    setTextColor(Color.parseColor("#283F6D"))
-                    typeface = ResourcesCompat.getFont(context, R.font.lexend)
-                    gravity = Gravity.CENTER_HORIZONTAL
-                })
-            }
-        }
-
-        val flowTimerButton = createActionButton(R.drawable.ic_alarm, "Flow Timer") {
+        btnFlowTimer.setOnClickListener {
             val intent = Intent(context, FlowTimerActivity::class.java).apply {
                 putExtra(FlowTimerActivity.EXTRA_TASK_NAME, task.title)
                 putExtra(FlowTimerActivity.EXTRA_FLOW_DURATION, task.flowDurationMillis)
             }
-            startActivity(intent)
+            context.startActivity(intent)
         }
 
-        val editButton = createActionButton(R.drawable.ic_edit, "Edit") {
+        btnEdit.setOnClickListener {
             val intent = Intent(context, EditTaskActivity::class.java).apply {
-                putExtra("EXTRA_TASK_ID", task.id) // ID sekarang String
+                putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
             }
             editTaskLauncher.launch(intent)
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+            context.overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        val deleteButton = createActionButton(R.drawable.ic_trash, "Delete") {
-            GlobalScope.launch(Dispatchers.Main) {
-                val success = TaskRepository.deleteTask(task.id) // ID sekarang String
+        btnDelete.setOnClickListener {
+            lifecycleScope.launch(Dispatchers.IO) {
+                val success = TaskRepository.deleteTask(task.id)
                 if (success) {
-                    showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1)
-                    performSearch(inputSearch.text.toString(), activeMonthFilter)
+                    withContext(Dispatchers.Main) {
+                        showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1)
+                        performSearch(inputSearch.text.toString(), activeMonthFilter)
+                    }
                 } else {
-                    Toast.makeText(context, "Gagal menghapus tugas. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
-
-        actionButtonsContainer.addView(flowTimerButton)
-        actionButtonsContainer.addView(editButton)
-        actionButtonsContainer.addView(deleteButton)
-
-        mainContainer.addView(actionButtonsContainer)
 
         taskItem.setOnClickListener {
             if (actionButtonsContainer.visibility == View.GONE) {
@@ -488,7 +421,6 @@ class SearchFilterActivity : AppCompatActivity() {
     }
 
     private fun showConfirmationDialogWithStreakCheck(taskTitle: String, action: String, newStreak: Int, oldStreak: Int) {
-        // ... (Logic dialog sama)
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_save_success, null)
 
         val dialog = AlertDialog.Builder(this)
@@ -514,10 +446,6 @@ class SearchFilterActivity : AppCompatActivity() {
 
         val dismissListener = View.OnClickListener {
             dialog.dismiss()
-
-            if (action == "selesai" && newStreak > oldStreak) {
-                // Logic untuk menampilkan streak dialog
-            }
         }
 
         btnConfirm1.text = "OK"
@@ -526,8 +454,19 @@ class SearchFilterActivity : AppCompatActivity() {
         btnConfirm1.setTextColor(Color.parseColor("#283F6D"))
         btnConfirm2.setTextColor(Color.parseColor("#283F6D"))
 
+        // Memastikan hanya satu tombol yang muncul (agar konsisten dengan TaskActivity)
+        btnConfirm2.visibility = View.GONE
+        val buttonContainer = dialogView.getChildAt(2) as LinearLayout
+        val verticalDivider = buttonContainer.getChildAt(1)
+        verticalDivider.visibility = View.GONE
+
+        btnConfirm1.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 2.0f).apply {
+            gravity = Gravity.CENTER
+        }
+
+
         btnConfirm1.setOnClickListener(dismissListener)
-        btnConfirm2.setOnClickListener(dismissListener)
+        // btnConfirm2.setOnClickListener(dismissListener) // Dihapus karena tombol disembunyikan
 
         dialog.show()
     }
@@ -536,7 +475,4 @@ class SearchFilterActivity : AppCompatActivity() {
         super.finish()
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
-
-    private val Int.dp: Int
-        get() = (this * resources.displayMetrics.density).toInt()
 }

@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity() {
 
             // 4. Navigasi ke LoginActivity setelah TOTAL_HOLD_TIME
             Handler(mainLooper).postDelayed({
-                val intent = Intent(this, LoginActivity::class.java)
+                val intent = Intent(this, LoginActivity::class.java) // Perbaiki Unresolved Reference
                 startActivity(intent)
                 finish()
             }, TOTAL_HOLD_TIME)

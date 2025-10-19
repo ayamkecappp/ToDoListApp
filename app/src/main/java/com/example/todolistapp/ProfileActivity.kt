@@ -10,7 +10,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.bottomnavigation.BottomNavigationView // Ditambahkan
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import de.hdodenhof.circleimageview.CircleImageView
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
@@ -19,9 +19,10 @@ import java.lang.Exception
 import com.google.android.material.tabs.TabLayout
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayoutMediator
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.withContext
 
 class ProfileActivity : AppCompatActivity() {
 
@@ -32,7 +33,7 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var tvUsername: TextView
     private lateinit var ivProfilePicture: CircleImageView
     private lateinit var sharedPrefs: SharedPreferences
-    private lateinit var bottomNav: BottomNavigationView // Menggunakan BottomNavigationView
+    private lateinit var bottomNav: BottomNavigationView
 
     private lateinit var tvCompletedTasksLabel: TextView
     private lateinit var tvMissedTasksLabel: TextView
@@ -64,7 +65,7 @@ class ProfileActivity : AppCompatActivity() {
         viewPager = findViewById(R.id.viewPager)
 
         tvUsername = findViewById(R.id.tvUsername)
-        bottomNav = findViewById(R.id.bottomNav) // Inisialisasi
+        bottomNav = findViewById(R.id.bottomNav)
         ivProfilePicture = findViewById(R.id.ivProfile)
 
         val ivSettings = findViewById<ImageView>(R.id.ivSettings)
@@ -185,7 +186,7 @@ class ProfileActivity : AppCompatActivity() {
 
     // FUNGSI untuk memperbarui hitungan tugas (Diubah ke Coroutine)
     private fun updateTaskCounts() {
-        GlobalScope.launch(Dispatchers.Main) {
+        lifecycleScope.launch(Dispatchers.IO) { // Menggunakan lifecycleScope
             try {
                 TaskRepository.processTasksForMissed()
 
@@ -193,9 +194,11 @@ class ProfileActivity : AppCompatActivity() {
                 val missedCount = TaskRepository.getMissedTasks().size
                 val deletedCount = TaskRepository.getDeletedTasks().size
 
-                tvCompletedTasksLabel.text = "Completed Tasks ($completedCount)"
-                tvMissedTasksLabel.text = "Missed Tasks ($missedCount)"
-                tvDeletedTasksLabel.text = "Deleted Tasks ($deletedCount)"
+                withContext(Dispatchers.Main) {
+                    tvCompletedTasksLabel.text = "Completed Tasks ($completedCount)"
+                    tvMissedTasksLabel.text = "Missed Tasks ($missedCount)"
+                    tvDeletedTasksLabel.text = "Deleted Tasks ($deletedCount)"
+                }
             } catch (e: Exception) {
                 Log.e("ProfileActivity", "Failed to update task counts: ${e.message}")
             }

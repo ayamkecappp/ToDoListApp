@@ -13,6 +13,9 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
+// Tambahkan import untuk Intent Flags
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+import android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
 
 class LoginActivity : AppCompatActivity() {
 
@@ -70,6 +73,7 @@ class LoginActivity : AppCompatActivity() {
                 .translationY(0f)
                 .setStartDelay(100L * index) // Setiap elemen muncul berurutan
                 .setDuration(500)
+                .setInterpolator(null)
                 .start()
         }
 
@@ -129,7 +133,7 @@ class LoginActivity : AppCompatActivity() {
     private fun navigateToHome(useAnimation: Boolean = true) {
         val intent = Intent(this, HomeActivity::class.java)
         // Membersihkan stack aktivitas sehingga pengguna tidak bisa kembali ke halaman login
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        intent.flags = FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         if (useAnimation) {
             overridePendingTransition(R.anim.fade_in, R.anim.fade_out)
@@ -137,4 +141,3 @@ class LoginActivity : AppCompatActivity() {
         finish()
     }
 }
-

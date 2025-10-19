@@ -22,6 +22,7 @@ import android.app.AlertDialog
 import android.view.LayoutInflater
 import android.widget.Button
 import android.graphics.Color
+import androidx.lifecycle.lifecycleScope
 
 class HomeActivity : AppCompatActivity() {
 
@@ -135,6 +136,7 @@ class HomeActivity : AppCompatActivity() {
         val userName = profilePrefs.getString(KEY_USERNAME, "Guest") ?: "Guest"
         val messages = getTimyMessages(userName)
 
+        // Menggunakan scope coroutine yang didefinisikan di atas (bukan lifecycleScope)
         chatJob = scope.launch {
             var index = 0
             while (isActive) {
@@ -203,7 +205,7 @@ class HomeActivity : AppCompatActivity() {
 
 
     private fun checkAndUpdateStreak() {
-        scope.launch {
+        lifecycleScope.launch(Dispatchers.IO) { // Ganti scope ke lifecycleScope dengan IO Dispatcher
             val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             val todayStr = sdf.format(Date())
             val todayCalendar = Calendar.getInstance()
@@ -276,7 +278,9 @@ class HomeActivity : AppCompatActivity() {
                 }
 
                 if (streakIncreased) {
-                    showStreakSuccessDialog(newStreak)
+                    withContext(Dispatchers.Main) { // Pindah ke Main Thread untuk UI
+                        showStreakSuccessDialog(newStreak)
+                    }
                 }
             }
         }
@@ -297,7 +301,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun updateWeeklyProgressUI() {
-        scope.launch {
+        lifecycleScope.launch(Dispatchers.IO) { // Pindah ke IO Dispatcher
             val todayCalendar = Calendar.getInstance()
             val fullWeekProgressBar = dayProgressBars.firstOrNull()
             val runnerIcon = dayRunnerIcons.firstOrNull()
@@ -306,87 +310,85 @@ class HomeActivity : AppCompatActivity() {
             val streakDaysStr = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
             val todayDayOfWeek = getCurrentDayOfWeek()
 
-            tvStreak.text = currentStreak.toString()
+            // Dapatkan data tugas dari background thread
+            val tasksToday = TaskRepository.getTasksByDate(todayCalendar)
+            val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
 
-            dayEllipses.forEach { it.visibility = View.VISIBLE }
-            dayRunnerIcons.forEach { it.visibility = View.GONE }
+            withContext(Dispatchers.Main) { // Pindah ke Main Thread untuk UI
+                tvStreak.text = currentStreak.toString()
 
-            if (fullWeekProgressBar != null && runnerIcon != null) {
-                if (currentStreak > 0 && streakDaysStr.isNotEmpty()) {
-                    val streakDays = streakDaysStr.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+                dayEllipses.forEach { it.visibility = View.VISIBLE }
+                dayRunnerIcons.forEach { it.visibility = View.GONE }
 
-                    val minStreakDay = streakDays.minOrNull() ?: todayDayOfWeek
+                if (fullWeekProgressBar != null && runnerIcon != null) {
+                    if (currentStreak > 0 && streakDaysStr.isNotEmpty()) {
+                        val streakDays = streakDaysStr.split(",").mapNotNull { it.toIntOrNull() }.toSet()
 
-                    if (streakDays.isNotEmpty()) {
-                        fullWeekProgressBar.visibility = View.VISIBLE
-                        runnerIcon.visibility = View.VISIBLE
+                        val minStreakDay = streakDays.minOrNull() ?: todayDayOfWeek
 
-                        dayEllipses.forEachIndexed { index, ellipse ->
-                            ellipse.visibility = if (streakDays.contains(index)) {
-                                View.GONE
-                            } else {
-                                View.VISIBLE
+                        if (streakDays.isNotEmpty()) {
+                            fullWeekProgressBar.visibility = View.VISIBLE
+                            runnerIcon.visibility = View.VISIBLE
+
+                            dayEllipses.forEachIndexed { index, ellipse ->
+                                // Menggunakan DayOfWeek (0=Senin..6=Minggu)
+                                val isStreakDay = streakDays.contains(index)
+                                ellipse.visibility = if (isStreakDay) View.GONE else View.VISIBLE
                             }
-                        }
 
-                        // Menggunakan fungsi suspend
-                        val tasksToday = TaskRepository.getTasksByDate(todayCalendar)
-                        val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
+                            val progressPerDay = 100
+                            val totalDaysInWeek = 7
 
-                        val progressPerDay = 100
-                        val totalDaysInWeek = 7
+                            val totalTasks = tasksToday.size + completedToday.size
 
-                        val totalTasks = tasksToday.size + completedToday.size
+                            val todayProgress = if (totalTasks > 0) {
+                                ((completedToday.size.toFloat() / totalTasks.toFloat()) * progressPerDay).toInt().coerceIn(0, progressPerDay)
+                            } else {
+                                if (streakDays.contains(todayDayOfWeek)) progressPerDay else 0
+                            }
 
-                        val todayProgress = if (totalTasks > 0) {
-                            ((completedToday.size.toFloat() / totalTasks.toFloat()) * progressPerDay).toInt().coerceIn(0, 100)
+                            val daysInSegment = todayDayOfWeek - minStreakDay
+                            val segmentProgressLength = (daysInSegment * progressPerDay) + todayProgress
+                            val startProgressValue = minStreakDay * progressPerDay
+
+                            fullWeekProgressBar.max = totalDaysInWeek * progressPerDay
+                            fullWeekProgressBar.progress = segmentProgressLength
+
+                            val layoutDays = findViewById<View>(R.id.layoutDays)
+                            layoutDays.post {
+                                val parentContainer = layoutDays as? ViewGroup
+                                if (parentContainer != null && parentContainer.childCount > 0) {
+                                    val parentWidth = parentContainer.width
+                                    val trackStartMargin = 10.dp
+                                    val trackWidth = parentWidth - (2 * trackStartMargin)
+                                    val runnerIconHalfWidth = runnerIcon.width / 2
+
+                                    val offsetRatio = startProgressValue.toFloat() / 700f
+                                    val progressBarTranslationX = (offsetRatio * trackWidth).toInt()
+
+                                    fullWeekProgressBar.translationX = progressBarTranslationX.toFloat()
+
+                                    val totalEndProgressValue = (todayDayOfWeek * progressPerDay) + todayProgress
+                                    val totalProgressRatio = totalEndProgressValue.toFloat() / 700f
+
+                                    val runnerTranslationXCorrected = (totalProgressRatio * trackWidth).toInt() + trackStartMargin - runnerIconHalfWidth
+
+                                    runnerIcon.translationX = runnerTranslationXCorrected.toFloat()
+                                } else {
+                                    Log.e("HomeActivity", "layoutDays is not a valid ViewGroup or has no children.")
+                                }
+                            }
+
                         } else {
-                            if (streakDays.contains(todayDayOfWeek)) progressPerDay else 0
+                            fullWeekProgressBar.visibility = View.INVISIBLE
+                            runnerIcon.visibility = View.GONE
+                            fullWeekProgressBar.translationX = 0f
                         }
-
-                        // ... (Logika visualisasi bar progress sama)
-                        val daysInSegment = todayDayOfWeek - minStreakDay
-                        val segmentProgressLength = (daysInSegment * progressPerDay) + todayProgress
-                        val startProgressValue = minStreakDay * progressPerDay
-
-                        fullWeekProgressBar.max = totalDaysInWeek * progressPerDay
-                        fullWeekProgressBar.progress = segmentProgressLength
-
-                        val layoutDays = findViewById<View>(R.id.layoutDays)
-                        layoutDays.post {
-                            val parentContainer = layoutDays as? ViewGroup
-                            if (parentContainer != null && parentContainer.childCount > 0) {
-                                val parentWidth = parentContainer.getChildAt(0).width
-
-                                val trackStartMargin = 10.dp
-                                val trackWidth = parentWidth - (2 * trackStartMargin)
-                                val runnerIconHalfWidth = runnerIcon.width / 2
-
-                                val offsetRatio = startProgressValue.toFloat() / 700f
-                                val progressBarTranslationX = (offsetRatio * trackWidth).toInt()
-
-                                fullWeekProgressBar.translationX = progressBarTranslationX.toFloat()
-
-                                val totalEndProgressValue = (todayDayOfWeek * progressPerDay) + todayProgress
-                                val totalProgressRatio = totalEndProgressValue.toFloat() / 700f
-
-                                val runnerTranslationXCorrected = (totalProgressRatio * trackWidth).toInt() + trackStartMargin - runnerIconHalfWidth
-
-                                runnerIcon.translationX = runnerTranslationXCorrected.toFloat()
-                            } else {
-                                Log.e("HomeActivity", "layoutDays is not a valid ViewGroup or has no children.")
-                            }
-                        }
-
                     } else {
                         fullWeekProgressBar.visibility = View.INVISIBLE
                         runnerIcon.visibility = View.GONE
                         fullWeekProgressBar.translationX = 0f
                     }
-                } else {
-                    fullWeekProgressBar.visibility = View.INVISIBLE
-                    runnerIcon.visibility = View.GONE
-                    fullWeekProgressBar.translationX = 0f
                 }
             }
         }

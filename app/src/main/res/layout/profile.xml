@@ -19,26 +19,19 @@
         android:layout_width="34dp"
         android:layout_height="37dp"
         app:layout_constraintTop_toTopOf="@id/bgTop"
-        app:layout_constraintStart_toStartOf="@id/bgTop"
-        android:background="@drawable/ic_fire2"
+        app:layout_constraintEnd_toEndOf="@id/bgTop" android:background="@drawable/ic_fire2"
         android:layout_marginTop="144dp"
-        android:layout_marginStart="326dp"/>
-
-    <TextView
-        android:id="@+id/some_id"
-        app:layout_constraintTop_toTopOf="@id/bgTop"
-        app:layout_constraintStart_toStartOf="@id/bgTop"
-        android:layout_width="66dp"
-        android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginTop="182dp"
-        android:layout_marginStart="310dp"
-        android:layout_marginEnd="36dp"
-        android:text="@string/some_id"
-        android:textAppearance="@style/some_id"
-        android:gravity="center_horizontal"
-        />
+        android:layout_marginEnd="16dp"/> <TextView
+    android:id="@+id/some_id"
+    app:layout_constraintTop_toTopOf="@id/bgTop"
+    app:layout_constraintEnd_toEndOf="@id/bgTop" android:layout_width="wrap_content" android:layout_height="wrap_content"
+    android:layout_alignParentLeft="true"
+    android:layout_alignParentTop="true"
+    android:layout_marginTop="182dp"
+    android:layout_marginEnd="20dp" android:text="@string/some_id"
+    android:textAppearance="@style/some_id"
+    android:gravity="center_horizontal"
+    />
 
     <TextView
         android:id="@+id/tvProfile"
@@ -276,7 +269,6 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Bottom navigation -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"

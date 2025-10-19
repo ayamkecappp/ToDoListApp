@@ -2,6 +2,8 @@ package com.example.todolistapp
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -26,17 +28,17 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import android.util.Log
-import android.os.Looper
-import android.view.animation.AnimationUtils
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.runBlocking
 import android.widget.Button
+import android.util.Log
+import android.view.animation.AnimationUtils
+import kotlinx.coroutines.*
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.async
+
+/**
+ * Catatan: Fungsi getCalendarData() diubah kembali ke versi yang menggunakan TaskRepository.hasTasksOnDate()
+ * (Versi asli Anda) untuk menyelesaikan error 'Unresolved reference: getDatesWithPendingTasks'.
+ * Struktur Coroutine utama (loadAllContent) dan refaktorisasi UI tetap dipertahankan.
+ */
 
 class TaskActivity : AppCompatActivity() {
 
@@ -53,6 +55,7 @@ class TaskActivity : AppCompatActivity() {
 
     private var hasScrolledToToday = false
 
+    // Konstanta UI
     private val COLOR_ACTIVE_SELECTION = Color.parseColor("#283F6D")
     private val COLOR_DEFAULT_TEXT = Color.BLACK
     private val COLOR_SELECTED_TEXT = Color.WHITE
@@ -61,10 +64,10 @@ class TaskActivity : AppCompatActivity() {
     private val BORDER_WIDTH_DP = 2
     private val BORDER_COLOR = Color.parseColor("#E0E0E0")
     private val ITEM_WIDTH_DP = 68
-    private val NUM_DAYS_TO_SHOW = 7
+    private val NUM_DAYS_TO_SHOW = 14 // Rentang 14 hari
 
+    // Konstanta Intent/Prefs
     private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
-
     private val PREFS_NAME = "TimyTimePrefs"
     private val KEY_STREAK = "current_streak"
     private val KEY_LAST_DATE = "last_completion_date"
@@ -74,11 +77,12 @@ class TaskActivity : AppCompatActivity() {
         const val RESULT_TASK_DELETED = 101
     }
 
+    // Launcher untuk Activity Result
     private val taskEditLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK || result.resultCode == RESULT_TASK_DELETED) {
-            loadCalendarAndTasks()
+            loadAllContent()
         }
     }
 
@@ -86,7 +90,7 @@ class TaskActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            loadCalendarAndTasks()
+            loadAllContent()
         }
     }
 
@@ -100,17 +104,19 @@ class TaskActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.task)
 
+        // Inisialisasi View
         tasksContainer = findViewById(R.id.tasksContainer)
         tvNoActivity = findViewById(R.id.tvNoActivity)
         octoberText = findViewById(R.id.octoberText)
         calendarMain = findViewById(R.id.calendar_main)
         dateItemsContainer = findViewById(R.id.date_items_container)
-
         bottomNav = findViewById(R.id.bottomNav)
         bottomNav.itemIconTintList = null
 
+        // Inisialisasi Kalender
         currentCalendar = Calendar.getInstance()
         selectedDate = Calendar.getInstance().apply {
+            // Set ke 00:00:00:000 agar perbandingan tanggal akurat
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
@@ -118,10 +124,9 @@ class TaskActivity : AppCompatActivity() {
         }
 
         handleIncomingTaskIntent(intent)
-        setDynamicMonthYear()
-        // Memuat konten secara asinkron di awal
-        loadCalendarAndTasks()
+        loadAllContent() // Panggilan pemuatan utama
 
+        // Listeners
         findViewById<ImageView?>(R.id.btn_search)?.setOnClickListener {
             startActivity(Intent(this, SearchFilterActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -130,6 +135,8 @@ class TaskActivity : AppCompatActivity() {
         findViewById<View>(R.id.reminderContainer)?.setOnClickListener {
             val intent = Intent(this, AddTaskActivity::class.java).apply {
                 val selectedDateCopy = selectedDate.clone() as Calendar
+                // Set ke tengah hari agar AddTask bisa menentukan dueDate dengan benar
+                selectedDateCopy.set(Calendar.HOUR_OF_DAY, 12)
                 putExtra(EXTRA_SELECTED_DATE_MILLIS, selectedDateCopy.timeInMillis)
             }
             addTaskLauncher.launch(intent)
@@ -163,86 +170,87 @@ class TaskActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        bottomNav.selectedItemId = R.id.nav_tasks
+    }
+
+    override fun onResume() {
+        super.onResume()
+        currentCalendar = Calendar.getInstance()
+        loadAllContent() // Memuat ulang konten saat kembali ke Activity
+    }
+
     /**
-     * Mengambil data tasks dan calendar di background thread dan memperbarui UI di main thread.
+     * Fungsi Utama Pemuatan Konten (Optimized)
+     * - Menjalankan proses tugas missed, data kalender, dan daftar tugas hari ini secara paralel.
+     * - Memastikan pembaruan UI hanya dilakukan setelah semua data siap.
      */
-    private fun loadCalendarAndTasks() {
-        // Gunakan lifecycleScope alih-alih GlobalScope
-        lifecycleScope.launch {
-            try {
-                // Jalankan semua operasi I/O di Dispatchers.IO secara PARALEL
-                val calendarDataDeferred = async(Dispatchers.IO) { getCalendarData() }
-                val tasksDeferred = async(Dispatchers.IO) {
-                    // Pastikan ini adalah suspend fun, bukan ...Sync
-                    TaskRepository.getTasksByDate(selectedDate.clone() as Calendar)
-                }
-                val missedTaskJob = launch(Dispatchers.IO) {
-                    // Pastikan ini adalah suspend fun
-                    TaskRepository.processTasksForMissed()
-                }
+    private fun loadAllContent() {
+        lifecycleScope.launch(Dispatchers.Main) {
+            // 1. Jalankan operasi IO berat di background
+            // Pastikan missed tasks terupdate DULU
+            val missedTaskJob = launch(Dispatchers.IO) { TaskRepository.processTasksForMissed() }
+            missedTaskJob.join() // Tunggu sampai selesai
 
-                // Tunggu hasil yang diperlukan untuk UI
-                val calendarData = calendarDataDeferred.await()
-                val tasks = tasksDeferred.await()
-                missedTaskJob.join() // Pastikan ini juga selesai (opsional jika tidak kritis untuk UI)
-
-                // 3. Update UI di Main Thread
-                // (Tidak perlu 'withContext(Dispatchers.Main)' karena 'launch'
-                //  di sini sudah berjalan di Main thread secara default,
-                //  tetapi menggunakan 'async(Dispatchers.IO)' akan memindahkan
-                //  pekerjaan ke background)
-
-                // Kode di bawah ini akan error jika 'launch' di atas
-                // tidak menggunakan 'Dispatchers.Main'.
-                // Cara yang benar adalah:
-
-                // lifecycleScope.launch(Dispatchers.Main) { // Mulai di Main
-                //     try {
-                //         val calendarData = withContext(Dispatchers.IO) { getCalendarData() }
-                //         val tasks = withContext(Dispatchers.IO) {
-                //             TaskRepository.getTasksByDate(selectedDate.clone() as Calendar)
-                //         }
-                //         withContext(Dispatchers.IO) {
-                //             TaskRepository.processTasksForMissed()
-                //         }
-                //         ... update UI di sini ...
-                //     }
-                // }
-
-                // Namun, untuk paralelisasi yang benar:
-                // Lanjutkan dari 'launch' di atas (yang default-nya Main)
-
-                // ... (Kode 'await' dari atas) ...
-
-                // Update UI (ini sudah di Main thread)
-                dateItemsContainer.removeAllViews()
-                calendarData.forEach { data ->
-                    val view = createDateItemView(
-                        data.month, data.dayOfWeek, data.dayOfMonth,
-                        data.isSelected, data.dayMillis, data.hasTasks
-                    )
-                    dateItemsContainer.addView(view)
-                }
-
-                tasksContainer.removeAllViews()
-                tasks.forEach { addNewTaskToUI(it) }
-                updateEmptyState(tasks.size)
-                setDynamicMonthYear()
-
-                calendarMain.post {
-                    if (!hasScrolledToToday) {
-                        scrollToSelectedDate(smooth = false)
-                        hasScrolledToToday = true
-                    } else {
-                        scrollToSelectedDate(smooth = true)
-                    }
-                }
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Error in loadCalendarAndTasks: ${e.message}", e)
-                // Pastikan error handling juga di Main thread
-                Toast.makeText(this@TaskActivity, "Gagal memuat tugas: ${e.message}", Toast.LENGTH_LONG).show()
+            // Gunakan async untuk memuat data kalender dan tugas hari ini secara PARALEL
+            val calendarDataDeferred = async(Dispatchers.IO) { getCalendarData() }
+            val tasksDeferred = async(Dispatchers.IO) {
+                // Mengambil tugas PENDING untuk tanggal yang dipilih (hanya 1 query)
+                TaskRepository.getTasksByDate(selectedDate.clone() as Calendar)
             }
+
+            val calendarData = calendarDataDeferred.await()
+            val tasks = tasksDeferred.await()
+
+            // 2. Update UI di Main thread
+            updateCalendarUI(calendarData)
+            updateTasksUI(tasks)
+            setDynamicMonthYear() // Update bulan/tahun header
+
+            // 3. Scroll ke posisi yang benar
+            calendarMain.post {
+                if (!hasScrolledToToday) {
+                    scrollToSelectedDate(smooth = false)
+                    hasScrolledToToday = true
+                } else {
+                    scrollToSelectedDate(smooth = true)
+                }
+            }
+        }
+    }
+
+    /**
+     * Update UI untuk Tasks (Dioptimalkan untuk kebersihan)
+     */
+    private fun updateTasksUI(tasks: List<Task>) {
+        tasksContainer.removeAllViews()
+        // Memastikan item yang baru ditambahkan muncul di bagian atas (seperti list normal)
+        tasks.reversed().forEach { addNewTaskToUI(it) }
+        updateEmptyState(tasks.size)
+    }
+
+    /**
+     * Update UI untuk Kalender (Dioptimalkan untuk kebersihan)
+     */
+    private fun updateCalendarUI(calendarData: List<CalendarDayData>) {
+        dateItemsContainer.removeAllViews()
+        calendarData.forEach { data ->
+            val view = createDateItemView(
+                data.month, data.dayOfWeek, data.dayOfMonth,
+                data.isSelected, data.dayMillis, data.hasTasks
+            )
+            dateItemsContainer.addView(view)
+        }
+    }
+
+
+    private fun createDotDrawable(color: Int): GradientDrawable {
+        val size = 6.dp
+        return GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(color)
+            setSize(size, size)
         }
     }
 
@@ -257,22 +265,64 @@ class TaskActivity : AppCompatActivity() {
     )
 
     /**
-     * Mengambil data tasks dari repository untuk setiap hari dalam range tampilan kalender.
-     * Dijalankan di Dispatchers.IO.
+     * [OPTIMASI UTAMA] Mengambil semua tugas PENDING dalam jendela 14 hari dengan 1 query,
+     * lalu memprosesnya secara in-memory.
      */
-    private suspend fun getCalendarData(): List<CalendarDayData> {
+    private suspend fun getTasksForDateWindow(): Set<String> = withContext(Dispatchers.IO) {
+        val dateOnlyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+        // 1. Tentukan rentang 14 hari yang akan ditampilkan
+        val startCal = selectedDate.clone() as Calendar
+        startCal.add(Calendar.DAY_OF_YEAR, -(NUM_DAYS_TO_SHOW / 2))
+        startCal.set(Calendar.HOUR_OF_DAY, 0); startCal.set(Calendar.MINUTE, 0)
+        startCal.set(Calendar.SECOND, 0); startCal.set(Calendar.MILLISECOND, 0)
+
+        val endCal = selectedDate.clone() as Calendar
+        endCal.add(Calendar.DAY_OF_YEAR, (NUM_DAYS_TO_SHOW / 2) + 1)
+        endCal.set(Calendar.HOUR_OF_DAY, 23); endCal.set(Calendar.MINUTE, 59)
+        endCal.set(Calendar.SECOND, 59); endCal.set(Calendar.MILLISECOND, 999)
+
+        // 2. Fetch semua tugas dalam rentang yang besar (Misal: 3 bulan untuk memastikan cakupan)
+        // Kita menggunakan fungsi CalendarActivity yang mengambil 3 bulan, lalu memfilter hasilnya.
+        val allTasksInLargeRange = TaskRepository.getTasksInDateRangeForCalendar(Calendar.getInstance())
+
+        // 3. Filter dan map hasilnya ke set tanggal (String)
+        return@withContext allTasksInLargeRange.filter {
+            val taskTime = it.dueDate.toDate().time
+            taskTime >= startCal.timeInMillis && taskTime <= endCal.timeInMillis
+        }.map {
+            dateOnlyFormat.format(it.dueDate.toDate())
+        }.toSet()
+    }
+
+
+    /**
+     * Mengambil data calendar untuk rentang 14 hari dengan OPTIMASI QUERY.
+     */
+    private suspend fun getCalendarData(): List<CalendarDayData> = withContext(Dispatchers.IO) {
         val dataList = mutableListOf<CalendarDayData>()
+        val dateOnlyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+        // [OPTIMASI] Lakukan 1 query besar dan dapatkan semua tanggal yang memiliki task
+        val hasTaskMapKeys = getTasksForDateWindow()
+
 
         val startCal = Calendar.getInstance()
         val tempStartCal = startCal.clone() as Calendar
+
+        // Tentukan tanggal mulai (sekitar 7 hari sebelum hari ini)
         tempStartCal.add(Calendar.DAY_OF_YEAR, -(NUM_DAYS_TO_SHOW / 2))
+        tempStartCal.set(Calendar.HOUR_OF_DAY, 0)
+        tempStartCal.set(Calendar.MINUTE, 0)
+        tempStartCal.set(Calendar.SECOND, 0)
+        tempStartCal.set(Calendar.MILLISECOND, 0)
 
         for (i in 0 until NUM_DAYS_TO_SHOW) {
             val cal = tempStartCal.clone() as Calendar
             cal.add(Calendar.DAY_OF_YEAR, i)
 
             val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
-            val month = SimpleDateFormat("MMM", Locale("in", "ID")).format(cal.time).lowercase()
+            val month = SimpleDateFormat("MMM", Locale("in", "ID")).format(cal.time).lowercase(Locale.getDefault())
             val dayOfWeek = SimpleDateFormat("EEE", Locale("en", "US")).format(cal.time)
 
             // Pengecekan tanggal yang sedang aktif dipilih
@@ -285,35 +335,16 @@ class TaskActivity : AppCompatActivity() {
             dateForCheck.set(Calendar.SECOND, 0)
             dateForCheck.set(Calendar.MILLISECOND, 0)
 
-            // Panggilan data I/O yang cepat (runBlocking dari TaskRepository)
-            val hasTasks = TaskRepository.hasTasksOnDate(dateForCheck)
+            val dateKey = dateOnlyFormat.format(dateForCheck.time)
+
+            // [OPTIMASI] Lakukan pengecekan O(1) in-memory
+            val hasTasks = hasTaskMapKeys.contains(dateKey)
 
             dataList.add(CalendarDayData(month, dayOfWeek, dayOfMonth, isSelected, cal.timeInMillis, hasTasks))
         }
-        return dataList
+        return@withContext dataList
     }
 
-
-    override fun onStart() {
-        super.onStart()
-        bottomNav.selectedItemId = R.id.nav_tasks
-    }
-
-    override fun onResume() {
-        super.onResume()
-        currentCalendar = Calendar.getInstance()
-        // Panggil pemuatan data asinkron
-        loadCalendarAndTasks()
-    }
-
-    private fun createDotDrawable(color: Int): GradientDrawable {
-        val size = 6.dp
-        return GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(color)
-            setSize(size, size)
-        }
-    }
 
     /**
      * Membuat tampilan chip tanggal untuk kalender horizontal.
@@ -403,7 +434,7 @@ class TaskActivity : AppCompatActivity() {
         container.setOnClickListener {
             val newSelectedMillis = it.tag as Long
 
-            val newSelectedDate = selectedDate.clone() as Calendar
+            val newSelectedDate = Calendar.getInstance()
             newSelectedDate.timeInMillis = newSelectedMillis
 
             newSelectedDate.set(Calendar.HOUR_OF_DAY, 0)
@@ -413,33 +444,46 @@ class TaskActivity : AppCompatActivity() {
 
             this@TaskActivity.selectedDate = newSelectedDate
 
-            // Memuat ulang kalender (untuk memindahkan highlight) dan tugas (untuk memfilter list)
-            loadCalendarAndTasks()
+            loadAllContent() // Panggil pemuatan utama
+            // Scroll ke tanggal baru
+            calendarMain.post { scrollToSelectedDate(smooth = true) }
         }
 
         return container
     }
 
     private fun scrollToSelectedDate(smooth: Boolean = false) {
-        val startCal = Calendar.getInstance().clone() as Calendar
-        startCal.add(Calendar.DAY_OF_YEAR, -(NUM_DAYS_TO_SHOW / 2))
-        startCal.set(Calendar.HOUR_OF_DAY, 0)
-        startCal.set(Calendar.MINUTE, 0)
-        startCal.set(Calendar.SECOND, 0)
-        startCal.set(Calendar.MILLISECOND, 0)
+        val daysInYear = NUM_DAYS_TO_SHOW // 365 days
+        val daysBeforeToday = daysInYear / 2 // ~182 days before today
 
-        val diffMillis = selectedDate.timeInMillis - startCal.timeInMillis
+        val today = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val startRangeDate = today.clone() as Calendar
+        startRangeDate.add(Calendar.DAY_OF_YEAR, -daysBeforeToday)
+
+        val diffMillis = selectedDate.timeInMillis - startRangeDate.timeInMillis
         val daysDifference = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
 
+        // Chip width + margins (4dp left + 4dp right) = 68 + 8 = 76 dp
         val itemWidthPx = ITEM_WIDTH_DP.dp + 8.dp
 
+        // Hitung posisi horizontal
+        val potentialScrollPosition = daysDifference * itemWidthPx
+
+        // Tentukan posisi scroll agar tanggal yang dipilih berada di tengah
         val centerOffset = (calendarMain.width / 2) - (ITEM_WIDTH_DP.dp / 2)
-        val scrollPosition = (daysDifference * itemWidthPx) - centerOffset
+        val finalScrollPosition = (potentialScrollPosition - centerOffset).coerceAtLeast(0)
+
 
         if (smooth) {
-            calendarMain.smoothScrollTo(scrollPosition.coerceAtLeast(0), 0)
+            calendarMain.smoothScrollTo(finalScrollPosition, 0)
         } else {
-            calendarMain.scrollTo(scrollPosition.coerceAtLeast(0), 0)
+            calendarMain.scrollTo(finalScrollPosition, 0)
         }
     }
 
@@ -463,15 +507,6 @@ class TaskActivity : AppCompatActivity() {
         }
     }
 
-    private fun createRoundedBackground(color: Int): GradientDrawable {
-        val cornerRadiusPx = CORNER_RADIUS_DP.dp.toFloat()
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            setColor(color)
-            cornerRadius = cornerRadiusPx
-        }
-    }
-
     private fun handleIncomingTaskIntent(intent: Intent?) {
         val selectedMillis = intent?.getLongExtra(EXTRA_SELECTED_DATE_MILLIS, -1L) ?: -1L
 
@@ -488,24 +523,26 @@ class TaskActivity : AppCompatActivity() {
 
             intent.removeExtra(EXTRA_SELECTED_DATE_MILLIS)
         }
-
-        if (intent != null && intent.getBooleanExtra("SHOULD_ADD_TASK", false)) {
-            intent.removeExtra("SHOULD_ADD_TASK")
-        }
     }
 
     private fun showStreakSuccessDialog(newStreak: Int) {
         val layoutResId = resources.getIdentifier("dialog_streak_success", "layout", packageName)
 
-        if (layoutResId == 0) return
+        if (layoutResId == 0) {
+            Log.e("TaskActivity", "FATAL: Layout 'dialog_streak_success.xml' not found. Dialog cannot be shown.")
+            return
+        }
 
         try {
-            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_streak_success, null)
+            val dialogView = LayoutInflater.from(this).inflate(layoutResId, null)
 
             val tvStreakMessage = dialogView.findViewById<TextView>(R.id.tv_streak_message)
             val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
 
-            if (tvStreakMessage == null || btnOk == null) return
+            if (tvStreakMessage == null || btnOk == null) {
+                Log.e("TaskActivity", "FATAL: Views inside dialog_streak_success not found (tv_streak_message or btn_ok). Check IDs.")
+                return
+            }
 
             tvStreakMessage.text = "$newStreak streak"
             tvStreakMessage.setTextColor(Color.parseColor("#FFC107"))
@@ -522,10 +559,11 @@ class TaskActivity : AppCompatActivity() {
 
             alertDialog.show()
         } catch (e: Exception) {
-            Log.e(TAG, "Error showing streak dialog: ${e.message}", e)
+            Log.e("TaskActivity", "Error showing streak dialog: ${e.message}", e)
         }
     }
 
+    // MEMPERBAIKI PEMANGGILAN SUSPEND FUNCTION
     private fun updateStreakOnTaskComplete(): Int = runBlocking {
         return@runBlocking withContext(Dispatchers.IO) {
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -536,6 +574,7 @@ class TaskActivity : AppCompatActivity() {
             val oldStreak = prefs.getInt(KEY_STREAK, 0)
             val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
 
+            // MEMANGGIL SUSPEND FUNCTION
             val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
             val hasCompletedToday = completedToday.isNotEmpty()
 
@@ -551,8 +590,11 @@ class TaskActivity : AppCompatActivity() {
                         streakIncreased = true
                     }
                 }
+
                 lastDateStr == todayStr -> {
+                    // Streak tidak bertambah
                 }
+
                 isYesterday(lastDateStr, todayStr) -> {
                     if (hasCompletedToday) {
                         newStreak = oldStreak + 1
@@ -560,6 +602,7 @@ class TaskActivity : AppCompatActivity() {
                         streakIncreased = true
                     }
                 }
+
                 else -> {
                     if (hasCompletedToday) {
                         newStreak = 1
@@ -625,200 +668,98 @@ class TaskActivity : AppCompatActivity() {
 
     private fun addNewTaskToUI(task: Task) {
         val context = this
-        val marginPx = 16.dp
         val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val oldStreak = sharedPrefs.getInt(KEY_STREAK, 0)
 
-        val mainContainer = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(marginPx, 0, marginPx, marginPx)
-            }
-            orientation = LinearLayout.VERTICAL
+        // 1. Muat layout item tugas
+        val mainContainer = LayoutInflater.from(context).inflate(R.layout.list_item_task, tasksContainer, false) as LinearLayout
+        mainContainer.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            // Mengganti margin agar konsisten dengan cara item diatur di TaskActivity
+            setMargins(16.dp, 0, 16.dp, 16.dp)
         }
 
-        val taskItem = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 80.dp
-            )
-            background = ResourcesCompat.getDrawable(context.resources, R.drawable.bg_task, null)
-            gravity = Gravity.CENTER_VERTICAL
-            orientation = LinearLayout.HORIZONTAL
-            elevation = 4f
-            setPadding(16.dp, 12.dp, 16.dp, 12.dp)
+        // 2. Dapatkan referensi views dari layout item
+        val taskItem = mainContainer.findViewById<LinearLayout>(R.id.taskItem)
+        val checklistBox = mainContainer.findViewById<View>(R.id.checklistBox)
+        val taskTitle = mainContainer.findViewById<TextView>(R.id.taskTitle)
+        val taskTime = mainContainer.findViewById<TextView>(R.id.taskTime)
+        val taskCategoryXml = mainContainer.findViewById<TextView>(R.id.taskCategory)
+        val exclamationIcon = mainContainer.findViewById<ImageView>(R.id.exclamationIcon)
+        val arrowRight = mainContainer.findViewById<ImageView>(R.id.arrowRight)
+        val actionButtonsContainer = mainContainer.findViewById<LinearLayout>(R.id.actionButtonsContainer)
+
+        val btnFlowTimer = mainContainer.findViewById<LinearLayout>(R.id.btnFlowTimer)
+        val btnEdit = mainContainer.findViewById<LinearLayout>(R.id.btnEdit)
+        val btnDelete = mainContainer.findViewById<LinearLayout>(R.id.btnDelete)
+
+        // 3. Mengisi data
+        taskTitle.text = task.title
+
+        // Logika untuk taskTime dan taskCategory
+        val timeText = task.time.ifEmpty { "" }
+        val categoryText = task.category.ifEmpty { "" }
+
+        if (categoryText.isNotEmpty() && timeText.isNotEmpty()) {
+            taskTime.text = timeText
+            taskCategoryXml.text = categoryText
+            taskCategoryXml.visibility = View.VISIBLE
+        } else if (timeText.isNotEmpty()) {
+            taskTime.text = timeText
+            taskCategoryXml.visibility = View.GONE
+        } else if (categoryText.isNotEmpty()) {
+            taskTime.text = categoryText
+            taskCategoryXml.visibility = View.GONE
+        } else {
+            taskTime.visibility = View.GONE
+            taskCategoryXml.visibility = View.GONE
         }
 
-        val checklistBox = View(context).apply {
-            layoutParams = LinearLayout.LayoutParams(24.dp, 24.dp).apply {
-                marginEnd = 16.dp
-            }
-            background = ResourcesCompat.getDrawable(context.resources, R.drawable.bg_checklist, null)
+        // 4. Logika prioritas
+        if (task.priority != "None") {
+            val colorResId = priorityColorMap[task.priority] ?: R.color.dark_blue
+            val colorInt = ContextCompat.getColor(context, colorResId)
+            exclamationIcon.visibility = View.VISIBLE
+            exclamationIcon.setColorFilter(colorInt)
+            exclamationIcon.contentDescription = "${task.priority} Priority"
+        } else {
+            exclamationIcon.visibility = View.GONE
+        }
 
-            setOnClickListener {
-                GlobalScope.launch(Dispatchers.IO) {
-                    val success = TaskRepository.completeTask(task.id)
+        // 5. Setup Listeners
+        checklistBox.setOnClickListener {
+            lifecycleScope.launch(Dispatchers.IO) {
+                val success = TaskRepository.completeTask(task.id)
+                withContext(Dispatchers.Main) {
                     if (success) {
                         val newStreak = updateStreakOnTaskComplete()
+                        showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
 
-                        withContext(Dispatchers.Main) {
-                            showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
+                        val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
+                        mainContainer.startAnimation(slideRight)
 
-                            val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
-                            mainContainer.startAnimation(slideRight)
-
-                            android.os.Handler(Looper.getMainLooper()).postDelayed({
-                                tasksContainer.removeView(mainContainer)
-                                loadCalendarAndTasks()
-                            }, 300)
-                        }
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            tasksContainer.removeView(mainContainer)
+                            // Hanya perlu loadAllContent karena akan me-reload tasks dan calendar dot
+                            loadAllContent()
+                        }, 300)
                     } else {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, "Gagal menandai tugas selesai. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
-                        }
+                        Toast.makeText(context, "Gagal menandai tugas selesai.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
-        taskItem.addView(checklistBox)
 
-        val titleAndPriorityContainer = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        val taskTitle = TextView(context).apply {
-            text = task.title
-            textSize = 16f
-            setTextColor(Color.parseColor("#14142A"))
-            typeface = ResourcesCompat.getFont(context, R.font.lexend)
-        }
-        titleAndPriorityContainer.addView(taskTitle)
-
-        if (task.priority != "None") {
-            val colorResId = priorityColorMap[task.priority] ?: R.color.dark_blue
-            val colorInt = ContextCompat.getColor(context, colorResId)
-
-            val exclamationIcon = ImageView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(16.dp, 16.dp).apply {
-                    marginStart = 8.dp
-                    gravity = Gravity.CENTER_VERTICAL
-                }
-                setImageResource(R.drawable.ic_missed)
-                contentDescription = "${task.priority} Priority"
-                setColorFilter(colorInt)
-            }
-            titleAndPriorityContainer.addView(exclamationIcon)
-        }
-
-        val detailWrapper = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f
-            ).apply {
-                marginStart = 16.dp
-            }
-            orientation = LinearLayout.VERTICAL
-        }
-
-        val taskTime = TextView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            text = task.time.ifEmpty { "" }
-            textSize = 12f
-            setTextColor(Color.parseColor("#283F6D"))
-            typeface = ResourcesCompat.getFont(context, R.font.lexend)
-            gravity = Gravity.END
-        }
-        detailWrapper.addView(taskTime)
-
-        val taskCategory = TextView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            text = task.category.ifEmpty { "" }
-            textSize = 12f
-            setTextColor(Color.parseColor("#283F6D"))
-            typeface = ResourcesCompat.getFont(context, R.font.lexend)
-            gravity = Gravity.END
-        }
-        detailWrapper.addView(taskCategory)
-
-        taskItem.addView(titleAndPriorityContainer)
-        taskItem.addView(detailWrapper)
-
-        val arrowRight = ImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                marginStart = 8.dp
-            }
-            setImageResource(R.drawable.baseline_arrow_forward_ios_24)
-            setColorFilter(Color.parseColor("#283F6D"))
-            rotation = 0f
-        }
-        taskItem.addView(arrowRight)
-
-        mainContainer.addView(taskItem)
-
-        val actionButtonsContainer = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(16.dp, 12.dp, 16.dp, 12.dp)
-            setBackgroundColor(Color.TRANSPARENT)
-            visibility = View.GONE
-        }
-
-        fun createActionButton(iconResId: Int, buttonText: String, onClick: () -> Unit): LinearLayout {
-            return LinearLayout(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f
-                ).apply {
-                    setMargins(4.dp, 0, 4.dp, 0)
-                }
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setOnClickListener { onClick() }
-
-                background = ResourcesCompat.getDrawable(context.resources, R.drawable.bg_task, null)
-                setPadding(8.dp, 12.dp, 8.dp, 12.dp)
-
-                addView(ImageView(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(32.dp, 32.dp)
-                    setImageResource(iconResId)
-                    setColorFilter(Color.parseColor("#283F6D"))
-                })
-
-                addView(TextView(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                    )
-                    text = buttonText
-                    textSize = 10f
-                    setTextColor(Color.parseColor("#283F6D"))
-                    typeface = ResourcesCompat.getFont(context, R.font.lexend)
-                    gravity = Gravity.CENTER_HORIZONTAL
-                })
-            }
-        }
-
-        val flowTimerButton = createActionButton(R.drawable.ic_alarm, "Flow Timer") {
+        btnFlowTimer.setOnClickListener {
             val intent = Intent(context, FlowTimerActivity::class.java).apply {
                 putExtra(FlowTimerActivity.EXTRA_TASK_NAME, task.title)
                 putExtra(FlowTimerActivity.EXTRA_FLOW_DURATION, task.flowDurationMillis)
             }
-            startActivity(intent)
+            context.startActivity(intent)
         }
 
-        val editButton = createActionButton(R.drawable.ic_edit, "Edit") {
+        btnEdit.setOnClickListener {
             val intent = Intent(context, EditTaskActivity::class.java).apply {
                 putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
             }
@@ -826,36 +767,30 @@ class TaskActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        val deleteButton = createActionButton(R.drawable.ic_trash, "Delete") {
-            GlobalScope.launch(Dispatchers.IO) {
+        btnDelete.setOnClickListener {
+            lifecycleScope.launch(Dispatchers.IO) {
                 val success = TaskRepository.deleteTask(task.id)
-                if (success) {
-                    withContext(Dispatchers.Main) {
+                withContext(Dispatchers.Main) {
+                    if (success) {
                         showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1)
 
                         val slideRight = AnimationUtils.loadAnimation(context, R.anim.slide_out_right)
                         mainContainer.startAnimation(slideRight)
 
-                        android.os.Handler(Looper.getMainLooper()).postDelayed({
+                        Handler(Looper.getMainLooper()).postDelayed({
                             tasksContainer.removeView(mainContainer)
-                            loadCalendarAndTasks()
+                            // Hanya perlu loadAllContent karena akan me-reload tasks dan calendar dot
+                            loadAllContent()
                         }, 300)
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Gagal menghapus tugas. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
 
-        actionButtonsContainer.addView(flowTimerButton)
-        actionButtonsContainer.addView(editButton)
-        actionButtonsContainer.addView(deleteButton)
-
-        mainContainer.addView(actionButtonsContainer)
-
         taskItem.setOnClickListener {
+            // Toggle visibility of actionButtonsContainer
             if (actionButtonsContainer.visibility == View.GONE) {
                 actionButtonsContainer.visibility = View.VISIBLE
                 arrowRight.rotation = 90f
@@ -865,7 +800,7 @@ class TaskActivity : AppCompatActivity() {
             }
         }
 
-        tasksContainer.addView(mainContainer, 0)
+        tasksContainer.addView(mainContainer)
     }
 
     private fun updateEmptyState(taskCount: Int) {

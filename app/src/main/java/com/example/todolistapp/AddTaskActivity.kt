@@ -28,11 +28,12 @@ import android.app.TimePickerDialog
 import android.widget.NumberPicker
 import android.graphics.drawable.ColorDrawable
 import com.google.firebase.Timestamp
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import com.google.firebase.auth.FirebaseAuth
 import java.util.UUID
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AddTaskActivity : AppCompatActivity() {
 
@@ -183,16 +184,23 @@ class AddTaskActivity : AppCompatActivity() {
         )
 
         btnSave.isEnabled = false
-        GlobalScope.launch(Dispatchers.Main) {
+        // Mengganti GlobalScope.launch dengan lifecycleScope.launch
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
                 TaskRepository.addTask(newTask)
 
-                showConfirmationDialog(newTask)
-                Toast.makeText(this@AddTaskActivity, "Task berhasil disimpan ke Cloud Firestore!", Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    showConfirmationDialog(newTask)
+                    Toast.makeText(this@AddTaskActivity, "Task berhasil disimpan ke Cloud Firestore!", Toast.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
-                Toast.makeText(this@AddTaskActivity, "Gagal menyimpan task: ${e.message}", Toast.LENGTH_LONG).show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@AddTaskActivity, "Gagal menyimpan task: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             } finally {
-                btnSave.isEnabled = true
+                withContext(Dispatchers.Main) {
+                    btnSave.isEnabled = true
+                }
             }
         }
     }

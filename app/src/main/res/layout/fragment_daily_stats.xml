@@ -21,8 +21,7 @@
 
     <TextView
         android:id="@+id/streak_value"
-        android:layout_width="39dp"
-        android:layout_height="wrap_content"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:text="@string/some_id2"
         android:textAppearance="@style/some_id2"
         android:gravity="center_horizontal"
@@ -59,7 +58,7 @@
             android:background="@drawable/rectangle_2"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/rectangle_2" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" app:layout_constraintWidth_percent="0.14"
-              android:alpha="0.0"
+            android:alpha="0.0"
             android:transformPivotY="140dp"/>
         <View
             android:id="@+id/rectangle_2"
@@ -70,7 +69,7 @@
             app:layout_constraintEnd_toStartOf="@id/rectangle_3"
             app:layout_constraintStart_toEndOf="@id/rectangle_1"
             app:layout_constraintWidth_percent="0.14"
-              android:alpha="0.0"
+            android:alpha="0.0"
             android:transformPivotY="91dp"/>
         <View
             android:id="@+id/rectangle_3"
@@ -81,7 +80,7 @@
             app:layout_constraintEnd_toStartOf="@id/rectangle_4"
             app:layout_constraintStart_toEndOf="@id/rectangle_2"
             app:layout_constraintWidth_percent="0.14"
-              android:alpha="0.0"
+            android:alpha="0.0"
             android:transformPivotY="44dp"/>
         <View
             android:id="@+id/rectangle_4"
@@ -92,7 +91,7 @@
             app:layout_constraintEnd_toStartOf="@id/rectangle_5"
             app:layout_constraintStart_toEndOf="@id/rectangle_3"
             app:layout_constraintWidth_percent="0.14"
-              android:alpha="0.0"
+            android:alpha="0.0"
             android:transformPivotY="84dp"/>
         <View
             android:id="@+id/rectangle_5"
@@ -103,7 +102,7 @@
             app:layout_constraintEnd_toStartOf="@id/rectangle_6"
             app:layout_constraintStart_toEndOf="@id/rectangle_4"
             app:layout_constraintWidth_percent="0.14"
-              android:alpha="0.0"
+            android:alpha="0.0"
             android:transformPivotY="64dp"/>
         <View
             android:id="@+id/rectangle_6"
@@ -124,7 +123,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/rectangle_6"
             app:layout_constraintWidth_percent="0.14"
-              android:alpha="0.0" />
+            android:alpha="0.0" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

@@ -7,9 +7,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.constraintlayout.widget.ConstraintLayout
-import android.widget.TextView // Import ini
-import android.widget.ImageView // Import ini
-import android.widget.LinearLayout // <--- BARIS INI HILANG
+import android.widget.TextView
+import android.widget.ImageView
+import android.widget.LinearLayout
 
 class MonthlyStatsFragment : Fragment() {
 
@@ -18,7 +18,7 @@ class MonthlyStatsFragment : Fragment() {
     private lateinit var streakValue: TextView
     private lateinit var fireIcon: ImageView
     private lateinit var barChartContainer: ConstraintLayout
-    private lateinit var xAxisLabels: LinearLayout // <--- TAMBAHKAN DEKLARASI INI
+    private lateinit var xAxisLabels: LinearLayout
 
 
     override fun onCreateView(

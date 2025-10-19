@@ -7,8 +7,7 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/headerText"
-        android:layout_width="412dp"
-        android:layout_height="252dp"
+        android:layout_width="match_parent" android:layout_height="252dp"
         android:background="@drawable/bg_card"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -67,8 +66,7 @@
 
         <HorizontalScrollView
             android:id="@+id/calendar_main"
-            android:layout_width="408dp"
-            android:layout_height="73dp"
+            android:layout_width="match_parent" android:layout_height="73dp"
             android:layout_marginTop="12dp"
             android:clipToPadding="false"
             android:paddingStart="16dp"
@@ -165,7 +163,6 @@
         android:visibility="gone"
         />
 
-    <!-- Bottom navigation -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"

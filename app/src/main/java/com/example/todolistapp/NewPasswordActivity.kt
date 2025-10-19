@@ -1,4 +1,4 @@
-package com.example.todolistapp // Pastikan ini sesuai dengan nama package Anda
+package com.example.todolistapp
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,6 +7,8 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 
 class NewPasswordActivity : AppCompatActivity() {
 
@@ -16,7 +18,7 @@ class NewPasswordActivity : AppCompatActivity() {
         setContentView(R.layout.new_password)
 
         // Dapatkan referensi ke View
-        // Perhatikan ID di layout Anda (newpasswordxml)
+        // Perhatikan ID di layout Anda (new_password.xml)
         val newPasswordInput = findViewById<EditText>(R.id.input_username) // Di layout Anda, ID ini dipakai untuk input pertama
         val confirmPasswordInput = findViewById<EditText>(R.id.input_password) // ID ini dipakai untuk input kedua
         val saveBtn = findViewById<Button>(R.id.btn_signup) // Di layout Anda, ID ini dipakai untuk tombol "Verify"
@@ -41,9 +43,9 @@ class NewPasswordActivity : AppCompatActivity() {
                 Toast.makeText(this, "Password updated successfully! Please log in.", Toast.LENGTH_LONG).show()
 
                 // Arahkan kembali ke Login Activity
-                val intent = Intent(this, LoginActivity::class.java)
+                val intent = Intent(this, LoginActivity::class.java) // Perbaiki Unresolved Reference
                 // Hapus semua Activity lain di atas Login Activity (agar tidak bisa "Back" ke NewPassword)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                intent.flags = FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_CLEAR_TASK // Perbaiki Unresolved Reference
                 startActivity(intent)
                 finish()
             }
@@ -51,7 +53,7 @@ class NewPasswordActivity : AppCompatActivity() {
 
         // Listener untuk Teks "Back to login"
         backToLoginText.setOnClickListener {
-            val intent = Intent(this, LoginActivity::class.java)
+            val intent = Intent(this, LoginActivity::class.java) // Perbaiki Unresolved Reference
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP // Kembali ke Login yang sudah ada
             startActivity(intent)
             finish()
