@@ -24,20 +24,20 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.coroutines.resume
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.io.FileOutputStream
-import java.security.MessageDigest
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.CircleCrop
+import com.bumptech.glide.request.RequestOptions
 
 class EditProfileActivity : AppCompatActivity() {
 
@@ -54,10 +54,10 @@ class EditProfileActivity : AppCompatActivity() {
     private val genders = arrayOf("Male", "Female")
 
     // Cloudinary credentials
-    private val CLOUD_NAME = "dk2jrlugl"  // Ganti dengan Cloud Name Anda
-    private val API_KEY = "791225435148732"  // Ganti dengan API Key Anda
-    private val API_SECRET = "mlCaQzDFef6crC79tEJ0hEKWZ_s"  // Ganti dengan API Secret Anda
-    private val UPLOAD_PRESET = "android_profile_upload"  // Ganti dengan Upload Preset Anda
+    private val CLOUD_NAME = "dk2jrlugl"
+    private val API_KEY = "791225435148732"
+    private val API_SECRET = "mlCaQzDFef6crC79tEJ0hEKWZ_s"
+    private val UPLOAD_PRESET = "android_profile_upload"
 
     private val client = OkHttpClient()
 
@@ -70,7 +70,12 @@ class EditProfileActivity : AppCompatActivity() {
             if (uriString != null) {
                 currentImageUri = Uri.parse(uriString)
                 try {
-                    ivProfilePicture.setImageURI(currentImageUri)
+                    // PENTING: Segera simpan URI lokal ke SharedPreferences. Ini akan digunakan oleh loadProfileData saat onResume.
+                    sharedPrefs.edit().putString(KEY_IMAGE_URI, currentImageUri.toString()).apply()
+
+                    // Memuat URI gambar yang baru diambil untuk pratinjau
+                    val options = RequestOptions().transform(CircleCrop())
+                    Glide.with(this).load(currentImageUri).apply(options).into(ivProfilePicture)
                     Toast.makeText(this, "Foto profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Log.e("EditProfile", "Error setting image URI from camera: ${e.message}")
@@ -84,10 +89,10 @@ class EditProfileActivity : AppCompatActivity() {
         val (height: Int, width: Int) = options.outHeight to options.outWidth
         var inSampleSize = 1
 
-        if (height > reqHeight || width > reqWidth) {
+        if (height > reqWidth || width > reqWidth) {
             val halfHeight: Int = height / 2
             val halfWidth: Int = width / 2
-            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+            while (halfHeight / inSampleSize >= reqWidth && halfWidth / inSampleSize >= reqWidth) {
                 inSampleSize *= 2
             }
         }
@@ -97,7 +102,7 @@ class EditProfileActivity : AppCompatActivity() {
     private fun getCompressedImageBytes(imageUri: Uri, targetSizeKB: Int): ByteArray? {
         var inputStream: InputStream? = null
         try {
-            // Langkah 1: Resize Gambar
+            // ... (kode kompresi gambar)
             inputStream = contentResolver.openInputStream(imageUri)
             val options = BitmapFactory.Options()
             options.inJustDecodeBounds = true
@@ -136,7 +141,6 @@ class EditProfileActivity : AppCompatActivity() {
                 bitmapToResize.recycle()
             }
 
-            // Langkah 2: Kompresi Kualitas Berulang
             var quality = 95
             val outputStream = ByteArrayOutputStream()
             var compressedBytes: ByteArray
@@ -159,7 +163,7 @@ class EditProfileActivity : AppCompatActivity() {
 
             Log.d("ImageCompression", "Ukuran final: ${compressedBytes.size / 1024}KB")
             return compressedBytes
-
+            // ... (akhir kode kompresi gambar)
         } catch (e: Exception) {
             Log.e("ImageCompression", "Gagal mengkompresi gambar", e)
             inputStream?.close()
@@ -209,7 +213,7 @@ class EditProfileActivity : AppCompatActivity() {
             linearLayout.addView(this)
         }
 
-        // 1. Muat Data Profil dan Gambar
+        // Muat Data Profil dan Gambar. Panggilan ini dilakukan di onCreate dan onResume
         loadProfileData()
 
         // 2. Setup Listeners
@@ -221,6 +225,7 @@ class EditProfileActivity : AppCompatActivity() {
             saveProfileData()
         }
 
+        // Mengklik ikon edit foto akan membuka CameraActivity
         tvEditPhoto.setOnClickListener { launchCamera() }
         ivProfilePicture.setOnClickListener { launchCamera() }
 
@@ -228,6 +233,12 @@ class EditProfileActivity : AppCompatActivity() {
         inputGender.setOnClickListener {
             showGenderDropdown()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // PENTING: Muat ulang data saat onResume untuk menyinkronkan gambar
+        loadProfileData()
     }
 
     private suspend fun uploadImageToCloudinary(userId: String, imageUri: Uri): String? {
@@ -240,7 +251,7 @@ class EditProfileActivity : AppCompatActivity() {
 
         return withContext(Dispatchers.IO) {
             try {
-                // 1. Kompresi gambar terlebih dahulu
+                // 1. Kompresi gambar
                 val compressedBytes = getCompressedImageBytes(imageUri, 500) // 500KB max
                 if (compressedBytes == null) {
                     Log.e("CloudinaryUpload", "Kompresi gambar gagal")
@@ -253,7 +264,7 @@ class EditProfileActivity : AppCompatActivity() {
                     it.write(compressedBytes)
                 }
 
-                // 3. Generate signature untuk signed upload (lebih aman)
+                // 3. Generate timestamp and public ID
                 val timestamp = (System.currentTimeMillis() / 1000).toString()
                 val publicId = "profile_images/$userId/profile_$timestamp"
 
@@ -287,7 +298,6 @@ class EditProfileActivity : AppCompatActivity() {
                     Log.d("CloudinaryUpload", "Response: $responseBody")
 
                     // Parse JSON untuk mendapatkan secure_url
-                    // Menggunakan cara manual tanpa library JSON
                     val secureUrl = responseBody?.let { extractSecureUrl(it) }
 
                     if (secureUrl != null) {
@@ -301,26 +311,11 @@ class EditProfileActivity : AppCompatActivity() {
                     Log.e("CloudinaryUpload", "Upload gagal: ${response.code} - ${response.message}")
                     val errorBody = response.body?.string()
                     Log.e("CloudinaryUpload", "Error body: $errorBody")
-
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@EditProfileActivity,
-                            "Upload gagal: ${response.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
                     return@withContext null
                 }
 
             } catch (e: Exception) {
                 Log.e("CloudinaryUpload", "Exception: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        this@EditProfileActivity,
-                        "Error upload: ${e.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
                 return@withContext null
             }
         }
@@ -329,16 +324,11 @@ class EditProfileActivity : AppCompatActivity() {
     // Fungsi helper untuk extract secure_url dari JSON response
     private fun extractSecureUrl(jsonResponse: String): String? {
         return try {
-            // Cari "secure_url":"..."
             val startIndex = jsonResponse.indexOf("\"secure_url\":\"") + 14
             if (startIndex < 14) return null
-
             val endIndex = jsonResponse.indexOf("\"", startIndex)
             if (endIndex == -1) return null
-
-            val url = jsonResponse.substring(startIndex, endIndex)
-            // Unescape URL jika perlu
-            url.replace("\\/", "/")
+            jsonResponse.substring(startIndex, endIndex).replace("\\/", "/")
         } catch (e: Exception) {
             Log.e("CloudinaryUpload", "Error parsing secure_url: ${e.message}")
             null
@@ -355,28 +345,31 @@ class EditProfileActivity : AppCompatActivity() {
         inputUsername.setText(username)
         inputGender.setText(currentGender)
 
-        // Muat gambar jika URI ada
+        // Muat gambar jika URI/URL ada
         if (imageUriString != null) {
+            val options = RequestOptions().transform(CircleCrop())
+
             if (imageUriString.startsWith("http")) {
-                // Ini adalah URL dari Cloudinary
-                // TODO: Gunakan Glide untuk load image
-                // Glide.with(this).load(imageUriString).into(ivProfilePicture)
-                Log.d("EditProfile", "Image URL dari Cloudinary: $imageUriString")
-                // Sementara set icon default
-                ivProfilePicture.setImageResource(R.drawable.ic_profile)
+                // Ini adalah URL dari Cloudinary (permanen)
+                currentImageUri = null
+                Glide.with(this).load(imageUriString).apply(options).into(ivProfilePicture)
             } else {
-                // Ini adalah URI lokal
+                // Ini adalah URI lokal (sementara dari kamera)
                 currentImageUri = Uri.parse(imageUriString)
                 try {
-                    ivProfilePicture.setImageURI(currentImageUri)
+                    // Muat dari URI lokal
+                    Glide.with(this).load(currentImageUri).apply(options).into(ivProfilePicture)
                 } catch (e: Exception) {
-                    Log.e("EditProfile", "Error loading image URI: ${e.message}")
+                    // Fallback jika URI lokal tidak valid/hilang
+                    Log.e("EditProfile", "Error loading local image URI: ${e.message}")
                     currentImageUri = null
                     sharedPrefs.edit().remove(KEY_IMAGE_URI).apply()
                     ivProfilePicture.setImageResource(R.drawable.ic_profile)
                 }
             }
         } else {
+            // Tidak ada URI, gunakan default
+            currentImageUri = null
             ivProfilePicture.setImageResource(R.drawable.ic_profile)
         }
     }
@@ -397,44 +390,42 @@ class EditProfileActivity : AppCompatActivity() {
             return
         }
 
-        // Tampilkan loading
         Toast.makeText(this, "Menyimpan profil...", Toast.LENGTH_SHORT).show()
 
-        // Gunakan lifecycleScope untuk Coroutine
         lifecycleScope.launch {
-            var imageUrl: String? = null
+            var finalImageString: String? = sharedPrefs.getString(KEY_IMAGE_URI, null)
 
-            // 1. Cek apakah ada gambar baru untuk diupload
-            if (currentImageUri != null) {
-                // 2. Upload ke Cloudinary
-                imageUrl = uploadImageToCloudinary(userId, currentImageUri!!)
+            // 1. Cek apakah currentImageUri adalah URI lokal yang perlu diupload
+            val isLocalUriForUpload = currentImageUri != null && !currentImageUri.toString().startsWith("http")
 
-                if (imageUrl == null) {
-                    Toast.makeText(
-                        this@EditProfileActivity,
-                        "Gagal mengunggah gambar profil.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    // Gunakan URL lama jika upload gagal
-                    imageUrl = sharedPrefs.getString(KEY_IMAGE_URI, null)
+            if (isLocalUriForUpload) {
+                // 1a. Upload ke Cloudinary
+                val uploadedUrl = uploadImageToCloudinary(userId, currentImageUri!!)
+
+                if (uploadedUrl == null) {
+                    // Upload GAGAL, pertahankan nilai lama yang ada di finalImageString
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@EditProfileActivity, "Gagal mengunggah gambar profil. Data foto tidak diubah.", Toast.LENGTH_LONG).show()
+                    }
                 } else {
-                    Log.d("SaveProfile", "Image uploaded successfully: $imageUrl")
+                    // Upload SUKSES, URL Cloudinary menjadi string gambar baru permanen
+                    finalImageString = uploadedUrl
                 }
-            } else {
-                // Jika tidak ada gambar baru, pertahankan URL lama
-                imageUrl = sharedPrefs.getString(KEY_IMAGE_URI, null)
+            } else if (currentImageUri == null) {
+                // Gambar di-reset/tidak ada gambar
+                finalImageString = ""
             }
 
-            // 3. Buat objek data profil untuk Firestore
+
+            // 2. Simpan data ke Firestore
             val profileData = hashMapOf(
                 "name" to newName,
                 "username" to newUsername,
                 "gender" to newGender,
-                "profileImageUrl" to imageUrl,
+                "profileImageUrl" to (finalImageString ?: ""),
                 "updatedAt" to System.currentTimeMillis()
             )
 
-            // 4. Simpan data ke Firestore
             val success = withContext(Dispatchers.IO) {
                 try {
                     val db = FirebaseFirestore.getInstance()
@@ -449,28 +440,26 @@ class EditProfileActivity : AppCompatActivity() {
                 }
             }
 
-            // 5. Update UI dan SharedPreferences
+            // 3. Update SharedPreferences dan Navigasi
             if (success) {
+                // Update SharedPreferences dengan URL permanen
                 sharedPrefs.edit().apply {
                     putString(KEY_NAME, newName)
                     putString(KEY_USERNAME, newUsername)
                     putString(KEY_GENDER, newGender)
-                    putString(KEY_IMAGE_URI, imageUrl)
+                    // Simpan URL permanen yang baru atau yang lama
+                    putString(KEY_IMAGE_URI, finalImageString)
                     apply()
                 }
-                Toast.makeText(
-                    this@EditProfileActivity,
-                    "Profil berhasil diperbarui!",
-                    Toast.LENGTH_SHORT
-                ).show()
-                setResult(Activity.RESULT_OK)
-                finish()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@EditProfileActivity, "Profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                    setResult(Activity.RESULT_OK)
+                    finish()
+                }
             } else {
-                Toast.makeText(
-                    this@EditProfileActivity,
-                    "Gagal menyimpan profil ke database.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@EditProfileActivity, "Gagal menyimpan profil ke database.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

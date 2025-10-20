@@ -3,69 +3,93 @@ package com.example.todolistapp
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
-import android.widget.TextView
+import android.util.Log
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import de.hdodenhof.circleimageview.CircleImageView
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
-import android.util.Log
 import java.lang.Exception
 import com.google.android.material.tabs.TabLayout
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayoutMediator
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.withContext
-import com.bumptech.glide.Glide // Import Glide
-import kotlinx.coroutines.launch // Import launch
-import kotlinx.coroutines.withContext // Import withContext
-import androidx.lifecycle.lifecycleScope // Import lifecycleScope
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.CircleCrop
+import com.bumptech.glide.request.RequestOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 class ProfileActivity : AppCompatActivity() {
 
     private lateinit var tabLayout: TabLayout
     private lateinit var viewPager: ViewPager2
-
-
     private lateinit var tvUsername: TextView
     private lateinit var ivProfilePicture: CircleImageView
     private lateinit var sharedPrefs: SharedPreferences
     private lateinit var bottomNav: BottomNavigationView
-
     private lateinit var tvCompletedTasksLabel: TextView
     private lateinit var tvMissedTasksLabel: TextView
     private lateinit var tvDeletedTasksLabel: TextView
 
+    // --- Cloudinary and OkHttp client (Dicopy dari EditProfileActivity) ---
+    private val CLOUD_NAME = "dk2jrlugl" // Ganti dengan Cloud Name Anda yang sebenarnya
+    private val UPLOAD_PRESET = "android_profile_upload" // Ganti dengan Upload Preset Anda yang sebenarnya
+    private val client = OkHttpClient()
+    // --------------------------------------------------------------------
+
+    // Launcher untuk Activity Result dari EditProfileActivity
+    private val editProfileLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // Jika EditProfileActivity berhasil, muat ulang data (termasuk foto)
+            loadProfileData()
+            updateTaskCounts()
+        }
+    }
+
+    // Launcher untuk Activity Result dari CameraActivity
     private val cameraLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val uriString = result.data?.getStringExtra("PROFILE_PHOTO_URI")
             if (uriString != null) {
-                val imageUri = Uri.parse(uriString)
-                setProfileImage(imageUri)
-                saveProfileImageUri(imageUri)
-            } else {
-                Toast.makeText(this, "Gagal mendapatkan foto profil.", Toast.LENGTH_SHORT).show()
+                val newImageUri = Uri.parse(uriString)
+                handleNewProfilePhoto(newImageUri) // FUNGSI PENTING: Upload dan Simpan langsung
             }
         }
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile)
 
+        // Inisialisasi dan Binding Views
         sharedPrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
 
         tabLayout = findViewById(R.id.tabLayout)
@@ -86,11 +110,8 @@ class ProfileActivity : AppCompatActivity() {
         tvMissedTasksLabel = MissedTasks.getChildAt(0) as TextView
         tvDeletedTasksLabel = DeletedTasks.getChildAt(0) as TextView
 
-        // Perbaikan: BottomNavigationView.itemIconTintList adalah property
+        // Setup Bottom Nav dan ViewPager (Kode yang sudah ada)
         bottomNav.itemIconTintList = null
-
-
-        // 2. LOGIKA VIEWPAGER
 
         val adapter = ProductivityStatsAdapter(this)
         viewPager.adapter = adapter
@@ -113,27 +134,16 @@ class ProfileActivity : AppCompatActivity() {
 
         viewPager.setCurrentItem(0, false)
 
-        // Perbaikan: Menggunakan 'item.itemId' dan 'R.id.nav_home'
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home-> {
-                    startActivity(
-                        Intent(
-                            this,
-                            HomeActivity::class.java
-                        ).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                    )
+                    startActivity(Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION))
                     finish()
                     overridePendingTransition(0, 0)
                     true
                 }
                 R.id.nav_tasks-> {
-                    startActivity(
-                        Intent(
-                            this,
-                            TaskActivity::class.java
-                        ).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                    )
+                    startActivity(Intent(this, TaskActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION))
                     finish()
                     overridePendingTransition(0, 0)
                     true
@@ -145,16 +155,19 @@ class ProfileActivity : AppCompatActivity() {
 
         bottomNav.selectedItemId = R.id.nav_profile
 
+        // Setup Listeners
         ivSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
         btnEditProfile.setOnClickListener {
-            startActivity(Intent(this, EditProfileActivity::class.java))
+            val intent = Intent(this, EditProfileActivity::class.java)
+            editProfileLauncher.launch(intent)
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
+        // PERUBAHAN UTAMA: Listener untuk ikon kamera
         ivCamera.setOnClickListener {
             val intent = Intent(this, CameraActivity::class.java)
             cameraLauncher.launch(intent)
@@ -181,7 +194,6 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Perbaikan: Menggunakan BottomNavigationView.selectedItemId
         bottomNav.selectedItemId = R.id.nav_profile
     }
 
@@ -191,10 +203,197 @@ class ProfileActivity : AppCompatActivity() {
         updateTaskCounts()
     }
 
-    // FUNGSI untuk memperbarui hitungan tugas (Diubah ke Coroutine)
-    private fun updateTaskCounts() {
-        lifecycleScope.launch(Dispatchers.IO) { // Menggunakan lifecycleScope
+    // --------------------------------------------------------------------------------------
+    // --- FUNGSI UPLOAD GAMBAR & SIMPAN DATA BARU ---
+    // --------------------------------------------------------------------------------------
+
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val (height: Int, width: Int) = options.outHeight to options.outWidth
+        var inSampleSize = 1
+        if (height > reqWidth || width > reqWidth) {
+            val halfHeight: Int = height / 2
+            val halfWidth: Int = width / 2
+            while (halfHeight / inSampleSize >= reqWidth && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
+    }
+
+    private fun getCompressedImageBytes(imageUri: Uri, targetSizeKB: Int): ByteArray? {
+        var inputStream: InputStream? = null
+        try {
+            inputStream = contentResolver.openInputStream(imageUri)
+            val options = BitmapFactory.Options()
+            options.inJustDecodeBounds = true
+            BitmapFactory.decodeStream(inputStream, null, options)
+            inputStream?.close()
+
+            val (originalWidth, originalHeight) = options.outWidth to options.outWidth
+            if (originalWidth <= 0 || originalHeight <= 0) return null
+
+            val maxDimension = 1024.0
+            val scale = min(maxDimension / originalWidth, maxDimension / originalHeight).let { if (it > 1.0) 1.0 else it }
+
+            val newWidth = (originalWidth * scale).roundToInt()
+            val newHeight = (originalHeight * scale).roundToInt()
+
+            options.inSampleSize = calculateInSampleSize(options, newWidth, newHeight)
+            options.inJustDecodeBounds = false
+
+            inputStream = contentResolver.openInputStream(imageUri)
+            val bitmapToResize = BitmapFactory.decodeStream(inputStream, null, options)
+            inputStream?.close()
+            if (bitmapToResize == null) return null
+
+            val finalBitmap = Bitmap.createScaledBitmap(bitmapToResize, newWidth, newHeight, true)
+            if (finalBitmap != bitmapToResize) bitmapToResize.recycle()
+
+            var quality = 95
+            val outputStream = ByteArrayOutputStream()
+            var compressedBytes: ByteArray
+            val targetSizeBytes = targetSizeKB * 1024
+
+            do {
+                outputStream.reset()
+                finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+                compressedBytes = outputStream.toByteArray()
+                quality -= 5
+            } while (compressedBytes.size > targetSizeBytes && quality > 40)
+
+            finalBitmap.recycle()
+            outputStream.close()
+            return compressedBytes
+        } catch (e: Exception) {
+            Log.e("ImageCompression", "Gagal mengkompresi gambar", e)
+            inputStream?.close()
+            return null
+        }
+    }
+
+    private fun extractSecureUrl(jsonResponse: String): String? {
+        return try {
+            val startIndex = jsonResponse.indexOf("\"secure_url\":\"") + 14
+            if (startIndex < 14) return null
+            val endIndex = jsonResponse.indexOf("\"", startIndex)
+            if (endIndex == -1) return null
+            jsonResponse.substring(startIndex, endIndex).replace("\\/", "/")
+        } catch (e: Exception) {
+            Log.e("CloudinaryUpload", "Error parsing secure_url: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun uploadImageToCloudinary(userId: String, imageUri: Uri): String? {
+        if (userId.isEmpty()) return null
+
+        return withContext(Dispatchers.IO) {
             try {
+                val compressedBytes = getCompressedImageBytes(imageUri, 500)
+                if (compressedBytes == null) return@withContext null
+
+                val tempFile = File(cacheDir, "temp_upload_${System.currentTimeMillis()}.jpg")
+                FileOutputStream(tempFile).use { it.write(compressedBytes) }
+
+                val timestamp = (System.currentTimeMillis() / 1000).toString()
+                val publicId = "profile_images/$userId/profile_$timestamp"
+
+                val requestBody = MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart("file", tempFile.name, tempFile.asRequestBody("image/jpeg".toMediaType()))
+                    .addFormDataPart("upload_preset", UPLOAD_PRESET)
+                    .addFormDataPart("folder", "profile_images/$userId")
+                    .addFormDataPart("public_id", publicId)
+                    .build()
+
+                val request = Request.Builder()
+                    .url("https://api.cloudinary.com/v1_1/$CLOUD_NAME/image/upload")
+                    .post(requestBody)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                tempFile.delete()
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    return@withContext responseBody?.let { extractSecureUrl(it) }
+                } else {
+                    Log.e("CloudinaryUpload", "Upload failed: ${response.code} - ${response.message}. Body: ${response.body?.string()}")
+                    return@withContext null
+                }
+
+            } catch (e: Exception) {
+                Log.e("CloudinaryUpload", "Exception: ${e.message}", e)
+                return@withContext null
+            }
+        }
+    }
+
+    // FUNGSI PENTING: Menangani foto baru, upload, dan update Firestore
+    private fun handleNewProfilePhoto(imageUri: Uri) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId == null) {
+            Toast.makeText(this, "Silakan login untuk menyimpan foto.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // 1. Tampilkan gambar secara instan (preview)
+        val options = RequestOptions().transform(CircleCrop())
+        Glide.with(this).load(imageUri).apply(options).into(ivProfilePicture)
+        Toast.makeText(this, "Foto sedang diunggah. Mohon tunggu...", Toast.LENGTH_LONG).show()
+
+        lifecycleScope.launch {
+            // 2. Simpan URI lokal ke SharedPreferences (fallback)
+            sharedPrefs.edit().putString(EditProfileActivity.KEY_IMAGE_URI, imageUri.toString()).apply()
+
+            // 3. Upload ke Cloudinary
+            val uploadedUrl = uploadImageToCloudinary(userId, imageUri)
+
+            if (uploadedUrl == null) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ProfileActivity, "Gagal mengunggah foto. Perubahan mungkin hilang saat aplikasi ditutup.", Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
+
+            // 4. Update Firestore dengan URL permanen
+            val success = withContext(Dispatchers.IO) {
+                try {
+                    val db = FirebaseFirestore.getInstance()
+                    db.collection("users")
+                        .document(userId)
+                        .update("profileImageUrl", uploadedUrl, "updatedAt", System.currentTimeMillis())
+                        .await()
+                    true
+                } catch (e: Exception) {
+                    Log.e("FirestoreUpdate", "Error updating profile image URL", e)
+                    false
+                }
+            }
+
+            // 5. Finalisasi
+            withContext(Dispatchers.Main) {
+                if (success) {
+                    // Update SharedPreferences dengan URL permanen
+                    sharedPrefs.edit().putString(EditProfileActivity.KEY_IMAGE_URI, uploadedUrl).apply()
+                    // Muat ulang data untuk memastikan Glide memuat URL permanen
+                    loadProfileData()
+                    Toast.makeText(this@ProfileActivity, "Foto profil berhasil diperbarui dan disimpan!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this@ProfileActivity, "Gagal menyimpan foto ke database.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // --------------------------------------------------------------------------------------
+    // --- FUNGSI LOAD DATA (Sedikit Disesuaikan untuk memastikan pemuatan URI/URL) ---
+    // --------------------------------------------------------------------------------------
+
+    private fun updateTaskCounts() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Asumsi TaskRepository.processTasksForMissed() sudah ada
                 TaskRepository.processTasksForMissed()
 
                 val completedCount = TaskRepository.getCompletedTasks().size
@@ -212,93 +411,78 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
-
     private fun loadProfileData() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
             tvUsername.text = "Guest"
-            ivProfilePicture.setImageResource(R.drawable.ic_profile) // Gambar default
+            ivProfilePicture.setImageResource(R.drawable.ic_profile)
             return
         }
 
         lifecycleScope.launch {
-            // Ambil data dari Firestore di background thread
             val profileData = withContext(Dispatchers.IO) {
                 try {
                     val db = FirebaseFirestore.getInstance()
                     val document = db.collection("users").document(userId).get().await()
-                    document.data // Mengembalikan Map<String, Any?> atau null
+                    document.data
                 } catch (e: Exception) {
                     Log.e("FirestoreLoad", "Error loading profile data", e)
-                    null // Kembalikan null jika gagal
+                    null
                 }
             }
 
-            // Update UI di main thread
+            val options = RequestOptions().transform(CircleCrop())
+
             if (profileData != null) {
-                val name = profileData["name"] as? String ?: "Nama Pengguna"
                 val username = profileData["username"] as? String ?: "@username"
                 val imageUrl = profileData["profileImageUrl"] as? String
 
-                tvUsername.text = username // Tampilkan username atau name sesuai keinginan
+                tvUsername.text = username
+                ivProfilePicture.scaleX = 1f
 
-                // Muat gambar menggunakan Glide (atau library pemuat gambar lainnya)
-                if (imageUrl != null) {
+                // Muat gambar
+                if (imageUrl != null && imageUrl.isNotEmpty()) {
                     Glide.with(this@ProfileActivity)
-                        .load(imageUrl) // <-- imageUrl sekarang berisi URL Cloudinary
-                        .placeholder(R.drawable.ic_profile) // Gambar sementara saat loading
-                        .error(R.drawable.ic_profile)       // Gambar jika gagal load
+                        .load(imageUrl)
+                        .apply(options)
+                        .placeholder(R.drawable.ic_profile)
+                        .error(R.drawable.ic_profile)
                         .into(ivProfilePicture)
                 } else {
-                    ivProfilePicture.setImageResource(R.drawable.ic_profile) // Gambar default
+                    ivProfilePicture.setImageResource(R.drawable.ic_profile)
                 }
 
-                // (Opsional) Update SharedPreferences jika perlu sinkronisasi
+                // Update SharedPreferences
                 sharedPrefs.edit().apply {
                     putString(EditProfileActivity.KEY_USERNAME, username)
-                    putString(EditProfileActivity.KEY_NAME, name)
+                    putString(EditProfileActivity.KEY_NAME, profileData["name"] as? String ?: "Nama Pengguna")
                     putString(EditProfileActivity.KEY_GENDER, profileData["gender"] as? String ?: "Male")
                     putString(EditProfileActivity.KEY_IMAGE_URI, imageUrl)
                     apply()
                 }
 
             } else {
-                // Gagal load dari Firestore, coba load dari SharedPreferences sebagai fallback
+                // Fallback: Load dari SharedPreferences
                 val savedUsername = sharedPrefs.getString(EditProfileActivity.KEY_USERNAME, "Username")
                 val imageUriString = sharedPrefs.getString(EditProfileActivity.KEY_IMAGE_URI, null)
                 tvUsername.text = savedUsername
+                ivProfilePicture.scaleX = 1f
+
                 if (imageUriString != null) {
-                    try { Glide.with(this@ProfileActivity).load(Uri.parse(imageUriString)).placeholder(R.drawable.ic_profile).error(R.drawable.ic_profile).into(ivProfilePicture) } catch (e: Exception) { ivProfilePicture.setImageResource(R.drawable.ic_profile) }
+                    try {
+                        Glide.with(this@ProfileActivity)
+                            .load(imageUriString)
+                            .apply(options)
+                            .placeholder(R.drawable.ic_profile)
+                            .error(R.drawable.ic_profile)
+                            .into(ivProfilePicture)
+                    } catch (e: Exception) {
+                        ivProfilePicture.setImageResource(R.drawable.ic_profile)
+                    }
                 } else {
                     ivProfilePicture.setImageResource(R.drawable.ic_profile)
                 }
-                Toast.makeText(this@ProfileActivity, "Gagal memuat data profil terbaru.", Toast.LENGTH_SHORT).show()
             }
-        }
-    }
-
-    private fun setProfileImage(uri: Uri) {
-        try {
-            ivProfilePicture.setImageURI(uri)
-            Toast.makeText(this, "Foto profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error menampilkan foto: ${e.message}", Toast.LENGTH_LONG).show()
-            Log.e("ProfileActivity", "Error setting image URI: ${e.message}")
-        }
-    }
-
-    private fun saveProfileImageUri(uri: Uri) {
-        sharedPrefs.edit().apply {
-            putString(EditProfileActivity.KEY_IMAGE_URI, uri.toString())
-            apply()
-        }
-        try {
-            contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        } catch (e: SecurityException) {
-            Log.w("ProfileActivity", "URI tidak mendukung izin persisten: ${e.message}")
         }
     }
 
