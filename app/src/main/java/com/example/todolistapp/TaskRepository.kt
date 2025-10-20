@@ -13,7 +13,7 @@ import java.util.Date
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
-// Data Class Task yang kompatibel dengan Firestore
+// Data Class Task yang kompatibel dengan Firebase
 data class Task(
     // ID Unik (Document ID) - Harus var agar bisa diubah
     var id: String = UUID.randomUUID().toString(),
@@ -128,6 +128,7 @@ object TaskRepository {
 
     /**
      * HANYA mengambil tugas dengan status PENDING pada tanggal tertentu (untuk daftar utama TaskActivity).
+     * PERBAIKAN: Menggunakan whereEqualTo("status", "pending").
      */
     suspend fun getTasksByDate(selectedDate: Calendar): List<Task> = withContext(Dispatchers.IO) {
         val collection = getTasksCollection() ?: return@withContext emptyList()
@@ -149,7 +150,7 @@ object TaskRepository {
 
         return@withContext try {
             val snapshot = collection
-                .whereIn("status", listOf("pending"))
+                .whereEqualTo("status", "pending")
                 .whereGreaterThanOrEqualTo("dueDate", startTimestamp)
                 .whereLessThanOrEqualTo("dueDate", endTimestamp)
                 .get()
@@ -163,6 +164,7 @@ object TaskRepository {
 
     /**
      * HANYA mengambil tugas dengan status PENDING pada tanggal tertentu (untuk indikator kalender TaskActivity).
+     * PERBAIKAN: Menggunakan whereEqualTo("status", "pending").
      */
     suspend fun getTasksForDateIndicator(selectedDate: Calendar): List<Task> = withContext(Dispatchers.IO) {
         val collection = getTasksCollection() ?: return@withContext emptyList()
@@ -184,7 +186,7 @@ object TaskRepository {
 
         return@withContext try {
             val snapshot = collection
-                .whereIn("status", listOf("pending"))
+                .whereEqualTo("status", "pending")
                 .whereGreaterThanOrEqualTo("dueDate", startTimestamp)
                 .whereLessThanOrEqualTo("dueDate", endTimestamp)
                 .get()
@@ -198,6 +200,7 @@ object TaskRepository {
 
     /**
      * Mengambil semua tugas PENDING dalam rentang 3 bulan (untuk CalendarActivity).
+     * PERBAIKAN: Menggunakan whereEqualTo("status", "pending").
      */
     suspend fun getTasksInDateRangeForCalendar(currentMonth: Calendar): List<Task> = withContext(Dispatchers.IO) {
         val collection = getTasksCollection() ?: return@withContext emptyList()
@@ -225,7 +228,7 @@ object TaskRepository {
 
         return@withContext try {
             val snapshot = collection
-                .whereIn("status", listOf("pending"))
+                .whereEqualTo("status", "pending")
                 .whereGreaterThanOrEqualTo("dueDate", startTimestamp)
                 .whereLessThanOrEqualTo("dueDate", endTimestamp)
                 .get()
@@ -351,27 +354,23 @@ object TaskRepository {
         updateMissedTasks() // Pastikan update berjalan di IO
     }
 
-    fun completeTask(taskId: String): Boolean = runBlocking {
-        withContext(Dispatchers.IO) {
-            try {
-                updateTaskStatus(taskId, "completed")
-                true
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to complete task: $taskId", e)
-                false
-            }
+    suspend fun completeTask(taskId: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            updateTaskStatus(taskId, "completed")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to complete task: $taskId", e)
+            false
         }
     }
 
-    fun deleteTask(taskId: String): Boolean = runBlocking {
-        withContext(Dispatchers.IO) {
-            try {
-                updateTaskStatus(taskId, "deleted")
-                true
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to delete task: $taskId", e)
-                false
-            }
+    suspend fun deleteTask(taskId: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            updateTaskStatus(taskId, "deleted")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete task: $taskId", e)
+            false
         }
     }
 

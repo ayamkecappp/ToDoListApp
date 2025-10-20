@@ -24,11 +24,11 @@ import androidx.core.content.res.ResourcesCompat
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import android.util.Log
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 
 class SearchFilterActivity : AppCompatActivity() {
 
@@ -110,78 +110,80 @@ class SearchFilterActivity : AppCompatActivity() {
         performSearch("", activeMonthFilter)
     }
 
-    private fun updateStreakOnTaskComplete(): Int = runBlocking {
-        return@runBlocking withContext(Dispatchers.IO) {
-            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val todayStr = sdf.format(Date())
-            val todayCalendar = Calendar.getInstance()
+    private fun updateStreakOnTaskComplete(): Int {
+        return runBlocking { // Menambahkan runBlocking untuk menyelesaikan Unresolved reference 'runBlocking'
+            withContext(Dispatchers.IO) {
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val todayStr = sdf.format(Date())
+                val todayCalendar = Calendar.getInstance()
 
-            val oldStreak = prefs.getInt(KEY_STREAK, 0)
-            val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+                val oldStreak = prefs.getInt(KEY_STREAK, 0)
+                val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
 
-            val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
-            val hasCompletedToday = completedToday.isNotEmpty()
+                val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
+                val hasCompletedToday = completedToday.isNotEmpty()
 
-            var newStreak = oldStreak
-            var shouldUpdate = false
-            var streakIncreased = false
+                var newStreak = oldStreak
+                var shouldUpdate = false
+                var streakIncreased = false
 
-            when {
-                lastDateStr == null -> {
-                    if (hasCompletedToday) {
-                        newStreak = 1
-                        shouldUpdate = true
-                        streakIncreased = true
+                when {
+                    lastDateStr == null -> {
+                        if (hasCompletedToday) {
+                            newStreak = 1
+                            shouldUpdate = true
+                            streakIncreased = true
+                        }
+                    }
+                    lastDateStr == todayStr -> {
+                    }
+                    isYesterday(lastDateStr, todayStr) -> {
+                        if (hasCompletedToday) {
+                            newStreak = oldStreak + 1
+                            shouldUpdate = true
+                            streakIncreased = true
+                        }
+                    }
+                    else -> {
+                        if (hasCompletedToday) {
+                            newStreak = 1
+                            shouldUpdate = true
+                            streakIncreased = true
+                        } else {
+                            newStreak = 0
+                            shouldUpdate = true
+                        }
                     }
                 }
-                lastDateStr == todayStr -> {
-                }
-                isYesterday(lastDateStr, todayStr) -> {
-                    if (hasCompletedToday) {
-                        newStreak = oldStreak + 1
-                        shouldUpdate = true
-                        streakIncreased = true
-                    }
-                }
-                else -> {
-                    if (hasCompletedToday) {
-                        newStreak = 1
-                        shouldUpdate = true
-                        streakIncreased = true
+
+                if (shouldUpdate) {
+                    val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+                    val currentDay = getCurrentDayOfWeek()
+                    val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+
+                    val newStreakDays = if (newStreak > oldStreak) {
+                        if (!existingDays.contains(currentDay)) {
+                            if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
+                        } else {
+                            streakDays
+                        }
+                    } else if (newStreak == 1) {
+                        currentDay.toString()
                     } else {
-                        newStreak = 0
-                        shouldUpdate = true
+                        ""
+                    }
+
+                    prefs.edit().apply {
+                        putInt(KEY_STREAK, newStreak)
+                        putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
+                        putString(KEY_STREAK_DAYS, newStreakDays)
+                        apply()
                     }
                 }
+
+                return@withContext if (streakIncreased) newStreak else oldStreak
             }
-
-            if (shouldUpdate) {
-                val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
-                val currentDay = getCurrentDayOfWeek()
-                val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
-
-                val newStreakDays = if (newStreak > oldStreak) {
-                    if (!existingDays.contains(currentDay)) {
-                        if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
-                    } else {
-                        streakDays
-                    }
-                } else if (newStreak == 1) {
-                    currentDay.toString()
-                } else {
-                    ""
-                }
-
-                prefs.edit().apply {
-                    putInt(KEY_STREAK, newStreak)
-                    putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
-                    putString(KEY_STREAK_DAYS, newStreakDays)
-                    apply()
-                }
-            }
-
-            return@withContext if (streakIncreased) newStreak else oldStreak
         }
     }
 
@@ -265,24 +267,29 @@ class SearchFilterActivity : AppCompatActivity() {
 
     // Menggunakan wrapper sinkron
     private fun performSearch(query: String, monthFilter: Int) {
-        // searchTasks sekarang hanya mengembalikan tugas "pending"
-        val filteredTasks = TaskRepository.searchTasks(query, monthFilter)
-        taskResultsContainer.removeAllViews()
+        lifecycleScope.launch(Dispatchers.IO) {
+            // searchTasks sekarang hanya mengembalikan tugas "pending"
+            val filteredTasks = TaskRepository.searchTasks(query, monthFilter)
 
-        if (filteredTasks.isEmpty()) {
-            val filterName = if (monthFilter == -1) "Semua Bulan" else monthNames[monthFilter]
+            withContext(Dispatchers.Main) {
+                taskResultsContainer.removeAllViews()
 
-            val noResults = TextView(this).apply {
-                text = "Tidak ada hasil ditemukan untuk filter:\n'${query.ifEmpty { "Semua Tugas" }}' di bulan $filterName"
-                gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(0, 50.dp, 0, 50.dp)
-                typeface = ResourcesCompat.getFont(context, R.font.lexend)
-            }
-            taskResultsContainer.addView(noResults)
-        } else {
-            for (task in filteredTasks) {
-                // MENGGUNAKAN list_item_task.xml
-                createTaskItemUsingLayout(taskResultsContainer, task)
+                if (filteredTasks.isEmpty()) {
+                    val filterName = if (monthFilter == -1) "Semua Bulan" else monthNames[monthFilter]
+
+                    val noResults = TextView(this@SearchFilterActivity).apply {
+                        text = "Tidak ada hasil ditemukan untuk filter:\n'${query.ifEmpty { "Semua Tugas" }}' di bulan $filterName"
+                        gravity = Gravity.CENTER_HORIZONTAL
+                        setPadding(0, 50.dp, 0, 50.dp)
+                        typeface = ResourcesCompat.getFont(context, R.font.lexend)
+                    }
+                    taskResultsContainer.addView(noResults)
+                } else {
+                    for (task in filteredTasks) {
+                        // MENGGUNAKAN list_item_task.xml
+                        createTaskItemUsingLayout(taskResultsContainer, task)
+                    }
+                }
             }
         }
     }
@@ -335,8 +342,9 @@ class SearchFilterActivity : AppCompatActivity() {
         val dateText = TextView(context).apply {
             layoutParams = taskCategory.layoutParams
             // Menggunakan Calendar.MONTH dari dueDate Timestamp
-            val monthIndex = task.dueDate.toDate().get(Calendar.MONTH)
-            val dayOfMonth = task.dueDate.toDate().get(Calendar.DAY_OF_MONTH)
+            val taskCal = Calendar.getInstance().apply { time = task.dueDate.toDate() }
+            val monthIndex = taskCal.get(Calendar.MONTH)
+            val dayOfMonth = taskCal.get(Calendar.DAY_OF_MONTH)
             text = "${dayOfMonth} ${monthNames[monthIndex]}"
             textSize = 12.sp // Perbaikan: Gunakan extension property 'sp'
             setTextColor(Color.parseColor("#283F6D"))
@@ -356,6 +364,16 @@ class SearchFilterActivity : AppCompatActivity() {
         } else {
             exclamationIcon.visibility = View.GONE
         }
+
+        checklistBox.setBackgroundResource(R.drawable.bg_checklist)
+        if (task.flowDurationMillis <= 0L) {
+            btnFlowTimer.isEnabled = false
+            btnFlowTimer.alpha = 0.5f
+        } else {
+            btnFlowTimer.isEnabled = true
+            btnFlowTimer.alpha = 1.0f
+        }
+
 
         // 5. Setup Listeners
         checklistBox.setOnClickListener {

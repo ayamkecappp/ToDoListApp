@@ -1,3 +1,4 @@
+// main/java/com/example/todolistapp/MissedTasksActivity.kt
 package com.example.todolistapp
 
 import androidx.appcompat.app.AppCompatActivity
@@ -85,15 +86,16 @@ class MissedTasksActivity : AppCompatActivity() {
                     emptyStateContainer.visibility = View.GONE
 
                     val groupedTasks = missedTasks.groupBy {
-                        // KOREKSI: Gunakan missedAt sebagai kunci grouping
+                        // Logika pengelompokan yang memastikan header tanggal hanya muncul sekali per hari
                         val timeToUse = it.missedAt?.toDate()?.time ?: it.dueDate.toDate().time
                         groupingDateFormat.format(Date(timeToUse))
                     }
 
-                    // KOREKSI: Sort berdasarkan tanggal string (descending)
+                    // Sort berdasarkan tanggal string (descending)
                     val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
 
                     for ((_, tasks) in sortedGroups) {
+                        // FIX: addDateHeader dipanggil SEKALI per grup tanggal
                         val timeToUse = tasks.first().missedAt?.toDate()?.time ?: tasks.first().dueDate.toDate().time
                         val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
                         addDateHeader(dateLabel)
@@ -141,12 +143,14 @@ class MissedTasksActivity : AppCompatActivity() {
         val tvTaskTitle = TextView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                // FIX: Set width menjadi 0 (MATCH_CONSTRAINT)
+                0, ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
                 startToStart = ConstraintLayout.LayoutParams.PARENT_ID
                 topToTop = ConstraintLayout.LayoutParams.PARENT_ID
                 bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
                 marginStart = 18.dp
+                // Constraint akhir akan diatur setelah ivRescheduleBg dibuat
             }
             text = task.title
             setTextAppearance(context, R.style.completedTasksContent)
@@ -179,6 +183,13 @@ class MissedTasksActivity : AppCompatActivity() {
             }
         }
         taskItemContainer.addView(ivRescheduleBg)
+
+        // FIX: Hubungkan tvTaskTitle ke ivRescheduleBg
+        (tvTaskTitle.layoutParams as ConstraintLayout.LayoutParams).apply {
+            endToStart = ivRescheduleBg.id
+            marginEnd = 8.dp
+        }
+        tvTaskTitle.requestLayout()
 
         // TextView for Reschedule Text
         val tvRescheduleText = TextView(context).apply {

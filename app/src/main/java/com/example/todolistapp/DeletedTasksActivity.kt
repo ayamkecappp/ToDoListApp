@@ -1,3 +1,4 @@
+// main/java/com/example/todolistapp/DeletedTasksActivity.kt
 package com.example.todolistapp
 
 import androidx.appcompat.app.AppCompatActivity
@@ -74,18 +75,20 @@ class DeletedTasksActivity : AppCompatActivity() {
                     emptyStateContainer.visibility = View.GONE
 
                     val groupedTasks = deletedTasks.groupBy {
-                        // KOREKSI: Gunakan deletedAt sebagai kunci grouping
+                        // Logika pengelompokan yang memastikan header tanggal hanya muncul sekali per hari
                         val timeToUse = it.deletedAt?.toDate()?.time ?: it.dueDate.toDate().time
                         groupingDateFormat.format(Date(timeToUse))
                     }
 
-                    // KOREKSI: Sort berdasarkan tanggal string (descending)
+                    // Sort berdasarkan tanggal string (descending)
                     val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
 
                     for ((_, tasks) in sortedGroups) {
+                        // FIX: addDateHeader dipanggil SEKALI per grup tanggal
                         val timeToUse = tasks.first().deletedAt?.toDate()?.time ?: tasks.first().dueDate.toDate().time
                         val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
                         addDateHeader(dateLabel)
+
                         for (task in tasks) {
                             createDeletedTaskItem(task)
                         }
@@ -164,12 +167,14 @@ class DeletedTasksActivity : AppCompatActivity() {
         val tvTaskTitle = TextView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
+                // FIX: Set width menjadi 0 (MATCH_CONSTRAINT)
                 0,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
                 startToStart = ConstraintLayout.LayoutParams.PARENT_ID
                 topToTop = ConstraintLayout.LayoutParams.PARENT_ID
                 bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+                // FIX: Arahkan ke ivRescheduleBg
                 endToStart = ivRescheduleBg.id
                 marginStart = 18.dp
                 marginEnd = 8.dp

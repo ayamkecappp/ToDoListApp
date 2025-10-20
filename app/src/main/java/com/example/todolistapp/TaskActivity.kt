@@ -190,8 +190,7 @@ class TaskActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.Main) {
             // 1. Jalankan operasi IO berat di background
             // Pastikan missed tasks terupdate DULU
-            val missedTaskJob = launch(Dispatchers.IO) { TaskRepository.processTasksForMissed() }
-            missedTaskJob.join() // Tunggu sampai selesai
+            launch(Dispatchers.IO) { TaskRepository.updateMissedTasks() }.join()
 
             // Gunakan async untuk memuat data kalender dan tugas hari ini secara PARALEL
             val calendarDataDeferred = async(Dispatchers.IO) { getCalendarData() }
@@ -330,6 +329,7 @@ class TaskActivity : AppCompatActivity() {
                     cal.get(Calendar.DAY_OF_YEAR) == selectedDate.get(Calendar.DAY_OF_YEAR))
 
             val dateForCheck = cal.clone() as Calendar
+            dateForCheck.set(Calendar.DAY_OF_MONTH, dayOfMonth)
             dateForCheck.set(Calendar.HOUR_OF_DAY, 0)
             dateForCheck.set(Calendar.MINUTE, 0)
             dateForCheck.set(Calendar.SECOND, 0)
@@ -564,84 +564,82 @@ class TaskActivity : AppCompatActivity() {
     }
 
     // MEMPERBAIKI PEMANGGILAN SUSPEND FUNCTION
-    private fun updateStreakOnTaskComplete(): Int = runBlocking {
-        return@runBlocking withContext(Dispatchers.IO) {
-            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val todayStr = sdf.format(Date())
-            val todayCalendar = Calendar.getInstance()
+    private suspend fun updateStreakOnTaskComplete(): Int = withContext(Dispatchers.IO) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val todayStr = sdf.format(Date())
+        val todayCalendar = Calendar.getInstance()
 
-            val oldStreak = prefs.getInt(KEY_STREAK, 0)
-            val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+        val oldStreak = prefs.getInt(KEY_STREAK, 0)
+        val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
 
-            // MEMANGGIL SUSPEND FUNCTION
-            val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
-            val hasCompletedToday = completedToday.isNotEmpty()
+        // MEMANGGIL SUSPEND FUNCTION
+        val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
+        val hasCompletedToday = completedToday.isNotEmpty()
 
-            var newStreak = oldStreak
-            var shouldUpdate = false
-            var streakIncreased = false
+        var newStreak = oldStreak
+        var shouldUpdate = false
+        var streakIncreased = false
 
-            when {
-                lastDateStr == null -> {
-                    if (hasCompletedToday) {
-                        newStreak = 1
-                        shouldUpdate = true
-                        streakIncreased = true
-                    }
-                }
-
-                lastDateStr == todayStr -> {
-                    // Streak tidak bertambah
-                }
-
-                isYesterday(lastDateStr, todayStr) -> {
-                    if (hasCompletedToday) {
-                        newStreak = oldStreak + 1
-                        shouldUpdate = true
-                        streakIncreased = true
-                    }
-                }
-
-                else -> {
-                    if (hasCompletedToday) {
-                        newStreak = 1
-                        shouldUpdate = true
-                        streakIncreased = true
-                    } else {
-                        newStreak = 0
-                        shouldUpdate = true
-                    }
+        when {
+            lastDateStr == null -> {
+                if (hasCompletedToday) {
+                    newStreak = 1
+                    shouldUpdate = true
+                    streakIncreased = true
                 }
             }
 
-            if (shouldUpdate) {
-                val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
-                val currentDay = getCurrentDayOfWeek()
-                val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+            lastDateStr == todayStr -> {
+                // Streak tidak bertambah
+            }
 
-                val newStreakDays = if (newStreak > oldStreak) {
-                    if (!existingDays.contains(currentDay)) {
-                        if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
-                    } else {
-                        streakDays
-                    }
-                } else if (newStreak == 1) {
-                    currentDay.toString()
+            isYesterday(lastDateStr, todayStr) -> {
+                if (hasCompletedToday) {
+                    newStreak = oldStreak + 1
+                    shouldUpdate = true
+                    streakIncreased = true
+                }
+            }
+
+            else -> {
+                if (hasCompletedToday) {
+                    newStreak = 1
+                    shouldUpdate = true
+                    streakIncreased = true
                 } else {
-                    ""
-                }
-
-                prefs.edit().apply {
-                    putInt(KEY_STREAK, newStreak)
-                    putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
-                    putString(KEY_STREAK_DAYS, newStreakDays)
-                    apply()
+                    newStreak = 0
+                    shouldUpdate = true
                 }
             }
-
-            return@withContext if (streakIncreased) newStreak else oldStreak
         }
+
+        if (shouldUpdate) {
+            val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+            val currentDay = getCurrentDayOfWeek()
+            val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+
+            val newStreakDays = if (newStreak > oldStreak) {
+                if (!existingDays.contains(currentDay)) {
+                    if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
+                } else {
+                    streakDays
+                }
+            } else if (newStreak == 1) {
+                currentDay.toString()
+            } else {
+                ""
+            }
+
+            prefs.edit().apply {
+                putInt(KEY_STREAK, newStreak)
+                putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
+                putString(KEY_STREAK_DAYS, newStreakDays)
+                apply()
+            }
+        }
+
+        return@withContext if (streakIncreased) newStreak else oldStreak
     }
 
     private fun getCurrentDayOfWeek(): Int {
@@ -726,6 +724,17 @@ class TaskActivity : AppCompatActivity() {
         } else {
             exclamationIcon.visibility = View.GONE
         }
+
+        // Asumsi task di TaskActivity selalu pending
+        checklistBox.setBackgroundResource(R.drawable.bg_checklist)
+        if (task.flowDurationMillis <= 0L) {
+            btnFlowTimer.isEnabled = false
+            btnFlowTimer.alpha = 0.5f
+        } else {
+            btnFlowTimer.isEnabled = true
+            btnFlowTimer.alpha = 1.0f
+        }
+
 
         // 5. Setup Listeners
         checklistBox.setOnClickListener {

@@ -1,3 +1,4 @@
+// main/java/com/example/todolistapp/EditTaskActivity.kt
 package com.example.todolistapp
 
 import android.app.Activity
@@ -29,7 +30,6 @@ import android.widget.NumberPicker
 import android.graphics.drawable.ColorDrawable
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import android.util.Log
 import java.util.UUID
 import androidx.lifecycle.lifecycleScope
@@ -235,11 +235,11 @@ class EditTaskActivity : AppCompatActivity() {
             selectedDayCalendar.timeInMillis = newEndTimeMillis
         } else if (isFlowTimerActive && flowTimerDurationMillis > 0L) {
             val flowEndTime = System.currentTimeMillis() + flowTimerDurationMillis
-            newEndTimeMillis = flowEndTime
+            taskEndTimeMillis = flowEndTime
             val timeDisplay = formatDurationToString(flowTimerDurationMillis) + " (Flow)"
             time = timeDisplay
-            selectedDayCalendar.timeInMillis = flowEndTime
             savedFlowDuration = flowTimerDurationMillis
+            selectedDayCalendar.timeInMillis = flowEndTime
         } else {
             time = ""
             newEndTimeMillis = 0L

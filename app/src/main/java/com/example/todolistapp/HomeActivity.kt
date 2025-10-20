@@ -1,3 +1,4 @@
+// main/java/com/example/todolistapp/HomeActivity.kt
 package com.example.todolistapp
 
 import android.content.Context
@@ -13,9 +14,13 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.bumptech.glide.Glide
-import kotlinx.coroutines.*
-import java.text.SimpleDateFormat
-import java.util.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
 import android.util.Log
 import android.view.ViewGroup
 import android.app.AlertDialog
@@ -23,6 +28,11 @@ import android.view.LayoutInflater
 import android.widget.Button
 import android.graphics.Color
 import androidx.lifecycle.lifecycleScope
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withContext
 
 class HomeActivity : AppCompatActivity() {
 
@@ -302,6 +312,9 @@ class HomeActivity : AppCompatActivity() {
 
     private fun updateWeeklyProgressUI() {
         lifecycleScope.launch(Dispatchers.IO) { // Pindah ke IO Dispatcher
+            // Pastikan missed tasks terupdate DULU
+            TaskRepository.updateMissedTasks()
+
             val todayCalendar = Calendar.getInstance()
             val fullWeekProgressBar = dayProgressBars.firstOrNull()
             val runnerIcon = dayRunnerIcons.firstOrNull()

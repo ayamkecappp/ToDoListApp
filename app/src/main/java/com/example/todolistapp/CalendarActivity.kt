@@ -1,3 +1,4 @@
+// main/java/com/example/todolistapp/CalendarActivity.kt
 package com.example.todolistapp
 
 import android.content.Intent
@@ -27,10 +28,10 @@ import android.view.Window
 import android.content.Context
 import android.animation.AnimatorListenerAdapter
 import android.animation.Animator
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 
 class CalendarActivity : AppCompatActivity() {
 
@@ -469,34 +470,21 @@ class CalendarActivity : AppCompatActivity() {
             exclamationIcon.visibility = View.GONE
         }
 
-        // Atur tampilan checklist (sesuai status)
-        when (task.status) {
-            "pending" -> {
-                checklistBox.setBackgroundResource(R.drawable.bg_checklist)
-            }
-            "missed" -> {
-                checklistBox.setBackgroundResource(R.drawable.missed_task_ellipse_gold)
-                // Nonaktifkan tombol flow timer untuk missed task
-                btnFlowTimer.isEnabled = false
-                btnFlowTimer.alpha = 0.5f
-                btnEdit.setOnClickListener {
-                    Toast.makeText(context, "Tugas terlewat harus di-reschedule.", Toast.LENGTH_SHORT).show()
-                }
-            }
-            else -> {
-                // Task harusnya hanya pending/missed, tapi jaga-jaga
-                checklistBox.setBackgroundResource(R.drawable.bg_checklist)
-            }
+        // Atur tampilan checklist (asumsi task di sini adalah pending)
+        checklistBox.setBackgroundResource(R.drawable.bg_checklist)
+
+        // Nonaktifkan flow timer jika durasinya 0
+        if (task.flowDurationMillis <= 0L) {
+            btnFlowTimer.isEnabled = false
+            btnFlowTimer.alpha = 0.5f
+        } else {
+            btnFlowTimer.isEnabled = true
+            btnFlowTimer.alpha = 1.0f
         }
 
 
         // 5. Setup Listeners
         checklistBox.setOnClickListener {
-            if (task.status == "missed") {
-                Toast.makeText(context, "Tugas terlewat tidak bisa diselesaikan. Silakan Reschedule atau Edit.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
             lifecycleScope.launch(Dispatchers.IO) {
                 val success = TaskRepository.completeTask(task.id)
                 if (success) {
@@ -519,8 +507,8 @@ class CalendarActivity : AppCompatActivity() {
         }
 
         btnFlowTimer.setOnClickListener {
-            if (task.status == "missed") {
-                Toast.makeText(context, "Tidak bisa menjalankan Flow Timer pada tugas terlewat.", Toast.LENGTH_SHORT).show()
+            if (task.flowDurationMillis <= 0L) {
+                Toast.makeText(context, "Tidak ada Flow Timer disetel untuk tugas ini.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             if (overlayContainerView != null && sheetContainerView != null) {
@@ -543,10 +531,6 @@ class CalendarActivity : AppCompatActivity() {
             }
             val intent = Intent(context, EditTaskActivity::class.java).apply {
                 putExtra(EditTaskActivity.EXTRA_TASK_ID, task.id)
-                // Jika missed, paksa mode reschedule di EditTaskActivity
-                if (task.status == "missed") {
-                    putExtra(EditTaskActivity.EXTRA_RESCHEDULE_MODE, true)
-                }
             }
             editTaskLauncher.launch(intent)
             context.overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -645,6 +629,11 @@ class CalendarActivity : AppCompatActivity() {
             monthText.text = sdf.format(currentCalendar.time)
 
             calendarGrid.removeAllViews()
+
+            // Perbaikan: Pastikan updateMissedTasks dijalankan sebelum fetching data
+            withContext(Dispatchers.IO) {
+                TaskRepository.updateMissedTasks()
+            }
 
             val allTasksInDateRange = withContext(Dispatchers.IO) {
                 TaskRepository.getTasksInDateRangeForCalendar(currentCalendar)

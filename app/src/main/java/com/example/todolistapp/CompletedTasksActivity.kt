@@ -1,3 +1,4 @@
+// main/java/com/example/todolistapp/CompletedTasksActivity.kt
 package com.example.todolistapp
 
 import androidx.appcompat.app.AppCompatActivity
@@ -62,6 +63,7 @@ class CompletedTasksActivity : AppCompatActivity() {
         tasksContainer.removeAllViews()
 
         lifecycleScope.launch(Dispatchers.IO) { // Menggunakan lifecycleScope
+            TaskRepository.processTasksForMissed() // Pastikan status missed terupdate
             val completedTasks = TaskRepository.getCompletedTasks()
 
             withContext(Dispatchers.Main) {
@@ -74,16 +76,17 @@ class CompletedTasksActivity : AppCompatActivity() {
                     ivTimyTasks.visibility = View.VISIBLE
                     emptyStateContainer.visibility = View.GONE
 
+                    // Logika pengelompokan yang memastikan header tanggal hanya muncul sekali per hari
                     val groupedTasks = completedTasks.groupBy {
-                        // KOREKSI: Gunakan completedAt sebagai kunci grouping
                         val timeToUse = it.completedAt?.toDate()?.time ?: it.dueDate.toDate().time
                         groupingDateFormat.format(Date(timeToUse))
                     }
 
-                    // KOREKSI: Sort berdasarkan tanggal string (descending)
+                    // Sort berdasarkan tanggal string (descending)
                     val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
 
                     for ((_, tasks) in sortedGroups) {
+                        // FIX: addDateHeader dipanggil SEKALI per grup tanggal
                         val timeToUse = tasks.first().completedAt?.toDate()?.time ?: tasks.first().dueDate.toDate().time
                         val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
                         addDateHeader(dateLabel)
@@ -145,12 +148,16 @@ class CompletedTasksActivity : AppCompatActivity() {
         val tvTaskTitle = TextView(context).apply {
             id = View.generateViewId()
             layoutParams = ConstraintLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                // FIX: Set width menjadi 0 (MATCH_CONSTRAINT) agar mengisi sisa ruang
+                0, ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
                 startToEnd = ivCheckmark.id
                 topToTop = ConstraintLayout.LayoutParams.PARENT_ID
                 bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
                 marginStart = 8.dp
+                // FIX: Arahkan ke end of parent (Karena tvTaskTime dihapus)
+                endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+                marginEnd = 18.dp
             }
             text = task.title
             paintFlags = paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
@@ -160,22 +167,13 @@ class CompletedTasksActivity : AppCompatActivity() {
         }
         taskItemContainer.addView(tvTaskTitle)
 
+        // FIX UTAMA: Menghapus blok kode tvTaskTime sepenuhnya untuk menghilangkan duplikasi visual.
+        /*
         val tvTaskTime = TextView(context).apply {
-            id = View.generateViewId()
-            layoutParams = ConstraintLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-                topToTop = ConstraintLayout.LayoutParams.PARENT_ID
-                bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-                marginEnd = 18.dp
-            }
-            text = task.time
-            setTextAppearance(context, R.style.missedTasksContent)
-            typeface = ResourcesCompat.getFont(context, R.font.lexend)
-            setTextColor(Color.parseColor("#98A8C8"))
+            // ... (Kode untuk tvTaskTime dihapus)
         }
         taskItemContainer.addView(tvTaskTime)
+        */
 
         tasksContainer.addView(taskItemContainer)
     }
