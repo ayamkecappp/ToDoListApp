@@ -22,17 +22,22 @@ import android.util.Log
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import java.lang.Exception
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
-import java.util.UUID
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.coroutines.resume
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
+import java.io.FileOutputStream
+import java.security.MessageDigest
 
 class EditProfileActivity : AppCompatActivity() {
 
@@ -48,6 +53,14 @@ class EditProfileActivity : AppCompatActivity() {
     private var currentImageUri: Uri? = null
     private val genders = arrayOf("Male", "Female")
 
+    // Cloudinary credentials
+    private val CLOUD_NAME = "dk2jrlugl"  // Ganti dengan Cloud Name Anda
+    private val API_KEY = "791225435148732"  // Ganti dengan API Key Anda
+    private val API_SECRET = "mlCaQzDFef6crC79tEJ0hEKWZ_s"  // Ganti dengan API Secret Anda
+    private val UPLOAD_PRESET = "android_profile_upload"  // Ganti dengan Upload Preset Anda
+
+    private val client = OkHttpClient()
+
     // Launcher untuk CameraActivity
     private val cameraLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -58,18 +71,6 @@ class EditProfileActivity : AppCompatActivity() {
                 currentImageUri = Uri.parse(uriString)
                 try {
                     ivProfilePicture.setImageURI(currentImageUri)
-
-                    // PERBAIKAN: Hapus baris ini yang menyebabkan error pada file:// URI.
-                    // Izin sementara sudah diberikan melalui Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    // yang disetel di CameraActivity.
-                    /*
-                    currentImageUri?.let {
-                        contentResolver.takePersistableUriPermission(
-                            it,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        )
-                    }
-                    */
                     Toast.makeText(this, "Foto profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Log.e("EditProfile", "Error setting image URI from camera: ${e.message}")
@@ -86,7 +87,6 @@ class EditProfileActivity : AppCompatActivity() {
         if (height > reqHeight || width > reqWidth) {
             val halfHeight: Int = height / 2
             val halfWidth: Int = width / 2
-            // Loop selama gambar masih lebih besar dari ukuran target
             while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
                 inSampleSize *= 2
             }
@@ -97,9 +97,7 @@ class EditProfileActivity : AppCompatActivity() {
     private fun getCompressedImageBytes(imageUri: Uri, targetSizeKB: Int): ByteArray? {
         var inputStream: InputStream? = null
         try {
-            // --- Langkah 1: Resize Gambar (Langkah Paling Penting) ---
-
-            // Pertama, cek dimensi gambar tanpa memuatnya ke memori
+            // Langkah 1: Resize Gambar
             inputStream = contentResolver.openInputStream(imageUri)
             val options = BitmapFactory.Options()
             options.inJustDecodeBounds = true
@@ -112,22 +110,18 @@ class EditProfileActivity : AppCompatActivity() {
                 return null
             }
 
-            // Tentukan ukuran maksimum yang wajar, misal 1024x1024 piksel
-            // Ini akan menangani gambar dari kamera yang berukuran sangat besar
             val maxDimension = 1024.0
             val scale = min(
                 maxDimension / originalWidth,
                 maxDimension / originalHeight
-            ).let { if (it > 1.0) 1.0 else it } // Jangan perbesar gambar jika sudah kecil
+            ).let { if (it > 1.0) 1.0 else it }
 
             val newWidth = (originalWidth * scale).roundToInt()
             val newHeight = (originalHeight * scale).roundToInt()
 
-            // Hitung inSampleSize agar memori lebih hemat
             options.inSampleSize = calculateInSampleSize(options, newWidth, newHeight)
-            options.inJustDecodeBounds = false // Sekarang kita akan memuat bitmap-nya
+            options.inJustDecodeBounds = false
 
-            // Buka stream lagi untuk memuat bitmap yang sudah di-subsample
             inputStream = contentResolver.openInputStream(imageUri)
             val bitmapToResize = BitmapFactory.decodeStream(inputStream, null, options)
             inputStream?.close()
@@ -137,34 +131,30 @@ class EditProfileActivity : AppCompatActivity() {
                 return null
             }
 
-            // Buat bitmap akhir dengan ukuran pasti
             val finalBitmap = Bitmap.createScaledBitmap(bitmapToResize, newWidth, newHeight, true)
             if (finalBitmap != bitmapToResize) {
-                bitmapToResize.recycle() // Bebaskan memori bitmap lama
+                bitmapToResize.recycle()
             }
 
-            // --- Langkah 2: Kompresi Kualitas Berulang ---
-
-            var quality = 95 // Mulai dari kualitas 95%
+            // Langkah 2: Kompresi Kualitas Berulang
+            var quality = 95
             val outputStream = ByteArrayOutputStream()
             var compressedBytes: ByteArray
             val targetSizeBytes = targetSizeKB * 1024
 
             do {
-                outputStream.reset() // Hapus data kompresi sebelumnya
-                // Kompresi ke format JPEG. Format ini WAJIB untuk kompresi foto.
+                outputStream.reset()
                 finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
                 compressedBytes = outputStream.toByteArray()
 
                 val currentSizeKB = compressedBytes.size / 1024
                 Log.d("ImageCompression", "Kualitas: $quality, Ukuran: ${currentSizeKB}KB")
 
-                // Turunkan kualitas untuk iterasi berikutnya
                 quality -= 5
 
-            } while (compressedBytes.size > targetSizeBytes && quality > 40) // Loop selama ukuran > target DAN kualitas > 40%
+            } while (compressedBytes.size > targetSizeBytes && quality > 40)
 
-            finalBitmap.recycle() // Bebaskan memori bitmap
+            finalBitmap.recycle()
             outputStream.close()
 
             Log.d("ImageCompression", "Ukuran final: ${compressedBytes.size / 1024}KB")
@@ -172,7 +162,7 @@ class EditProfileActivity : AppCompatActivity() {
 
         } catch (e: Exception) {
             Log.e("ImageCompression", "Gagal mengkompresi gambar", e)
-            inputStream?.close() // Pastikan stream ditutup jika terjadi error
+            inputStream?.close()
             return null
         }
     }
@@ -212,17 +202,12 @@ class EditProfileActivity : AppCompatActivity() {
                 marginStart = 24.dp
                 marginEnd = 24.dp
             }
-            text = "Save" // Teks "Save"
-
+            text = "Save"
             backgroundTintList = ContextCompat.getColorStateList(context, R.color.dark_blue)
-            setCornerRadius(12.dp)
-
-            // PERBAIKAN: Set warna teks secara eksplisit menjadi Putih
+            cornerRadius = 12.dp
             setTextColor(ContextCompat.getColor(context, R.color.white))
-
             linearLayout.addView(this)
         }
-
 
         // 1. Muat Data Profil dan Gambar
         loadProfileData()
@@ -236,13 +221,127 @@ class EditProfileActivity : AppCompatActivity() {
             saveProfileData()
         }
 
-        // Listener untuk membuka kamera
         tvEditPhoto.setOnClickListener { launchCamera() }
         ivProfilePicture.setOnClickListener { launchCamera() }
 
         // 3. Setup Dropdown Gender
         inputGender.setOnClickListener {
             showGenderDropdown()
+        }
+    }
+
+    private suspend fun uploadImageToCloudinary(userId: String, imageUri: Uri): String? {
+        if (userId.isEmpty()) {
+            Log.e("CloudinaryUpload", "userId kosong!")
+            return null
+        }
+
+        Log.d("CloudinaryUpload", "Memulai upload untuk userId: $userId")
+
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Kompresi gambar terlebih dahulu
+                val compressedBytes = getCompressedImageBytes(imageUri, 500) // 500KB max
+                if (compressedBytes == null) {
+                    Log.e("CloudinaryUpload", "Kompresi gambar gagal")
+                    return@withContext null
+                }
+
+                // 2. Simpan ke file sementara
+                val tempFile = File(cacheDir, "temp_upload_${System.currentTimeMillis()}.jpg")
+                FileOutputStream(tempFile).use {
+                    it.write(compressedBytes)
+                }
+
+                // 3. Generate signature untuk signed upload (lebih aman)
+                val timestamp = (System.currentTimeMillis() / 1000).toString()
+                val publicId = "profile_images/$userId/profile_$timestamp"
+
+                // 4. Buat multipart request
+                val requestBody = MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart(
+                        "file",
+                        tempFile.name,
+                        tempFile.asRequestBody("image/jpeg".toMediaType())
+                    )
+                    .addFormDataPart("upload_preset", UPLOAD_PRESET) // Untuk unsigned upload
+                    .addFormDataPart("folder", "profile_images/$userId")
+                    .addFormDataPart("public_id", publicId)
+                    .build()
+
+                val request = Request.Builder()
+                    .url("https://api.cloudinary.com/v1_1/$CLOUD_NAME/image/upload")
+                    .post(requestBody)
+                    .build()
+
+                // 5. Execute request
+                val response = client.newCall(request).execute()
+
+                // 6. Hapus file sementara
+                tempFile.delete()
+
+                // 7. Parse response
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    Log.d("CloudinaryUpload", "Response: $responseBody")
+
+                    // Parse JSON untuk mendapatkan secure_url
+                    // Menggunakan cara manual tanpa library JSON
+                    val secureUrl = responseBody?.let { extractSecureUrl(it) }
+
+                    if (secureUrl != null) {
+                        Log.d("CloudinaryUpload", "Upload berhasil: $secureUrl")
+                        return@withContext secureUrl
+                    } else {
+                        Log.e("CloudinaryUpload", "Secure URL tidak ditemukan di response")
+                        return@withContext null
+                    }
+                } else {
+                    Log.e("CloudinaryUpload", "Upload gagal: ${response.code} - ${response.message}")
+                    val errorBody = response.body?.string()
+                    Log.e("CloudinaryUpload", "Error body: $errorBody")
+
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            this@EditProfileActivity,
+                            "Upload gagal: ${response.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    return@withContext null
+                }
+
+            } catch (e: Exception) {
+                Log.e("CloudinaryUpload", "Exception: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@EditProfileActivity,
+                        "Error upload: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                return@withContext null
+            }
+        }
+    }
+
+    // Fungsi helper untuk extract secure_url dari JSON response
+    private fun extractSecureUrl(jsonResponse: String): String? {
+        return try {
+            // Cari "secure_url":"..."
+            val startIndex = jsonResponse.indexOf("\"secure_url\":\"") + 14
+            if (startIndex < 14) return null
+
+            val endIndex = jsonResponse.indexOf("\"", startIndex)
+            if (endIndex == -1) return null
+
+            val url = jsonResponse.substring(startIndex, endIndex)
+            // Unescape URL jika perlu
+            url.replace("\\/", "/")
+        } catch (e: Exception) {
+            Log.e("CloudinaryUpload", "Error parsing secure_url: ${e.message}")
+            null
         }
     }
 
@@ -258,95 +357,27 @@ class EditProfileActivity : AppCompatActivity() {
 
         // Muat gambar jika URI ada
         if (imageUriString != null) {
-            currentImageUri = Uri.parse(imageUriString)
-            try {
-                // HANYA COBA TAMPILKAN. Jika gagal, exception akan terjadi.
-                ivProfilePicture.setImageURI(currentImageUri)
-            } catch (e: Exception) {
-                // Jika gagal, reset ke placeholder
-                Log.e("EditProfile", "Error loading image URI on load: ${e.message}")
-                currentImageUri = null
-                sharedPrefs.edit().remove(KEY_IMAGE_URI).apply() // Hapus URI yang rusak
+            if (imageUriString.startsWith("http")) {
+                // Ini adalah URL dari Cloudinary
+                // TODO: Gunakan Glide untuk load image
+                // Glide.with(this).load(imageUriString).into(ivProfilePicture)
+                Log.d("EditProfile", "Image URL dari Cloudinary: $imageUriString")
+                // Sementara set icon default
                 ivProfilePicture.setImageResource(R.drawable.ic_profile)
+            } else {
+                // Ini adalah URI lokal
+                currentImageUri = Uri.parse(imageUriString)
+                try {
+                    ivProfilePicture.setImageURI(currentImageUri)
+                } catch (e: Exception) {
+                    Log.e("EditProfile", "Error loading image URI: ${e.message}")
+                    currentImageUri = null
+                    sharedPrefs.edit().remove(KEY_IMAGE_URI).apply()
+                    ivProfilePicture.setImageResource(R.drawable.ic_profile)
+                }
             }
         } else {
             ivProfilePicture.setImageResource(R.drawable.ic_profile)
-        }
-    }
-
-    private suspend fun uploadProfileImage(userId: String, imageUri: Uri): String? {
-        if (userId.isEmpty()) {
-            Log.e("UploadImage", "userId kosong!")
-            return null
-        }
-
-        // Log informasi user
-        Log.d("UploadImage", "Memulai upload untuk userId: $userId")
-
-        // 1. Kompresi gambar ke target 300KB
-        val targetKB = 300
-        val compressedImageBytes = withContext(Dispatchers.IO) {
-            getCompressedImageBytes(imageUri, targetKB)
-        }
-
-        if (compressedImageBytes == null) {
-            Log.e("UploadImage", "Kompresi gambar gagal, upload dibatalkan.")
-            withContext(Dispatchers.Main) {
-                Toast.makeText(this@EditProfileActivity, "Format gambar tidak didukung.", Toast.LENGTH_SHORT).show()
-            }
-            return null
-        }
-
-        Log.d("UploadImage", "Ukuran gambar terkompresi: ${compressedImageBytes.size / 1024}KB")
-
-        return try {
-            // Gunakan UploadTask dengan callback yang lebih eksplisit
-            withContext(Dispatchers.IO) {
-                val storageRef = FirebaseStorage.getInstance().reference
-                val timestamp = System.currentTimeMillis()
-                val fileName = "profile_images/$userId/profile_$timestamp.jpg"
-                val imageRef = storageRef.child(fileName)
-
-                Log.d("UploadImage", "Path storage: $fileName")
-
-                // Upload file
-                val uploadTaskSnapshot = imageRef.putBytes(compressedImageBytes).await()
-
-                Log.d("UploadImage", "Upload selesai. Bytes: ${uploadTaskSnapshot.bytesTransferred}")
-                Log.d("UploadImage", "Storage path: ${uploadTaskSnapshot.storage.path}")
-
-                // SOLUSI UTAMA: Gunakan storage reference dari uploadTaskSnapshot
-                // karena ini dijamin sudah benar dan file sudah ada
-                val downloadUrl = uploadTaskSnapshot.storage.downloadUrl.await().toString()
-
-                Log.d("UploadImage", "Download URL: $downloadUrl")
-
-                downloadUrl
-            }
-
-        } catch (e: Exception) {
-            Log.e("UploadImage", "Error detail: ", e)
-            e.printStackTrace()
-
-            withContext(Dispatchers.Main) {
-                val errorMsg = when (e) {
-                    is com.google.firebase.storage.StorageException -> {
-                        Log.e("UploadImage", "StorageException code: ${e.errorCode}")
-                        when (e.errorCode) {
-                            com.google.firebase.storage.StorageException.ERROR_OBJECT_NOT_FOUND ->
-                                "File tidak ditemukan di storage. Periksa rules."
-                            com.google.firebase.storage.StorageException.ERROR_NOT_AUTHENTICATED ->
-                                "User tidak login. Silakan login ulang."
-                            com.google.firebase.storage.StorageException.ERROR_NOT_AUTHORIZED ->
-                                "Tidak ada izin upload. Periksa Storage Rules."
-                            else -> "Storage error (${e.errorCode}): ${e.message}"
-                        }
-                    }
-                    else -> "Upload gagal: ${e.message}"
-                }
-                Toast.makeText(this@EditProfileActivity, errorMsg, Toast.LENGTH_LONG).show()
-            }
-            null
         }
     }
 
@@ -366,70 +397,84 @@ class EditProfileActivity : AppCompatActivity() {
             return
         }
 
+        // Tampilkan loading
+        Toast.makeText(this, "Menyimpan profil...", Toast.LENGTH_SHORT).show()
+
         // Gunakan lifecycleScope untuk Coroutine
         lifecycleScope.launch {
-            var imageUrl: String? = null // Variabel untuk menyimpan URL hasil upload
+            var imageUrl: String? = null
 
-            // 1. Cek apakah ada gambar baru yang dipilih
+            // 1. Cek apakah ada gambar baru untuk diupload
             if (currentImageUri != null) {
-                // 2. Unggah gambar ke Firebase Storage (jalankan di background thread)
-                imageUrl = withContext(Dispatchers.IO) {
-                    uploadProfileImage(userId, currentImageUri!!)
-                }
+                // 2. Upload ke Cloudinary
+                imageUrl = uploadImageToCloudinary(userId, currentImageUri!!)
+
                 if (imageUrl == null) {
-                    // Jika upload gagal, beri tahu pengguna dan hentikan proses simpan
-                    Toast.makeText(this@EditProfileActivity, "Gagal mengunggah gambar profil.", Toast.LENGTH_SHORT).show()
-                    return@launch // Hentikan coroutine
+                    Toast.makeText(
+                        this@EditProfileActivity,
+                        "Gagal mengunggah gambar profil.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    // Gunakan URL lama jika upload gagal
+                    imageUrl = sharedPrefs.getString(KEY_IMAGE_URI, null)
+                } else {
+                    Log.d("SaveProfile", "Image uploaded successfully: $imageUrl")
                 }
             } else {
-                // Jika tidak ada gambar baru, coba pertahankan URL lama (jika ada)
+                // Jika tidak ada gambar baru, pertahankan URL lama
                 imageUrl = sharedPrefs.getString(KEY_IMAGE_URI, null)
             }
-
 
             // 3. Buat objek data profil untuk Firestore
             val profileData = hashMapOf(
                 "name" to newName,
                 "username" to newUsername,
                 "gender" to newGender,
-                "profileImageUrl" to imageUrl // Simpan URL unduhan (bisa null)
-                // Tambahkan field lain jika perlu
+                "profileImageUrl" to imageUrl,
+                "updatedAt" to System.currentTimeMillis()
             )
 
-            // 4. Simpan data ke Firestore (jalankan di background thread)
+            // 4. Simpan data ke Firestore
             val success = withContext(Dispatchers.IO) {
                 try {
                     val db = FirebaseFirestore.getInstance()
-                    // Simpan ke collection 'users', document dengan ID user, sub-collection 'profile' (contoh)
-                    // Atau langsung di document user jika struktur datanya sederhana
-                    db.collection("users").document(userId).set(profileData).await() // Menggunakan set untuk overwrite atau create
-                    true // Berhasil
+                    db.collection("users")
+                        .document(userId)
+                        .set(profileData)
+                        .await()
+                    true
                 } catch (e: Exception) {
                     Log.e("FirestoreSave", "Error saving profile data", e)
-                    false // Gagal
+                    false
                 }
             }
 
-            // 5. Update UI dan SharedPreferences setelah simpan Firestore
+            // 5. Update UI dan SharedPreferences
             if (success) {
-                // (Opsional) Simpan juga ke SharedPreferences jika masih diperlukan
                 sharedPrefs.edit().apply {
                     putString(KEY_NAME, newName)
                     putString(KEY_USERNAME, newUsername)
                     putString(KEY_GENDER, newGender)
-                    putString(KEY_IMAGE_URI, imageUrl) // Simpan URL baru/lama
+                    putString(KEY_IMAGE_URI, imageUrl)
                     apply()
                 }
-                Toast.makeText(this@EditProfileActivity, "Profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@EditProfileActivity,
+                    "Profil berhasil diperbarui!",
+                    Toast.LENGTH_SHORT
+                ).show()
                 setResult(Activity.RESULT_OK)
                 finish()
             } else {
-                Toast.makeText(this@EditProfileActivity, "Gagal menyimpan profil ke database.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@EditProfileActivity,
+                    "Gagal menyimpan profil ke database.",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
 
-    // Fungsi untuk meluncurkan CameraActivity
     private fun launchCamera() {
         val intent = Intent(this, CameraActivity::class.java)
         cameraLauncher.launch(intent)

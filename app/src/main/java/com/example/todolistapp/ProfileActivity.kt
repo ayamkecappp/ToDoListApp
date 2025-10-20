@@ -245,7 +245,7 @@ class ProfileActivity : AppCompatActivity() {
                 // Muat gambar menggunakan Glide (atau library pemuat gambar lainnya)
                 if (imageUrl != null) {
                     Glide.with(this@ProfileActivity)
-                        .load(imageUrl)
+                        .load(imageUrl) // <-- imageUrl sekarang berisi URL Cloudinary
                         .placeholder(R.drawable.ic_profile) // Gambar sementara saat loading
                         .error(R.drawable.ic_profile)       // Gambar jika gagal load
                         .into(ivProfilePicture)

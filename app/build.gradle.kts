@@ -44,6 +44,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.play.services.cast.tv)
     // --- DEPENDENSI INTI ANDROIDX & MATERIAL DESIGN ---
     // Definisikan versi
     val cameraxVersion = "1.3.1"
@@ -51,6 +52,8 @@ dependencies {
     val glideVersion = "4.16.0"
     implementation("id.zelory:compressor:3.0.1")
     implementation("com.google.firebase:firebase-storage-ktx")
+    implementation("com.cloudinary:kotlin-url-gen:1.7.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // --- FIREBASE & COROUTINES ---
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
