@@ -87,6 +87,7 @@ class CalendarActivity : AppCompatActivity() {
 
         monthText = findViewById(R.id.month_text)
         calendarGrid = findViewById(R.id.calendar_grid)
+        val btnBack = findViewById<ImageView>(R.id.btnBack)
         val arrowLeft = findViewById<ImageView>(R.id.arrow_left)
         val arrowRight = findViewById<ImageView>(R.id.arrow_right)
 
@@ -101,6 +102,11 @@ class CalendarActivity : AppCompatActivity() {
                 TaskRepository.updateMissedTasks()
             }
             updateCalendar()
+        }
+
+        btnBack.setOnClickListener {
+            setResult(Activity.RESULT_CANCELED)
+            finish()
         }
 
         arrowLeft.setOnClickListener {

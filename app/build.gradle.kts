@@ -49,6 +49,8 @@ dependencies {
     val cameraxVersion = "1.3.1"
     val coroutinesVersion = "1.7.3"
     val glideVersion = "4.16.0"
+    implementation("id.zelory:compressor:3.0.1")
+    implementation("com.google.firebase:firebase-storage-ktx")
 
     // --- FIREBASE & COROUTINES ---
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))

@@ -23,6 +23,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.withContext
+import com.bumptech.glide.Glide // Import Glide
+import kotlinx.coroutines.launch // Import launch
+import kotlinx.coroutines.withContext // Import withContext
+import androidx.lifecycle.lifecycleScope // Import lifecycleScope
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 class ProfileActivity : AppCompatActivity() {
 
@@ -207,22 +214,66 @@ class ProfileActivity : AppCompatActivity() {
 
 
     private fun loadProfileData() {
-        val username = sharedPrefs.getString(EditProfileActivity.KEY_USERNAME, "Username")
-        val imageUriString = sharedPrefs.getString(EditProfileActivity.KEY_IMAGE_URI, null)
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId == null) {
+            tvUsername.text = "Guest"
+            ivProfilePicture.setImageResource(R.drawable.ic_profile) // Gambar default
+            return
+        }
 
-        tvUsername.text = username
-
-        if (imageUriString != null) {
-            val imageUri = Uri.parse(imageUriString)
-            try {
-                ivProfilePicture.setImageURI(imageUri)
-            } catch (e: Exception) {
-                Log.e("ProfileActivity", "Gagal memuat foto dari URI: ${e.message}")
-                ivProfilePicture.setImageResource(R.drawable.ic_profile)
-                sharedPrefs.edit().remove(EditProfileActivity.KEY_IMAGE_URI).apply()
+        lifecycleScope.launch {
+            // Ambil data dari Firestore di background thread
+            val profileData = withContext(Dispatchers.IO) {
+                try {
+                    val db = FirebaseFirestore.getInstance()
+                    val document = db.collection("users").document(userId).get().await()
+                    document.data // Mengembalikan Map<String, Any?> atau null
+                } catch (e: Exception) {
+                    Log.e("FirestoreLoad", "Error loading profile data", e)
+                    null // Kembalikan null jika gagal
+                }
             }
-        } else {
-            ivProfilePicture.setImageResource(R.drawable.ic_profile)
+
+            // Update UI di main thread
+            if (profileData != null) {
+                val name = profileData["name"] as? String ?: "Nama Pengguna"
+                val username = profileData["username"] as? String ?: "@username"
+                val imageUrl = profileData["profileImageUrl"] as? String
+
+                tvUsername.text = username // Tampilkan username atau name sesuai keinginan
+
+                // Muat gambar menggunakan Glide (atau library pemuat gambar lainnya)
+                if (imageUrl != null) {
+                    Glide.with(this@ProfileActivity)
+                        .load(imageUrl)
+                        .placeholder(R.drawable.ic_profile) // Gambar sementara saat loading
+                        .error(R.drawable.ic_profile)       // Gambar jika gagal load
+                        .into(ivProfilePicture)
+                } else {
+                    ivProfilePicture.setImageResource(R.drawable.ic_profile) // Gambar default
+                }
+
+                // (Opsional) Update SharedPreferences jika perlu sinkronisasi
+                sharedPrefs.edit().apply {
+                    putString(EditProfileActivity.KEY_USERNAME, username)
+                    putString(EditProfileActivity.KEY_NAME, name)
+                    putString(EditProfileActivity.KEY_GENDER, profileData["gender"] as? String ?: "Male")
+                    putString(EditProfileActivity.KEY_IMAGE_URI, imageUrl)
+                    apply()
+                }
+
+            } else {
+                // Gagal load dari Firestore, coba load dari SharedPreferences sebagai fallback
+                val savedUsername = sharedPrefs.getString(EditProfileActivity.KEY_USERNAME, "Username")
+                val imageUriString = sharedPrefs.getString(EditProfileActivity.KEY_IMAGE_URI, null)
+                tvUsername.text = savedUsername
+                if (imageUriString != null) {
+                    try { Glide.with(this@ProfileActivity).load(Uri.parse(imageUriString)).placeholder(R.drawable.ic_profile).error(R.drawable.ic_profile).into(ivProfilePicture) } catch (e: Exception) { ivProfilePicture.setImageResource(R.drawable.ic_profile) }
+                } else {
+                    ivProfilePicture.setImageResource(R.drawable.ic_profile)
+                }
+                Toast.makeText(this@ProfileActivity, "Gagal memuat data profil terbaru.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
