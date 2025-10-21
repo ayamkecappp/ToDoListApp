@@ -54,6 +54,7 @@ dependencies {
     implementation("com.google.firebase:firebase-storage-ktx")
     implementation("com.cloudinary:kotlin-url-gen:1.7.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     // --- FIREBASE & COROUTINES ---
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))

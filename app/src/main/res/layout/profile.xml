@@ -203,7 +203,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Completed Tasks (9)"
+                android:text="Completed Tasks (0)"
                 android:textColor="@color/white"
                 android:textSize="14sp"/>
             <ImageView
@@ -230,7 +230,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Missed Tasks (10)"
+                android:text="Missed Tasks (0)"
                 android:textColor="@color/white"
                 android:textSize="14sp"
                 android:textStyle="bold"/>
@@ -256,7 +256,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Deleted Tasks (2)"
+                android:text="Deleted Tasks (0)"
                 android:textColor="@color/white"
                 android:textSize="14sp"/>
             <ImageView

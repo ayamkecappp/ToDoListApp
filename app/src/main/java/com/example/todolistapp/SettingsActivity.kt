@@ -16,6 +16,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
+import android.content.Context
+import com.bumptech.glide.Glide
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -135,12 +137,20 @@ class SettingsActivity : AppCompatActivity() {
             // Logout dari Facebook (dijalankan setelah Google selesai)
             LoginManager.getInstance().logOut()
 
-            // 3. Arahkan kembali ke LoginActivity
+            // 3. BERSIHKAN SharedPreferences PROFIL <-- TAMBAHAN
+            val profilePrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
+            profilePrefs.edit().clear().apply() // Hapus semua data di ProfilePrefs
+
+            // 4. Arahkan kembali ke LoginActivity
             val intent = Intent(this, LoginActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
+            Glide.get(applicationContext).clearMemory() // Hapus cache memori
+            Thread {
+                Glide.get(applicationContext).clearDiskCache() // Hapus cache disk (di background thread)
+            }.start()
             startActivity(intent)
-            finish()
+            finish() // Tutup SettingsActivity
         }
     }
 

@@ -38,6 +38,9 @@ import java.io.FileOutputStream
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CircleCrop
 import com.bumptech.glide.request.RequestOptions
+import androidx.exifinterface.media.ExifInterface
+import android.graphics.Matrix
+
 
 class EditProfileActivity : AppCompatActivity() {
 
@@ -102,7 +105,7 @@ class EditProfileActivity : AppCompatActivity() {
     private fun getCompressedImageBytes(imageUri: Uri, targetSizeKB: Int): ByteArray? {
         var inputStream: InputStream? = null
         try {
-            // ... (kode kompresi gambar)
+            // 1. Decode Bounds (Kode asli)
             inputStream = contentResolver.openInputStream(imageUri)
             val options = BitmapFactory.Options()
             options.inJustDecodeBounds = true
@@ -115,32 +118,64 @@ class EditProfileActivity : AppCompatActivity() {
                 return null
             }
 
+            // 2. Kalkulasi inSampleSize (Kode asli)
+            // (Kita gunakan maxDimension sementara untuk kalkulasi sample size)
             val maxDimension = 1024.0
-            val scale = min(
+            val tempScale = min(
                 maxDimension / originalWidth,
                 maxDimension / originalHeight
             ).let { if (it > 1.0) 1.0 else it }
+            val tempWidth = (originalWidth * tempScale).roundToInt()
+            val tempHeight = (originalHeight * tempScale).roundToInt()
 
-            val newWidth = (originalWidth * scale).roundToInt()
-            val newHeight = (originalHeight * scale).roundToInt()
-
-            options.inSampleSize = calculateInSampleSize(options, newWidth, newHeight)
+            options.inSampleSize = calculateInSampleSize(options, tempWidth, tempHeight)
             options.inJustDecodeBounds = false
 
+            // 3. Decode Bitmap Awal (Kode asli)
             inputStream = contentResolver.openInputStream(imageUri)
-            val bitmapToResize = BitmapFactory.decodeStream(inputStream, null, options)
+            var bitmapToProcess = BitmapFactory.decodeStream(inputStream, null, options)
             inputStream?.close()
 
-            if (bitmapToResize == null) {
+            if (bitmapToProcess == null) {
                 Log.e("ImageCompression", "Gagal men-decode bitmap.")
                 return null
             }
 
-            val finalBitmap = Bitmap.createScaledBitmap(bitmapToResize, newWidth, newHeight, true)
-            if (finalBitmap != bitmapToResize) {
-                bitmapToResize.recycle()
+            // 4. --- TAMBAHAN: ROTASI BERDASARKAN EXIF ---
+            try {
+                inputStream = contentResolver.openInputStream(imageUri) // Buka stream BARU untuk EXIF
+                if (inputStream != null) {
+                    bitmapToProcess = rotateBitmapBasedOnExif(bitmapToProcess, inputStream)
+                    Log.d("ImageCompression", "Rotasi EXIF diterapkan.")
+                }
+            } catch (exifError: Exception) {
+                Log.e("ImageCompression", "Gagal membaca EXIF/rotasi", exifError)
+                // Lanjutkan proses tanpa rotasi jika gagal
+            } finally {
+                inputStream?.close() // Pastikan stream EXIF ditutup
+            }
+            // --- AKHIR TAMBAHAN ---
+
+            // 5. Hitung Ulang Scaling SETELAH Rotasi
+            // Dimensi bitmapToProcess mungkin sudah berubah (misal: 1000x800 jadi 800x1000)
+            val rotatedWidth = bitmapToProcess.width
+            val rotatedHeight = bitmapToProcess.height
+
+            val scaleAfterRotation = min(
+                maxDimension / rotatedWidth,
+                maxDimension / rotatedHeight
+            ).let { if (it > 1.0) 1.0 else it }
+
+            val finalNewWidth = (rotatedWidth * scaleAfterRotation).roundToInt()
+            val finalNewHeight = (rotatedHeight * scaleAfterRotation).roundToInt()
+
+            // 6. Scale Bitmap (Resize)
+            val finalBitmap = Bitmap.createScaledBitmap(bitmapToProcess, finalNewWidth, finalNewHeight, true)
+            if (finalBitmap != bitmapToProcess) {
+                bitmapToProcess.recycle() // Bebaskan bitmap hasil decode/rotasi
             }
 
+            // 7. Kompresi (Kode asli Anda)
             var quality = 95
             val outputStream = ByteArrayOutputStream()
             var compressedBytes: ByteArray
@@ -158,15 +193,15 @@ class EditProfileActivity : AppCompatActivity() {
 
             } while (compressedBytes.size > targetSizeBytes && quality > 40)
 
-            finalBitmap.recycle()
+            finalBitmap.recycle() // Bebaskan bitmap hasil scaling
             outputStream.close()
 
             Log.d("ImageCompression", "Ukuran final: ${compressedBytes.size / 1024}KB")
             return compressedBytes
-            // ... (akhir kode kompresi gambar)
+
         } catch (e: Exception) {
             Log.e("ImageCompression", "Gagal mengkompresi gambar", e)
-            inputStream?.close()
+            try { inputStream?.close() } catch (eClose: Exception) { /* abaikan */ }
             return null
         }
     }
@@ -177,6 +212,39 @@ class EditProfileActivity : AppCompatActivity() {
         const val KEY_USERNAME = "username"
         const val KEY_GENDER = "gender"
         const val KEY_IMAGE_URI = "image_uri"
+    }
+
+    private fun rotateBitmapBasedOnExif(source: Bitmap, inputStream: InputStream): Bitmap {
+        val exif = ExifInterface(inputStream)
+        val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1.0f, 1.0f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1.0f, -1.0f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.preRotate(90.0f)
+                matrix.preScale(-1.0f, 1.0f)
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.preRotate(270.0f)
+                matrix.preScale(-1.0f, 1.0f)
+            }
+            // Tambahkan case lain jika diperlukan
+            else -> return source // Tidak perlu rotasi
+        }
+        return try {
+            val rotatedBitmap = Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
+            if (rotatedBitmap != source) {
+                source.recycle() // Bebaskan memori bitmap asli jika sudah dirotasi
+            }
+            rotatedBitmap
+        } catch (e: OutOfMemoryError) {
+            Log.e("RotateBitmap", "OutOfMemoryError saat merotasi bitmap", e)
+            source // Kembalikan bitmap asli jika error
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
