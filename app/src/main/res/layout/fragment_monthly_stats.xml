@@ -27,19 +27,8 @@
         android:gravity="center_horizontal"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="48dp"
-        android:layout_marginStart="38.58dp"/>
-
-    <ImageView
-        android:id="@+id/fire_icon2"
-        android:layout_width="19.39dp"
-        android:layout_height="25dp"
-        android:background="@drawable/ic_fire2"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         android:layout_marginTop="58dp"
         android:layout_marginStart="19dp"/>
-
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/bar_chart_container"
@@ -54,81 +43,64 @@
         <View
             android:alpha="0.0"
             android:id="@+id/rectangle_1"
-            android:layout_width="33dp"
+            android:layout_width="0dp"
             android:layout_height="114dp"
-            android:layout_marginTop="100dp"
             android:background="@drawable/rectangle_2"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/rectangle_2"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth_percent="0.14"
-            android:transformPivotY="124dp"/>
+            app:layout_constraintHorizontal_chainStyle="spread"
+            app:layout_constraintWidth_percent="0.14"/>
         <View
             android:alpha="0.0"
             android:id="@+id/rectangle_2"
-            android:layout_width="33dp"
+            android:layout_width="0dp"
             android:layout_height="160dp"
             android:background="@drawable/rectangle_2_gold"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/rectangle_3"
             app:layout_constraintStart_toEndOf="@id/rectangle_1"
-            app:layout_constraintWidth_percent="0.14"
-            android:transformPivotY="208dp"/>
+            app:layout_constraintWidth_percent="0.14"/>
         <View
             android:alpha="0.0"
             android:id="@+id/rectangle_3"
-            android:layout_width="33dp"
+            android:layout_width="0dp"
             android:layout_height="12dp"
             android:background="@drawable/rectangle_2"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/rectangle_4"
             app:layout_constraintStart_toEndOf="@id/rectangle_2"
-            app:layout_constraintWidth_percent="0.14"
-            android:transformPivotY="12dp"/>
+            app:layout_constraintWidth_percent="0.14"/>
         <View
             android:alpha="0.0"
             android:id="@+id/rectangle_4"
-            android:layout_width="33dp"
+            android:layout_width="0dp"
             android:layout_height="12dp"
             android:background="@drawable/rectangle_2"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/rectangle_5"
             app:layout_constraintStart_toEndOf="@id/rectangle_3"
-            app:layout_constraintWidth_percent="0.14"
-            android:transformPivotY="12dp"/>
+            app:layout_constraintWidth_percent="0.14"/>
         <View
             android:alpha="0.0"
             android:id="@+id/rectangle_5"
-            android:layout_width="33dp"
+            android:layout_width="0dp"
             android:layout_height="12dp"
             android:background="@drawable/rectangle_2"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/rectangle_6"
             app:layout_constraintStart_toEndOf="@id/rectangle_4"
-            app:layout_constraintWidth_percent="0.14"
-            android:transformPivotY="12dp"/>
+            app:layout_constraintWidth_percent="0.14"/>
         <View
             android:alpha="0.0"
             android:id="@+id/rectangle_6"
-            android:layout_width="33dp"
-            android:layout_height="12dp"
-            android:background="@drawable/rectangle_2"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/rectangle_7"
-            app:layout_constraintStart_toEndOf="@id/rectangle_5"
-            app:layout_constraintWidth_percent="0.1" />
-        <View
-            android:alpha="0.0"
-            android:id="@+id/rectangle_7"
-            android:layout_width="33dp"
+            android:layout_width="0dp"
             android:layout_height="12dp"
             android:background="@drawable/rectangle_2"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/rectangle_6"
-            app:layout_constraintWidth_percent="0.14" />
-
+            app:layout_constraintStart_toEndOf="@id/rectangle_5"
+            app:layout_constraintWidth_percent="0.14"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout
@@ -144,12 +116,11 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp">
 
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Sept" style="@style/labelHari" android:gravity="center_horizontal"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Oct" style="@style/labelHari" android:gravity="center_horizontal"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Nov" style="@style/labelHari" android:gravity="center_horizontal"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Dec" style="@style/labelHari" android:gravity="center_horizontal"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Jan" style="@style/labelHari" android:gravity="center_horizontal"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Feb" style="@style/labelHari" android:gravity="center_horizontal"/>
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Mar" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Bulan 1" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Bulan 2" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Bulan 3" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Bulan 4" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Bulan 5" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Bulan 6" style="@style/labelHari" android:gravity="center_horizontal"/>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -56,10 +56,11 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var tvCompletedTasksLabel: TextView
     private lateinit var tvMissedTasksLabel: TextView
     private lateinit var tvDeletedTasksLabel: TextView
+    private lateinit var tvStreakValue: TextView
 
     // --- Cloudinary and OkHttp client (Dicopy dari EditProfileActivity) ---
-    private val CLOUD_NAME = "dk2jrlugl" // Ganti dengan Cloud Name Anda yang sebenarnya
-    private val UPLOAD_PRESET = "android_profile_upload" // Ganti dengan Upload Preset Anda yang sebenarnya
+    private val CLOUD_NAME = "dk2jrlugl"
+    private val UPLOAD_PRESET = "android_profile_upload"
     private val client = OkHttpClient()
     // --------------------------------------------------------------------
 
@@ -68,9 +69,9 @@ class ProfileActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            // Jika EditProfileActivity berhasil, muat ulang data (termasuk foto)
             loadProfileData()
             updateTaskCounts()
+            updateStreakValue()
         }
     }
 
@@ -82,7 +83,7 @@ class ProfileActivity : AppCompatActivity() {
             val uriString = result.data?.getStringExtra("PROFILE_PHOTO_URI")
             if (uriString != null) {
                 val newImageUri = Uri.parse(uriString)
-                handleNewProfilePhoto(newImageUri) // FUNGSI PENTING: Upload dan Simpan langsung
+                handleNewProfilePhoto(newImageUri)
             }
         }
     }
@@ -100,6 +101,7 @@ class ProfileActivity : AppCompatActivity() {
         tvUsername = findViewById(R.id.tvUsername)
         bottomNav = findViewById(R.id.bottomNav)
         ivProfilePicture = findViewById(R.id.ivProfile)
+        tvStreakValue = findViewById(R.id.some_id) // BINDING
 
         val ivSettings = findViewById<ImageView>(R.id.ivSettings)
         val btnEditProfile = findViewById<TextView>(R.id.btnEditProfile)
@@ -169,7 +171,7 @@ class ProfileActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // PERUBAHAN UTAMA: Listener untuk ikon kamera
+        // Listener untuk ikon kamera
         ivCamera.setOnClickListener {
             val intent = Intent(this, CameraActivity::class.java)
             cameraLauncher.launch(intent)
@@ -192,23 +194,38 @@ class ProfileActivity : AppCompatActivity() {
 
         loadProfileData()
         updateTaskCounts()
+        updateStreakValue()
     }
 
     override fun onStart() {
         super.onStart()
         bottomNav.selectedItemId = R.id.nav_profile
+        updateStreakValue()
     }
 
     override fun onResume() {
         super.onResume()
         loadProfileData()
         updateTaskCounts()
+        updateStreakValue()
     }
 
-    // --------------------------------------------------------------------------------------
-    // --- FUNGSI UPLOAD GAMBAR & SIMPAN DATA BARU ---
-    // --------------------------------------------------------------------------------------
+    /**
+     * Mengambil nilai streak dari repository dan memperbarui TextView.
+     */
+    private fun updateStreakValue() {
+        lifecycleScope.launch(Dispatchers.Main) {
+            val streak = withContext(Dispatchers.IO) {
+                TaskRepository.getDailyStreakSync()
+            }
+            tvStreakValue.text = streak.toString()
+        }
+    }
 
+
+    // --------------------------------------------------------------------------------------
+    // --- FUNGSI UPLOAD GAMBAR & SIMPAN DATA BARU (Kode Tetap) ---
+    // --------------------------------------------------------------------------------------
     private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
         val (height: Int, width: Int) = options.outHeight to options.outWidth
         var inSampleSize = 1
@@ -474,7 +491,7 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     // --------------------------------------------------------------------------------------
-    // --- FUNGSI LOAD DATA (Sedikit Disesuaikan untuk memastikan pemuatan URI/URL) ---
+    // --- FUNGSI LOAD DATA (Kode Tetap) ---
     // --------------------------------------------------------------------------------------
 
     private fun updateTaskCounts() {
