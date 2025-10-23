@@ -12,6 +12,8 @@ import android.util.Log
 import java.util.Date
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import java.text.SimpleDateFormat // DITAMBAHKAN
+import java.util.Locale // DITAMBAHKAN
 
 // Data Class Task yang kompatibel dengan Firebase
 data class Task(
@@ -38,6 +40,13 @@ data class Task(
     // Konstruktor tanpa argumen untuk deserialisasi Firebase
     constructor() : this(id = UUID.randomUUID().toString())
 }
+
+// STATS DATA CLASS (DITAMBAHKAN UNTUK KONSISTENSI)
+data class StatsEntry(
+    val key: String,
+    val count: Int
+)
+
 
 object TaskRepository {
     private const val TAG = "TaskRepository"
@@ -128,7 +137,6 @@ object TaskRepository {
 
     /**
      * HANYA mengambil tugas dengan status PENDING pada tanggal tertentu (untuk daftar utama TaskActivity).
-     * PERBAIKAN: Menggunakan whereEqualTo("status", "pending").
      */
     suspend fun getTasksByDate(selectedDate: Calendar): List<Task> = withContext(Dispatchers.IO) {
         val collection = getTasksCollection() ?: return@withContext emptyList()
@@ -164,7 +172,6 @@ object TaskRepository {
 
     /**
      * HANYA mengambil tugas dengan status PENDING pada tanggal tertentu (untuk indikator kalender TaskActivity).
-     * PERBAIKAN: Menggunakan whereEqualTo("status", "pending").
      */
     suspend fun getTasksForDateIndicator(selectedDate: Calendar): List<Task> = withContext(Dispatchers.IO) {
         val collection = getTasksCollection() ?: return@withContext emptyList()
@@ -200,7 +207,6 @@ object TaskRepository {
 
     /**
      * Mengambil semua tugas PENDING dalam rentang 3 bulan (untuk CalendarActivity).
-     * PERBAIKAN: Menggunakan whereEqualTo("status", "pending").
      */
     suspend fun getTasksInDateRangeForCalendar(currentMonth: Calendar): List<Task> = withContext(Dispatchers.IO) {
         val collection = getTasksCollection() ?: return@withContext emptyList()
@@ -240,6 +246,67 @@ object TaskRepository {
         }
     }
 
+    /**
+     * Helper untuk mengambil data task yang telah selesai (`status = "completed"`)
+     * dalam rentang tanggal tertentu (DITAMBAHKAN).
+     */
+    suspend fun getCompletedTasksInDateRange(startCal: Calendar, endCal: Calendar): List<Task> = withContext(Dispatchers.IO) {
+        val collection = getTasksCollection() ?: return@withContext emptyList()
+
+        // Menggunakan helper toStartOfDay dan toEndOfDay
+        val startTimestamp = Timestamp(startCal.toStartOfDay().time)
+        val endTimestamp = Timestamp(endCal.toEndOfDay().time)
+
+        return@withContext try {
+            val snapshot = collection
+                .whereEqualTo("status", "completed")
+                .whereGreaterThanOrEqualTo("completedAt", startTimestamp)
+                .whereLessThanOrEqualTo("completedAt", endTimestamp)
+                .get()
+                .await()
+            snapshot.toObjects()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching completed tasks in range", e)
+            emptyList()
+        }
+    }
+
+
+    /**
+     * Mengelompokkan task selesai per hari. Digunakan untuk Daily Stats (Mon-Sun) (DITAMBAHKAN).
+     */
+    suspend fun getDailyCompletedTasksCount(startCal: Calendar, endCal: Calendar): Map<String, Int> = withContext(Dispatchers.IO) {
+        val tasks = getCompletedTasksInDateRange(startCal, endCal)
+        val dateFormat = SimpleDateFormat("EEE", Locale.US)
+
+        return@withContext tasks.groupBy {
+            dateFormat.format(it.completedAt?.toDate() ?: it.dueDate.toDate())
+        }.mapValues { it.value.size }
+    }
+
+    /**
+     * Mengelompokkan task selesai per minggu dalam bulan. Digunakan untuk Weekly Stats (Reset Bulanan) (DITAMBAHKAN).
+     */
+    suspend fun getWeeklyCompletedTasksCount(startCal: Calendar, endCal: Calendar): Map<Int, Int> = withContext(Dispatchers.IO) {
+        val tasks = getCompletedTasksInDateRange(startCal, endCal)
+
+        return@withContext tasks.groupBy {
+            val cal = Calendar.getInstance().apply { time = it.completedAt?.toDate() ?: it.dueDate.toDate() }
+            cal.get(Calendar.WEEK_OF_MONTH)
+        }.mapValues { it.value.size }
+    }
+
+    /**
+     * Mengelompokkan task selesai per bulan. Digunakan untuk Monthly Stats (Jan-Jun / Jul-Dec) (DITAMBAHKAN).
+     */
+    suspend fun getMonthlyCompletedTasksCount(startCal: Calendar, endCal: Calendar): Map<String, Int> = withContext(Dispatchers.IO) {
+        val tasks = getCompletedTasksInDateRange(startCal, endCal)
+        val monthFormat = SimpleDateFormat("MMM", Locale.US)
+
+        return@withContext tasks.groupBy {
+            monthFormat.format(it.completedAt?.toDate() ?: it.dueDate.toDate())
+        }.mapValues { it.value.size }
+    }
 
     // Fungsi untuk MENDAPATKAN task yang sudah selesai pada tanggal tertentu
     suspend fun getCompletedTasksByDate(selectedDate: Calendar): List<Task> = withContext(Dispatchers.IO) {
@@ -272,6 +339,67 @@ object TaskRepository {
             Log.e(TAG, "Error fetching completed tasks by date", e)
             emptyList()
         }
+    }
+
+    /**
+     * Menghitung streak harian berturut-turut untuk tugas yang diselesaikan. (DITAMBAHKAN)
+     */
+    suspend fun calculateMaxStreak(): Int = withContext(Dispatchers.IO) {
+        // 1. Ambil semua tanggal penyelesaian yang unik, dinormalisasi ke awal hari, dan diurutkan menurun.
+        val completedDatesMillis = getTasksByStatus("completed")
+            .mapNotNull { it.completedAt?.toDate() }
+            .map { date ->
+                Calendar.getInstance().apply {
+                    time = date
+                    toStartOfDay()
+                }.timeInMillis
+            }
+            .distinct()
+            .sortedDescending()
+
+        if (completedDatesMillis.isEmpty()) return@withContext 0
+
+        // 2. Tentukan waktu hari ini dan kemarin (awal hari)
+        val todayMillis = Calendar.getInstance().apply { toStartOfDay() }.timeInMillis
+        val yesterdayMillis = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -1)
+            toStartOfDay()
+        }.timeInMillis
+
+        var currentStreak = 0
+        var previousDateMillis = 0L
+
+        val mostRecentDate = completedDatesMillis.first()
+
+        // 3. Cek apakah streak aktif (tugas selesai hari ini atau kemarin)
+        if (mostRecentDate == todayMillis) {
+            currentStreak = 1
+            previousDateMillis = todayMillis
+        } else if (mostRecentDate == yesterdayMillis) {
+            currentStreak = 1
+            previousDateMillis = yesterdayMillis
+        } else {
+            // Jika tanggal terakhir selesai lebih tua dari kemarin, streak sudah terputus.
+            return@withContext 0
+        }
+
+        // 4. Hitung mundur untuk hari-hari sebelumnya
+        for (i in 1 until completedDatesMillis.size) {
+            val currentDateMillis = completedDatesMillis[i]
+
+            // Perbedaan harus tepat 1 hari (86400000 ms = 24 * 60 * 60 * 1000)
+            val diffDays = (previousDateMillis - currentDateMillis) / (24 * 60 * 60 * 1000)
+
+            if (diffDays == 1L) {
+                currentStreak++
+                previousDateMillis = currentDateMillis
+            } else if (diffDays > 1L) {
+                // Streak terputus
+                break
+            }
+        }
+
+        return@withContext currentStreak
     }
 
     /**
@@ -317,6 +445,21 @@ object TaskRepository {
         }
     }
 
+    // --- Helper toStartOfDay dan toEndOfDay (DITAMBAHKAN) ---
+    private fun Calendar.toStartOfDay(): Calendar = (clone() as Calendar).apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+
+    private fun Calendar.toEndOfDay(): Calendar = (clone() as Calendar).apply {
+        set(Calendar.HOUR_OF_DAY, 23)
+        set(Calendar.MINUTE, 59)
+        set(Calendar.SECOND, 59)
+        set(Calendar.MILLISECOND, 999)
+    }
+
     // ===============================================
     // SYNCHRONOUS WRAPPER FUNCTIONS (Menggunakan runBlocking untuk kompatibilitas)
     // ===============================================
@@ -350,6 +493,10 @@ object TaskRepository {
         }
     }
 
+    fun getDailyStreakSync(): Int = runBlocking { // DITAMBAHKAN
+        calculateMaxStreak()
+    }
+
     fun processTasksForMissed() = runBlocking {
         updateMissedTasks() // Pastikan update berjalan di IO
     }
@@ -380,8 +527,6 @@ object TaskRepository {
 
     /**
      * Mengelola pembaruan/pemindahan tugas.
-     * Jika ID tugas lama (originalTaskId) berbeda dengan ID tugas baru (updatedTask.id),
-     * itu dianggap sebagai pemindahan (reschedule), dan tugas lama akan dihapus.
      */
     fun updateTaskSync(originalTaskId: String, updatedTask: Task): Boolean = runBlocking {
         withContext(Dispatchers.IO) {

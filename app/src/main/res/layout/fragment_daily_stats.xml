@@ -23,24 +23,13 @@
         android:id="@+id/streak_value"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="44dp"
-        android:layout_marginTop="48dp"
+        android:layout_marginStart="19dp"
+        android:layout_marginTop="58dp"
         android:gravity="center_horizontal"
         android:text="@string/some_id2"
         android:textAppearance="@style/some_id2"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
-    <ImageView
-        android:id="@+id/fire_icon2"
-        android:layout_width="19.39dp"
-        android:layout_height="25dp"
-        android:background="@drawable/ic_fire2"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="58dp"
-        android:layout_marginStart="19dp"/>
-
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/bar_chart_container"
@@ -113,8 +102,9 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/rectangle_7"
             app:layout_constraintStart_toEndOf="@id/rectangle_5"
-            app:layout_constraintWidth_percent="0.1"
-            android:alpha="0.0" />
+            app:layout_constraintWidth_percent="0.14"
+            android:alpha="0.0"
+            android:transformPivotY="10dp"/>
         <View
             android:id="@+id/rectangle_7"
             android:layout_width="33dp"
@@ -124,7 +114,8 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/rectangle_6"
             app:layout_constraintWidth_percent="0.14"
-            android:alpha="0.0" />
+            android:alpha="0.0"
+            android:transformPivotY="10dp"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -141,12 +132,12 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp">
 
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" style="@style/labelHari" android:gravity="center_horizontal"/>
         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="M" style="@style/labelHari" android:gravity="center_horizontal"/>
         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="T" style="@style/labelHari" android:gravity="center_horizontal"/>
         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="W" style="@style/labelHari" android:gravity="center_horizontal"/>
         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="T" style="@style/labelHari" android:gravity="center_horizontal"/>
         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="F" style="@style/labelHari" android:gravity="center_horizontal"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" style="@style/labelHari" android:gravity="center_horizontal"/>
         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="S" style="@style/labelHari" android:gravity="center_horizontal"/>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
