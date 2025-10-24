@@ -343,64 +343,14 @@ object TaskRepository {
 
     /**
      * Menghitung streak harian berturut-turut untuk tugas yang diselesaikan. (DITAMBAHKAN)
+     * [DIHAPUS]
      */
+    /*
     suspend fun calculateMaxStreak(): Int = withContext(Dispatchers.IO) {
-        // 1. Ambil semua tanggal penyelesaian yang unik, dinormalisasi ke awal hari, dan diurutkan menurun.
-        val completedDatesMillis = getTasksByStatus("completed")
-            .mapNotNull { it.completedAt?.toDate() }
-            .map { date ->
-                Calendar.getInstance().apply {
-                    time = date
-                    toStartOfDay()
-                }.timeInMillis
-            }
-            .distinct()
-            .sortedDescending()
-
-        if (completedDatesMillis.isEmpty()) return@withContext 0
-
-        // 2. Tentukan waktu hari ini dan kemarin (awal hari)
-        val todayMillis = Calendar.getInstance().apply { toStartOfDay() }.timeInMillis
-        val yesterdayMillis = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, -1)
-            toStartOfDay()
-        }.timeInMillis
-
-        var currentStreak = 0
-        var previousDateMillis = 0L
-
-        val mostRecentDate = completedDatesMillis.first()
-
-        // 3. Cek apakah streak aktif (tugas selesai hari ini atau kemarin)
-        if (mostRecentDate == todayMillis) {
-            currentStreak = 1
-            previousDateMillis = todayMillis
-        } else if (mostRecentDate == yesterdayMillis) {
-            currentStreak = 1
-            previousDateMillis = yesterdayMillis
-        } else {
-            // Jika tanggal terakhir selesai lebih tua dari kemarin, streak sudah terputus.
-            return@withContext 0
-        }
-
-        // 4. Hitung mundur untuk hari-hari sebelumnya
-        for (i in 1 until completedDatesMillis.size) {
-            val currentDateMillis = completedDatesMillis[i]
-
-            // Perbedaan harus tepat 1 hari (86400000 ms = 24 * 60 * 60 * 1000)
-            val diffDays = (previousDateMillis - currentDateMillis) / (24 * 60 * 60 * 1000)
-
-            if (diffDays == 1L) {
-                currentStreak++
-                previousDateMillis = currentDateMillis
-            } else if (diffDays > 1L) {
-                // Streak terputus
-                break
-            }
-        }
-
-        return@withContext currentStreak
+        // Logika yang dihapus: Perhitungan streak dipindahkan ke HomeActivity
+        return@withContext 0
     }
+    */
 
     /**
      * Memproses tugas yang terlewat (missed) dengan memeriksa semua tugas PENDING.
@@ -493,9 +443,12 @@ object TaskRepository {
         }
     }
 
+    /*
+    // [DIHAPUS]
     fun getDailyStreakSync(): Int = runBlocking { // DITAMBAHKAN
         calculateMaxStreak()
     }
+    */
 
     fun processTasksForMissed() = runBlocking {
         updateMissedTasks() // Pastikan update berjalan di IO

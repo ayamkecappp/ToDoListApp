@@ -144,6 +144,8 @@ class WeeklyStatsFragment : Fragment() {
                 val tempBarData = mutableListOf<Pair<View, Int>>()
 
                 // 4. Animation Logic
+                val MIN_SCALE = 0.05f // Skala minimum untuk batang yang memiliki nilai > 0
+
                 for (i in barViews.indices) {
                     val weekNumber = i + 1
                     val taskCount = weekToCount[weekNumber] ?: 0
@@ -157,12 +159,16 @@ class WeeklyStatsFragment : Fragment() {
                         maxIndex = i
                     }
 
-                    val normalizedCount = (taskCount.toFloat() / maxTaskCount)
-                    // MENGGUNAKAN PANGKAT 0.4 UNTUK SMOOTHING YANG LEBIH KUAT
-                    val smoothedRatio = normalizedCount.toDouble().pow(0.4).toFloat()
+                    // [PERBAIKAN]: Skala linear proporsional
+                    val scaleRatio = if (taskCount == 0) {
+                        0.0f
+                    } else {
+                        // Skala Linear murni: nilai / max.
+                        val normalizedCount = (taskCount.toFloat() / maxTaskCount).coerceIn(0.0f, 1f)
 
-                    // Min 0.05f untuk tugas > 0
-                    val scaleRatio = smoothedRatio.coerceIn(if (taskCount > 0) 0.05f else 0.0f, 1f)
+                        // Terapkan skala minimum untuk visibilitas
+                        normalizedCount.coerceAtLeast(MIN_SCALE)
+                    }
 
                     bar.setBackgroundResource(R.drawable.rectangle_2)
 
@@ -177,7 +183,7 @@ class WeeklyStatsFragment : Fragment() {
 
                     // Update label
                     if (i < weekLabels.size) {
-                        weekLabels[i].text = "Wk ${weekNumber}"
+                        weekLabels[i].text = "week ${weekNumber}"
                     }
 
                     bar.setOnClickListener {

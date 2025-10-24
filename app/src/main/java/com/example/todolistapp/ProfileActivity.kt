@@ -45,6 +45,10 @@ import kotlin.math.roundToInt
 import android.graphics.Matrix
 import androidx.exifinterface.media.ExifInterface
 
+// [BARU] Konstanta untuk SharedPrefs Streak
+private val STREAK_PREFS_NAME = "TimyTimePrefs"
+private val KEY_STREAK = "current_streak"
+
 class ProfileActivity : AppCompatActivity() {
 
     private lateinit var tabLayout: TabLayout
@@ -52,6 +56,7 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var tvUsername: TextView
     private lateinit var ivProfilePicture: CircleImageView
     private lateinit var sharedPrefs: SharedPreferences
+    private lateinit var streakPrefs: SharedPreferences // DEKLARASI BARU
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var tvCompletedTasksLabel: TextView
     private lateinit var tvMissedTasksLabel: TextView
@@ -94,6 +99,8 @@ class ProfileActivity : AppCompatActivity() {
 
         // Inisialisasi dan Binding Views
         sharedPrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        // [BARU]: Inisialisasi streakPrefs
+        streakPrefs = getSharedPreferences(STREAK_PREFS_NAME, Context.MODE_PRIVATE)
 
         tabLayout = findViewById(R.id.tabLayout)
         viewPager = findViewById(R.id.viewPager)
@@ -211,15 +218,12 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     /**
-     * Mengambil nilai streak dari repository dan memperbarui TextView.
+     * Mengambil nilai streak dari SharedPreferences dan memperbarui TextView.
      */
     private fun updateStreakValue() {
-        lifecycleScope.launch(Dispatchers.Main) {
-            val streak = withContext(Dispatchers.IO) {
-                TaskRepository.getDailyStreakSync()
-            }
-            tvStreakValue.text = streak.toString()
-        }
+        // [UBAH]: Membaca langsung dari SharedPreferences, menghilangkan panggilan ke TaskRepository yang berat
+        val streak = streakPrefs.getInt(KEY_STREAK, 0)
+        tvStreakValue.text = streak.toString()
     }
 
 

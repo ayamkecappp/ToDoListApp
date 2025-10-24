@@ -132,6 +132,8 @@ class DailyStatsFragment : Fragment() {
 
                 val tempBarData = mutableListOf<Pair<View, Int>>()
 
+                val MIN_SCALE = 0.05f // Skala minimum untuk batang yang memiliki nilai > 0
+
                 for (i in barViews.indices) {
                     if (i >= dayOrder.size) break
 
@@ -147,12 +149,16 @@ class DailyStatsFragment : Fragment() {
                         maxIndex = i
                     }
 
-                    val normalizedCount = (taskCount.toFloat() / maxTaskCount)
-                    // MENGGUNAKAN PANGKAT 0.4 UNTUK SMOOTHING YANG LEBIH KUAT
-                    val smoothedRatio = normalizedCount.toDouble().pow(0.4).toFloat()
+                    // [PERBAIKAN]: Skala linear proporsional
+                    val scaleRatio = if (taskCount == 0) {
+                        0.0f
+                    } else {
+                        // Skala Linear murni: nilai / max.
+                        val normalizedCount = (taskCount.toFloat() / maxTaskCount).coerceIn(0.0f, 1f)
 
-                    // Min 0.05f untuk tugas > 0
-                    val scaleRatio = smoothedRatio.coerceIn(if (taskCount > 0) 0.05f else 0.0f, 1f)
+                        // Terapkan skala minimum untuk visibilitas
+                        normalizedCount.coerceAtLeast(MIN_SCALE)
+                    }
 
                     bar.setBackgroundResource(R.drawable.rectangle_2)
 

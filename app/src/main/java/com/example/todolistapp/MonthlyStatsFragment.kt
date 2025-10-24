@@ -28,7 +28,7 @@ class MonthlyStatsFragment : Fragment() {
 
     private val barViewsId = listOf(R.id.rectangle_1, R.id.rectangle_2, R.id.rectangle_3, R.id.rectangle_4, R.id.rectangle_5, R.id.rectangle_6)
     private val barViews = mutableListOf<View>()
-    private val monthNamesUs = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    // [DIHAPUS] monthNamesUs hardcoded list dihapus
     private val monthLabels = mutableListOf<TextView>()
 
     private var barData = listOf<Pair<View, Int>>()
@@ -105,6 +105,15 @@ class MonthlyStatsFragment : Fragment() {
         streakValue.text = count.toString()
     }
 
+    /**
+     * [BARU]: Fungsi helper untuk mendapatkan singkatan bulan (MMM)
+     * Menggunakan Locale.US untuk memastikan kunci data cocok dengan TaskRepository.
+     */
+    private fun getMonthAbbreviation(calendar: Calendar): String {
+        val dateFormat = SimpleDateFormat("MMM", Locale.US)
+        return dateFormat.format(calendar.time)
+    }
+
 
     private fun animateContent(rootView: View) {
         rootView.post {
@@ -143,10 +152,12 @@ class MonthlyStatsFragment : Fragment() {
                 for (i in 0 until 6) {
                     val cal = startCal.clone() as Calendar
                     cal.add(Calendar.MONTH, i)
-                    val monthName = monthNamesUs[cal.get(Calendar.MONTH)]
+                    // [UBAH]: Gunakan fungsi helper untuk mendapatkan singkatan bulan
+                    val monthAbbreviation = getMonthAbbreviation(cal)
 
-                    monthToCount[monthName] = completedTasksMap[monthName] ?: 0
-                    uiMonths.add(monthName)
+                    // Kunci data di TaskRepository adalah singkatan bulan (MMM)
+                    monthToCount[monthAbbreviation] = completedTasksMap[monthAbbreviation] ?: 0
+                    uiMonths.add(monthAbbreviation)
                 }
 
                 val maxTaskCount = monthToCount.values.maxOrNull()?.toFloat() ?: 1f
@@ -156,9 +167,11 @@ class MonthlyStatsFragment : Fragment() {
                 val tempBarData = mutableListOf<Pair<View, Int>>()
 
                 // 4. Update UI
+                val MIN_SCALE = 0.05f // Skala minimum untuk batang yang memiliki nilai > 0
 
                 for (i in monthLabels.indices) {
                     if (i < uiMonths.size) {
+                        // [PERBAIKAN 1]: Menampilkan nama bulan dalam singkatan
                         monthLabels[i].text = uiMonths[i]
                         monthLabels[i].visibility = View.VISIBLE
                     } else {
@@ -180,17 +193,22 @@ class MonthlyStatsFragment : Fragment() {
                         maxIndex = i
                     }
 
-                    val normalizedCount = (taskCount.toFloat() / maxTaskCount)
-                    // MENGGUNAKAN PANGKAT 0.4 UNTUK SMOOTHING YANG LEBIH KUAT
-                    val smoothedRatio = normalizedCount.toDouble().pow(0.4).toFloat()
+                    // [PERBAIKAN 2]: Skala batang yang seimbang dan proporsional (Linear Scaling)
+                    val scaleRatio = if (taskCount == 0) {
+                        0.0f
+                    } else {
+                        // Skala Linear murni: nilai / max.
+                        val normalizedCount = (taskCount.toFloat() / maxTaskCount).coerceIn(0.0f, 1f)
 
-                    // Min 0.05f untuk tugas > 0
-                    val scaleRatio = smoothedRatio.coerceIn(if (taskCount > 0) 0.05f else 0.0f, 1f)
+                        // Terapkan skala minimum untuk visibilitas
+                        normalizedCount.coerceAtLeast(MIN_SCALE)
+                    }
 
                     bar.setBackgroundResource(R.drawable.rectangle_2)
 
+                    // Pastikan pivotY diatur ke dasar batang untuk animasi dari bawah
                     bar.pivotY = bar.height.toFloat()
-                    bar.scaleY = 0.0f
+                    bar.scaleY = 0.0f // Mulai dari 0
                     bar.alpha = 1f
 
                     bar.animate()
