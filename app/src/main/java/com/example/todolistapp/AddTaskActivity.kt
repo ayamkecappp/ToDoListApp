@@ -28,6 +28,7 @@ import java.text.SimpleDateFormat
 import android.app.TimePickerDialog
 import android.widget.NumberPicker
 import android.graphics.drawable.ColorDrawable
+import android.util.Log
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.Dispatchers
 import com.google.firebase.auth.FirebaseAuth
@@ -152,8 +153,7 @@ class AddTaskActivity : AppCompatActivity() {
         } else if (isFlowTimerActive && flowTimerDurationMillis > 0L) {
             val flowEndTime = System.currentTimeMillis() + flowTimerDurationMillis
             taskEndTimeMillis = flowEndTime
-            val timeDisplay = formatDurationToString(flowTimerDurationMillis) + " (Flow)"
-            time = timeDisplay
+            time = formatDurationToString(flowTimerDurationMillis) + " (Flow)"
             savedFlowDuration = flowTimerDurationMillis
             selectedDayCalendar.timeInMillis = flowEndTime
         } else {
@@ -166,7 +166,7 @@ class AddTaskActivity : AppCompatActivity() {
             selectedDayCalendar.set(Calendar.SECOND, 59)
             selectedDayCalendar.set(Calendar.MILLISECOND, 999)
         }
-
+        Log.d("AddTaskActivity", "Saving task with endTimeMillis: $taskEndTimeMillis (${Date(taskEndTimeMillis)})")
         val dueDateTimestamp = Timestamp(selectedDayCalendar.time)
 
         val newTaskId = UUID.randomUUID().toString()

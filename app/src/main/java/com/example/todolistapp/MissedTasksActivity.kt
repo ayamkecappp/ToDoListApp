@@ -18,6 +18,7 @@ import android.graphics.Color
 import android.view.animation.AnimationUtils
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
+import android.util.Log
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import androidx.lifecycle.lifecycleScope
@@ -61,7 +62,7 @@ class MissedTasksActivity : AppCompatActivity() {
             finish()
         }
 
-        loadMissedTasks()
+
     }
 
     override fun onResume() {
@@ -72,8 +73,14 @@ class MissedTasksActivity : AppCompatActivity() {
     private fun loadMissedTasks() {
         tasksContainer.removeAllViews()
 
-        lifecycleScope.launch(Dispatchers.IO) { // Menggunakan lifecycleScope
+        lifecycleScope.launch(Dispatchers.IO) {
             val missedTasks = TaskRepository.getMissedTasks()
+
+            // ✅ DEBUG: Log semua tasks
+            Log.d("MissedTasks", "Total tasks: ${missedTasks.size}")
+            missedTasks.forEachIndexed { index, task ->
+                Log.d("MissedTasks", "Task $index: id=${task.id}, title=${task.title}, missedAt=${task.missedAt?.toDate()}")
+            }
 
             withContext(Dispatchers.Main) {
                 if (missedTasks.isEmpty()) {
@@ -86,26 +93,38 @@ class MissedTasksActivity : AppCompatActivity() {
                     emptyStateContainer.visibility = View.GONE
 
                     val groupedTasks = missedTasks.groupBy {
-                        // Logika pengelompokan yang memastikan header tanggal hanya muncul sekali per hari
                         val timeToUse = it.missedAt?.toDate()?.time ?: it.dueDate.toDate().time
                         groupingDateFormat.format(Date(timeToUse))
                     }
 
-                    // Sort berdasarkan tanggal string (descending)
+                    // ✅ DEBUG: Log grouped data
+                    groupedTasks.forEach { (dateKey, tasks) ->
+                        Log.d("MissedTasks", "Date: $dateKey, Count: ${tasks.size}")
+                        tasks.forEach { task ->
+                            Log.d("MissedTasks", "  - ${task.title} (id: ${task.id})")
+                        }
+                    }
+
                     val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
 
-                    for ((_, tasks) in sortedGroups) {
-                        // FIX: addDateHeader dipanggil SEKALI per grup tanggal
-                        val timeToUse = tasks.first().missedAt?.toDate()?.time ?: tasks.first().dueDate.toDate().time
-                        val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
+                    sortedGroups.forEach { (dateString, tasksForDate) ->
+                        val firstTask = tasksForDate.first()
+                        val timeToUse = firstTask.missedAt?.toDate()?.time
+                            ?: firstTask.dueDate.toDate().time
+                        val dateLabel = Calendar.getInstance().apply {
+                            timeInMillis = timeToUse
+                        }
                         addDateHeader(dateLabel)
 
-                        for (task in tasks) {
+                        tasksForDate.forEach { task ->
                             createMissedTaskItem(task)
                         }
                     }
 
-                    val slideDown = AnimationUtils.loadAnimation(this@MissedTasksActivity, R.anim.slide_down_bounce)
+                    val slideDown = AnimationUtils.loadAnimation(
+                        this@MissedTasksActivity,
+                        R.anim.slide_down_bounce
+                    )
                     contentContainer.startAnimation(slideDown)
                 }
             }

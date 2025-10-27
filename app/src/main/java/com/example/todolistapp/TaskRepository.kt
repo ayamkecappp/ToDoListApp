@@ -358,37 +358,43 @@ object TaskRepository {
     suspend fun updateMissedTasks() = withContext(Dispatchers.IO) {
         val collection = getTasksCollection() ?: return@withContext
         try {
-            // Hanya cek tugas yang statusnya PENDING
             val pendingTasksSnapshot = collection
                 .whereEqualTo("status", "pending")
                 .get()
                 .await()
 
             val pendingTasks = pendingTasksSnapshot.toObjects(Task::class.java)
-            val now = com.google.firebase.Timestamp.now()
+            val now = System.currentTimeMillis() // Gunakan currentTimeMillis untuk presisi
             var batch = db.batch()
             var batchCount = 0
 
             for (task in pendingTasks) {
-                // Menggunakan waktu dueDate untuk perbandingan missed
-                if (task.dueDate.toDate().time < now.toDate().time) {
-                    val missedTaskRef = collection.document(task.id)
-                    batch.update(missedTaskRef, "status", "missed", "missedAt", now)
-                    batchCount++
-                    Log.d(TAG, "Task batched for missed: ${task.id}")
+                // LOGIKA BARU: Cek endTimeMillis dulu, baru dueDate
+                val deadlineMillis = if (task.endTimeMillis > 0L) {
+                    task.endTimeMillis // Gunakan waktu spesifik jika ada
+                } else {
+                    task.dueDate.toDate().time // Fallback ke dueDate
                 }
 
-                if (batchCount >= 490) { // Commit batch jika mendekati batas (500)
+                // Task dianggap missed jika sudah melewati deadline
+                if (deadlineMillis < now) {
+                    val missedTaskRef = collection.document(task.id)
+                    batch.update(missedTaskRef, "status", "missed", "missedAt", Timestamp.now())
+                    batchCount++
+                    Log.d(TAG, "Task batched for missed: ${task.id} (deadline: ${Date(deadlineMillis)}, now: ${Date(now)})")
+                }
+
+                if (batchCount >= 490) {
                     batch.commit().await()
                     batch = db.batch()
                     batchCount = 0
                     Log.d(TAG, "Committed batch of missed tasks.")
                 }
             }
-            // Commit sisa batch
+
             if (batchCount > 0) {
                 batch.commit().await()
-                Log.d(TAG, "Committed final batch of missed tasks.")
+                Log.d(TAG, "Committed final batch of ${batchCount} missed tasks.")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error updating missed tasks", e)

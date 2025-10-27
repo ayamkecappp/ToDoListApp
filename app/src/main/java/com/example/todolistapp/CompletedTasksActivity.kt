@@ -50,7 +50,7 @@ class CompletedTasksActivity : AppCompatActivity() {
             finish()
         }
 
-        loadCompletedTasks()
+
     }
 
     override fun onResume() {
@@ -62,8 +62,8 @@ class CompletedTasksActivity : AppCompatActivity() {
     private fun loadCompletedTasks() {
         tasksContainer.removeAllViews()
 
-        lifecycleScope.launch(Dispatchers.IO) { // Menggunakan lifecycleScope
-            TaskRepository.processTasksForMissed() // Pastikan status missed terupdate
+        lifecycleScope.launch(Dispatchers.IO) {
+            TaskRepository.processTasksForMissed()
             val completedTasks = TaskRepository.getCompletedTasks()
 
             withContext(Dispatchers.Main) {
@@ -76,26 +76,33 @@ class CompletedTasksActivity : AppCompatActivity() {
                     ivTimyTasks.visibility = View.VISIBLE
                     emptyStateContainer.visibility = View.GONE
 
-                    // Logika pengelompokan yang memastikan header tanggal hanya muncul sekali per hari
                     val groupedTasks = completedTasks.groupBy {
-                        val timeToUse = it.completedAt?.toDate()?.time ?: it.dueDate.toDate().time
+                        val timeToUse = it.completedAt?.toDate()?.time
+                            ?: it.dueDate.toDate().time
                         groupingDateFormat.format(Date(timeToUse))
                     }
 
-                    // Sort berdasarkan tanggal string (descending)
                     val sortedGroups = groupedTasks.toSortedMap(compareByDescending { it })
 
-                    for ((_, tasks) in sortedGroups) {
-                        // FIX: addDateHeader dipanggil SEKALI per grup tanggal
-                        val timeToUse = tasks.first().completedAt?.toDate()?.time ?: tasks.first().dueDate.toDate().time
-                        val dateLabel = Calendar.getInstance().apply { timeInMillis = timeToUse }
+                    // ✅ CORRECT FIX
+                    sortedGroups.forEach { (dateString, tasksForDate) ->
+                        val firstTask = tasksForDate.first()
+                        val timeToUse = firstTask.completedAt?.toDate()?.time
+                            ?: firstTask.dueDate.toDate().time
+                        val dateLabel = Calendar.getInstance().apply {
+                            timeInMillis = timeToUse
+                        }
                         addDateHeader(dateLabel)
-                        for (task in tasks) {
+
+                        tasksForDate.forEach { task ->
                             createCompletedTaskItem(task)
                         }
                     }
 
-                    val slideDown = AnimationUtils.loadAnimation(this@CompletedTasksActivity, R.anim.slide_down_bounce)
+                    val slideDown = AnimationUtils.loadAnimation(
+                        this@CompletedTasksActivity,
+                        R.anim.slide_down_bounce
+                    )
                     contentContainer.startAnimation(slideDown)
                 }
             }

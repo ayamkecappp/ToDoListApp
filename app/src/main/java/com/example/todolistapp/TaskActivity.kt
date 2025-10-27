@@ -86,6 +86,40 @@ class TaskActivity : AppCompatActivity() {
         }
     }
 
+    private var missedTaskCheckJob: Job? = null
+
+    // MODIFIKASI fungsi onResume() yang sudah ada
+    override fun onResume() {
+        super.onResume()
+        currentCalendar = Calendar.getInstance()
+        loadAllContent() // Sudah ada
+        startMissedTaskChecker() // ✅ TAMBAHKAN baris ini
+    }
+
+    // MODIFIKASI fungsi onPause() yang sudah ada
+    override fun onPause() {
+        super.onPause()
+        stopMissedTaskChecker() // ✅ TAMBAHKAN baris ini
+    }
+
+    // ✅ TAMBAHKAN kedua fungsi baru ini di akhir class (sebelum closing bracket)
+    private fun startMissedTaskChecker() {
+        missedTaskCheckJob = lifecycleScope.launch {
+            while (isActive) {
+                delay(60_000L) // Cek setiap 1 menit
+                withContext(Dispatchers.IO) {
+                    TaskRepository.updateMissedTasks()
+                }
+                loadAllContent() // Refresh UI
+            }
+        }
+    }
+
+    private fun stopMissedTaskChecker() {
+        missedTaskCheckJob?.cancel()
+        missedTaskCheckJob = null
+    }
+
     private val addTaskLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -175,11 +209,7 @@ class TaskActivity : AppCompatActivity() {
         bottomNav.selectedItemId = R.id.nav_tasks
     }
 
-    override fun onResume() {
-        super.onResume()
-        currentCalendar = Calendar.getInstance()
-        loadAllContent() // Memuat ulang konten saat kembali ke Activity
-    }
+
 
     /**
      * Fungsi Utama Pemuatan Konten (Optimized)
@@ -488,7 +518,7 @@ class TaskActivity : AppCompatActivity() {
     }
 
     private fun setDynamicMonthYear() {
-        val sdf = SimpleDateFormat("MMMM yyyy", Locale("in", "ID"))
+        val sdf = SimpleDateFormat("MMMM yyyy", Locale.ENGLISH)
         octoberText.text = sdf.format(selectedDate.time)
     }
 
