@@ -85,7 +85,7 @@ class EditTaskActivity : AppCompatActivity() {
         inputDate = findViewById(R.id.inputDate)
         tvAddFlowTimer = findViewById(R.id.tvAddFlowTimer)
 
-        // 1. Ambil Task ID dan Mode Reschedule dari Intent (ID sekarang String)
+        // 1. Ambil Task ID dan Mode Reschedule dari Intent
         taskIdToEdit = intent.getStringExtra(EXTRA_TASK_ID) ?: ""
         val isRescheduleMode = intent.getBooleanExtra(EXTRA_RESCHEDULE_MODE, false)
 
@@ -224,16 +224,28 @@ class EditTaskActivity : AppCompatActivity() {
             return
         }
 
+        // Mulai calendar dengan tanggal yang telah dipilih (taskDateMillis)
         val selectedDayCalendar = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
 
         if (isTimeRangeSet) {
             newEndTimeMillis = inputTime.tag as Long
             time = inputTime.text.toString().trim()
             savedFlowDuration = flowTimerDurationMillis
-            // NOTE: In the time range picker, selectedDayCalendar's date is potentially shifted +1 day
-            // We use newEndTimeMillis which holds the final timestamp from the picker/date logic
-            selectedDayCalendar.timeInMillis = newEndTimeMillis
+
+            // *** PERBAIKAN LOGIKA UTAMA: Gabungkan tanggal baru dengan waktu lama ***
+            val oldTimeCal = Calendar.getInstance().apply { timeInMillis = newEndTimeMillis }
+
+            // Terapkan komponen waktu (jam, menit, dll.) dari waktu lama ke tanggal baru
+            selectedDayCalendar.set(Calendar.HOUR_OF_DAY, oldTimeCal.get(Calendar.HOUR_OF_DAY))
+            selectedDayCalendar.set(Calendar.MINUTE, oldTimeCal.get(Calendar.MINUTE))
+            selectedDayCalendar.set(Calendar.SECOND, oldTimeCal.get(Calendar.SECOND))
+            selectedDayCalendar.set(Calendar.MILLISECOND, oldTimeCal.get(Calendar.MILLISECOND))
+
+            // Simpan waktu akhir yang telah digabungkan
+            newEndTimeMillis = selectedDayCalendar.timeInMillis
+            // *** END PERBAIKAN ***
         } else if (isFlowTimerActive && flowTimerDurationMillis > 0L) {
+            // Logika Flow Timer (dimulai dari NOW)
             val flowEndTime = System.currentTimeMillis() + flowTimerDurationMillis
             taskEndTimeMillis = flowEndTime
             val timeDisplay = formatDurationToString(flowTimerDurationMillis) + " (Flow)"
@@ -253,10 +265,10 @@ class EditTaskActivity : AppCompatActivity() {
 
         val dueDateTimestamp = Timestamp(selectedDayCalendar.time)
 
-        // Perbaikan: isSameDay membandingkan taskDateMillis (normalized) dengan originalTaskDateMillis (normalized)
+        // Periksa apakah tanggalnya berubah
         val isDateChanged = !isSameDay(taskDateMillis, originalTaskDateMillis)
 
-        // Logika utama untuk menentukan ID task yang baru: jika tanggal berubah ATAU mode reschedule
+        // Jika tanggal berubah ATAU mode reschedule, buat ID baru untuk "memindahkan" task
         val newTaskId = if (isRescheduleMode || isDateChanged) {
             UUID.randomUUID().toString()
         } else {
@@ -278,10 +290,9 @@ class EditTaskActivity : AppCompatActivity() {
         )
 
         btnSave.isEnabled = false
-        lifecycleScope.launch(Dispatchers.IO) { // Ganti GlobalScope.launch
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // TaskRepository.updateTaskSync akan menghapus task lama (taskIdToEdit)
-                // dan membuat task baru (updatedTask) jika ID-nya berbeda.
+                // TaskRepository.updateTaskSync akan menangani penghapusan task lama jika ID berubah
                 val success = TaskRepository.updateTaskSync(taskIdToEdit, updatedTask)
 
                 withContext(Dispatchers.Main) {
@@ -338,6 +349,7 @@ class EditTaskActivity : AppCompatActivity() {
                 calendar.set(Calendar.SECOND, 0)
                 calendar.set(Calendar.MILLISECOND, 0)
 
+                // taskDateMillis menyimpan tanggal BARU (dibersihkan dari waktu)
                 taskDateMillis = calendar.timeInMillis
                 inputDate.setText(uiDateFormat.format(calendar.time))
 
@@ -464,7 +476,7 @@ class EditTaskActivity : AppCompatActivity() {
                             // Logika mendeteksi melampaui tengah malam, majukan tanggal
                             finalDueDateCalendar.add(Calendar.DAY_OF_MONTH, 1)
 
-                            // *** PERBAIKAN: Update taskDateMillis dan tampilan inputDate ***
+                            // *** PENTING: Update taskDateMillis dan tampilan inputDate jika roll-over
                             val midnightOfNewDate = finalDueDateCalendar.clone() as Calendar
                             midnightOfNewDate.set(Calendar.HOUR_OF_DAY, 0)
                             midnightOfNewDate.set(Calendar.MINUTE, 0)
@@ -474,7 +486,7 @@ class EditTaskActivity : AppCompatActivity() {
                             taskDateMillis = midnightOfNewDate.timeInMillis
                             inputDate.setText(uiDateFormat.format(midnightOfNewDate.time))
                             Toast.makeText(this, "Waktu berakhir di hari berikutnya, tanggal diupdate.", Toast.LENGTH_SHORT).show()
-                            // *** END PERBAIKAN ***
+                            // ***
                         }
 
                         // 2. Set waktu akhir yang sebenarnya (dengan tanggal yang mungkin sudah maju)

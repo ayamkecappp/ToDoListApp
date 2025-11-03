@@ -27,14 +27,7 @@ android {
     }
 
     buildTypes {
-        debug {
-            signingConfig = signingConfigs.getByName("debug").apply {
-                storeFile = file(project.property("MYAPP_RELEASE_STORE_FILE") as String)
-                storePassword = project.property("MYAPP_RELEASE_STORE_PASSWORD") as String
-                keyAlias = project.property("MYAPP_RELEASE_KEY_ALIAS") as String
-                keyPassword = project.property("MYAPP_RELEASE_KEY_PASSWORD") as String
-            }
-        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -43,6 +36,7 @@ android {
             )
         }
     }
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8

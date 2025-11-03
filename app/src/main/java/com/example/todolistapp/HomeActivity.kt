@@ -34,6 +34,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 
+// HAPUS DEFINISI DUPLIKASI STREAKSTATE DI SINI.
+// ASUMSI: StreakState diimpor dari TaskRepository.kt atau file model bersama.
+
 class HomeActivity : AppCompatActivity() {
 
     private lateinit var tvTitle: TextView
@@ -51,11 +54,13 @@ class HomeActivity : AppCompatActivity() {
     private val PROFILE_PREFS_NAME = "ProfilePrefs"
     private val KEY_USERNAME = "username"
 
-    private val PREFS_NAME = "TimyTimePrefs"
-    private val KEY_STREAK = "current_streak"
-    private val KEY_LAST_DATE = "last_completion_date"
-    private val KEY_STREAK_DAYS = "streak_days"
-    private lateinit var prefs: SharedPreferences
+    // HAPUS SEMUA DEKLARASI SHAREDPREFERENCES UNTUK STREAK
+    // private val PREFS_NAME = "TimyTimePrefs"
+    // private val KEY_STREAK = "current_streak"
+    // private val KEY_LAST_DATE = "last_completion_date"
+    // private val KEY_STREAK_DAYS = "streak_days"
+    // private lateinit var prefs: SharedPreferences
+
 
     private fun getTimyMessages(userName: String): List<Spanned> {
         val boldUserName = "<b>$userName</b>"
@@ -73,7 +78,8 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.home)
 
-        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // HAPUS INISIALISASI SHAREDPREFERENCES UNTUK STREAK
+        // prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         tvTitle = findViewById(R.id.tvTitle)
         tvTimyChatText = findViewById(R.id.tvTimyChatText)
@@ -182,7 +188,6 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun showStreakSuccessDialog(newStreak: Int) {
-        // ... (Logic dialog sama)
         val layoutResId = resources.getIdentifier("dialog_streak_success", "layout", packageName)
         if (layoutResId == 0) return
 
@@ -215,15 +220,17 @@ class HomeActivity : AppCompatActivity() {
 
 
     private fun checkAndUpdateStreak() {
-        lifecycleScope.launch(Dispatchers.IO) { // Ganti scope ke lifecycleScope dengan IO Dispatcher
+        lifecycleScope.launch(Dispatchers.IO) { // Gunakan IO Dispatcher untuk operasi database
             val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             val todayStr = sdf.format(Date())
             val todayCalendar = Calendar.getInstance()
 
-            val currentStreak = prefs.getInt(KEY_STREAK, 0)
-            val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+            // GANTI: Ambil status streak dari TaskRepository
+            val currentState = TaskRepository.getCurrentUserStreakState() // MENGGUNAKAN TaskRepository
+            val currentStreak = currentState.currentStreak
+            val lastDateStr = currentState.lastCompletionDate
 
-            // Menggunakan fungsi suspend
+            // Menggunakan fungsi suspend dari TaskRepository
             val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
             val hasCompletedToday = completedToday.isNotEmpty()
 
@@ -257,6 +264,7 @@ class HomeActivity : AppCompatActivity() {
                         shouldUpdate = true
                         streakIncreased = true
                     } else {
+                        // Reset streak HANYA jika hari ini tidak ada task yang selesai
                         newStreak = 0
                         shouldUpdate = true
                     }
@@ -264,28 +272,36 @@ class HomeActivity : AppCompatActivity() {
             }
 
             if (shouldUpdate) {
-                val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+                // Gunakan streakDays dari state sebelumnya
+                val streakDays = currentState.streakDays
                 val currentDay = getCurrentDayOfWeek()
-                val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+                val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }.toSet()
 
                 val newStreakDays = if (newStreak > currentStreak) {
                     if (!existingDays.contains(currentDay)) {
+                        // Tambahkan hari ini ke streak days
                         if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
                     } else {
+                        // Hari ini sudah ada dalam streak days, pertahankan
                         streakDays
                     }
                 } else if (newStreak == 1) {
+                    // Streak baru dimulai hari ini
                     currentDay.toString()
                 } else {
+                    // Streak putus (newStreak=0), reset hari
                     ""
                 }
 
-                prefs.edit().apply {
-                    putInt(KEY_STREAK, newStreak)
-                    putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
-                    putString(KEY_STREAK_DAYS, newStreakDays)
-                    apply()
-                }
+                // Menggunakan StreakState dari TaskRepository
+                val newState = StreakState(
+                    currentStreak = newStreak,
+                    lastCompletionDate = if (newStreak > 0) todayStr else null,
+                    streakDays = newStreakDays
+                )
+
+                // GANTI: Simpan status streak ke TaskRepository (remote)
+                TaskRepository.saveCurrentUserStreakState(newState) // MENGGUNAKAN TaskRepository
 
                 if (streakIncreased) {
                     withContext(Dispatchers.Main) { // Pindah ke Main Thread untuk UI
@@ -319,8 +335,10 @@ class HomeActivity : AppCompatActivity() {
             val fullWeekProgressBar = dayProgressBars.firstOrNull()
             val runnerIcon = dayRunnerIcons.firstOrNull()
 
-            val currentStreak = prefs.getInt(KEY_STREAK, 0)
-            val streakDaysStr = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+            // GANTI: Ambil status streak dari TaskRepository
+            val currentState = TaskRepository.getCurrentUserStreakState() // MENGGUNAKAN TaskRepository
+            val currentStreak = currentState.currentStreak
+            val streakDaysStr = currentState.streakDays
             val todayDayOfWeek = getCurrentDayOfWeek()
 
             // Dapatkan data tugas dari background thread

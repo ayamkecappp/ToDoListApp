@@ -12,8 +12,22 @@ import android.util.Log
 import java.util.Date
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
-import java.text.SimpleDateFormat // DITAMBAHKAN
-import java.util.Locale // DITAMBAHKAN
+import java.text.SimpleDateFormat
+import java.util.Locale
+
+// ===============================================
+// DATA CLASSES BARU UNTUK STREAK STATE
+// ===============================================
+
+data class StreakState(
+    val currentStreak: Int = 0,
+    val lastCompletionDate: String? = null,
+    val streakDays: String = "" // Contoh: "0,1,2" untuk Senin, Selasa, Rabu
+) {
+    // Konstruktor tanpa argumen untuk deserialisasi Firebase
+    constructor() : this(0, null, "")
+}
+
 
 // Data Class Task yang kompatibel dengan Firebase
 data class Task(
@@ -41,7 +55,7 @@ data class Task(
     constructor() : this(id = UUID.randomUUID().toString())
 }
 
-// STATS DATA CLASS (DITAMBAHKAN UNTUK KONSISTENSI)
+// STATS DATA CLASS
 data class StatsEntry(
     val key: String,
     val count: Int
@@ -61,6 +75,47 @@ object TaskRepository {
         Log.e(TAG, "User not logged in or UID is null.")
         null
     }
+
+    // ===============================================
+    // FUNGSI KHUSUS STREAK
+    // ===============================================
+
+    // Helper untuk mendapatkan referensi dokumen streak (di subkoleksi 'stats')
+    private fun getStreakDocument() = auth.currentUser?.uid?.let { uid ->
+        db.collection("users").document(uid).collection("stats").document("streak")
+    } ?: run {
+        Log.e(TAG, "User not logged in or UID is null for streak operation.")
+        null
+    }
+
+    /**
+     * Mengambil status streak pengguna dari Firestore.
+     */
+    suspend fun getCurrentUserStreakState(): StreakState = withContext(Dispatchers.IO) {
+        val docRef = getStreakDocument() ?: return@withContext StreakState()
+        return@withContext try {
+            val snapshot = docRef.get().await()
+            // Mengembalikan StreakState dari dokumen atau default jika dokumen tidak ada
+            snapshot.toObject(StreakState::class.java) ?: StreakState()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching user streak state", e)
+            StreakState()
+        }
+    }
+
+    /**
+     * Menyimpan status streak pengguna ke Firestore.
+     */
+    suspend fun saveCurrentUserStreakState(state: StreakState) = withContext(Dispatchers.IO) {
+        val docRef = getStreakDocument() ?: throw IllegalStateException("User not logged in for streak operation.")
+        try {
+            docRef.set(state).await()
+            Log.d(TAG, "User streak state saved: ${state.currentStreak}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving user streak state", e)
+        }
+    }
+
 
     // ===============================================
     // SUSPEND FUNCTIONS (FIREBASE ASYNC)
@@ -248,7 +303,7 @@ object TaskRepository {
 
     /**
      * Helper untuk mengambil data task yang telah selesai (`status = "completed"`)
-     * dalam rentang tanggal tertentu (DITAMBAHKAN).
+     * dalam rentang tanggal tertentu.
      */
     suspend fun getCompletedTasksInDateRange(startCal: Calendar, endCal: Calendar): List<Task> = withContext(Dispatchers.IO) {
         val collection = getTasksCollection() ?: return@withContext emptyList()
@@ -273,7 +328,7 @@ object TaskRepository {
 
 
     /**
-     * Mengelompokkan task selesai per hari. Digunakan untuk Daily Stats (Mon-Sun) (DITAMBAHKAN).
+     * Mengelompokkan task selesai per hari. Digunakan untuk Daily Stats (Mon-Sun).
      */
     suspend fun getDailyCompletedTasksCount(startCal: Calendar, endCal: Calendar): Map<String, Int> = withContext(Dispatchers.IO) {
         val tasks = getCompletedTasksInDateRange(startCal, endCal)
@@ -285,7 +340,7 @@ object TaskRepository {
     }
 
     /**
-     * Mengelompokkan task selesai per minggu dalam bulan. Digunakan untuk Weekly Stats (Reset Bulanan) (DITAMBAHKAN).
+     * Mengelompokkan task selesai per minggu dalam bulan. Digunakan untuk Weekly Stats (Reset Bulanan).
      */
     suspend fun getWeeklyCompletedTasksCount(startCal: Calendar, endCal: Calendar): Map<Int, Int> = withContext(Dispatchers.IO) {
         val tasks = getCompletedTasksInDateRange(startCal, endCal)
@@ -297,7 +352,7 @@ object TaskRepository {
     }
 
     /**
-     * Mengelompokkan task selesai per bulan. Digunakan untuk Monthly Stats (Jan-Jun / Jul-Dec) (DITAMBAHKAN).
+     * Mengelompokkan task selesai per bulan. Digunakan untuk Monthly Stats (Jan-Jun / Jul-Dec).
      */
     suspend fun getMonthlyCompletedTasksCount(startCal: Calendar, endCal: Calendar): Map<String, Int> = withContext(Dispatchers.IO) {
         val tasks = getCompletedTasksInDateRange(startCal, endCal)
@@ -341,16 +396,6 @@ object TaskRepository {
         }
     }
 
-    /**
-     * Menghitung streak harian berturut-turut untuk tugas yang diselesaikan. (DITAMBAHKAN)
-     * [DIHAPUS]
-     */
-    /*
-    suspend fun calculateMaxStreak(): Int = withContext(Dispatchers.IO) {
-        // Logika yang dihapus: Perhitungan streak dipindahkan ke HomeActivity
-        return@withContext 0
-    }
-    */
 
     /**
      * Memproses tugas yang terlewat (missed) dengan memeriksa semua tugas PENDING.
@@ -401,7 +446,7 @@ object TaskRepository {
         }
     }
 
-    // --- Helper toStartOfDay dan toEndOfDay (DITAMBAHKAN) ---
+    // --- Helper toStartOfDay dan toEndOfDay ---
     private fun Calendar.toStartOfDay(): Calendar = (clone() as Calendar).apply {
         set(Calendar.HOUR_OF_DAY, 0)
         set(Calendar.MINUTE, 0)
@@ -448,13 +493,6 @@ object TaskRepository {
             getTasksByDate(selectedDate)
         }
     }
-
-    /*
-    // [DIHAPUS]
-    fun getDailyStreakSync(): Int = runBlocking { // DITAMBAHKAN
-        calculateMaxStreak()
-    }
-    */
 
     fun processTasksForMissed() = runBlocking {
         updateMissedTasks() // Pastikan update berjalan di IO

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.view.Gravity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.GridLayout
@@ -32,6 +33,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
+import android.widget.Button
+import android.view.WindowManager
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+
 
 class CalendarActivity : AppCompatActivity() {
 
@@ -56,11 +62,6 @@ class CalendarActivity : AppCompatActivity() {
         "Medium" to R.color.medium_priority,
         "High" to R.color.high_priority
     )
-
-    private val PREFS_NAME = "TimyTimePrefs"
-    private val KEY_STREAK = "current_streak"
-    private val KEY_LAST_DATE = "last_completion_date"
-    private val KEY_STREAK_DAYS = "streak_days"
 
     private val editTaskLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -165,40 +166,49 @@ class CalendarActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun updateStreakOnTaskComplete() = withContext(Dispatchers.IO) {
-        val context = this@CalendarActivity
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private suspend fun updateStreakOnTaskComplete(): Int = withContext(Dispatchers.IO) {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val todayStr = sdf.format(Date())
+        val todayCalendar = Calendar.getInstance()
 
-        val currentStreak = prefs.getInt(KEY_STREAK, 0)
-        val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+        val currentState = TaskRepository.getCurrentUserStreakState()
+        val oldStreak = currentState.currentStreak
+        val lastDateStr = currentState.lastCompletionDate
 
-        val completedToday = TaskRepository.getCompletedTasksByDate(Calendar.getInstance())
+        val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
         val hasCompletedToday = completedToday.isNotEmpty()
 
-        var newStreak = currentStreak
+        var newStreak = oldStreak
         var shouldUpdate = false
+        var streakIncreased = false
 
         when {
+            // Kasus 1: Belum ada streak sama sekali
             lastDateStr == null -> {
                 if (hasCompletedToday) {
                     newStreak = 1
                     shouldUpdate = true
+                    streakIncreased = true
                 }
             }
+            // Kasus 2: Sudah diupdate hari ini
             lastDateStr == todayStr -> {
+                // Streak tidak bertambah jika sudah diupdate hari ini
             }
+            // Kasus 3: Hari ini adalah hari setelah lastDateStr (Beruntun)
             isYesterday(lastDateStr, todayStr) -> {
                 if (hasCompletedToday) {
-                    newStreak = currentStreak + 1
+                    newStreak = oldStreak + 1
                     shouldUpdate = true
+                    streakIncreased = true
                 }
             }
+            // Kasus 4: Jeda lebih dari satu hari (Streak putus)
             else -> {
                 if (hasCompletedToday) {
                     newStreak = 1
                     shouldUpdate = true
+                    streakIncreased = true
                 } else {
                     newStreak = 0
                     shouldUpdate = true
@@ -207,11 +217,12 @@ class CalendarActivity : AppCompatActivity() {
         }
 
         if (shouldUpdate) {
-            val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+            val streakDays = currentState.streakDays
             val currentDay = getCurrentDayOfWeek()
-            val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+            val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }.toSet()
 
-            val newStreakDays = if (newStreak > currentStreak) {
+
+            val newStreakDays = if (newStreak > oldStreak) {
                 if (!existingDays.contains(currentDay)) {
                     if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
                 } else {
@@ -223,13 +234,18 @@ class CalendarActivity : AppCompatActivity() {
                 ""
             }
 
-            prefs.edit().apply {
-                putInt(KEY_STREAK, newStreak)
-                putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
-                putString(KEY_STREAK_DAYS, newStreakDays)
-                apply()
-            }
+            // Menggunakan StreakState dari TaskRepository
+            val newState = StreakState(
+                currentStreak = newStreak,
+                lastCompletionDate = if (newStreak > 0) todayStr else null,
+                streakDays = newStreakDays
+            )
+
+            // GANTI: Simpan status streak ke TaskRepository
+            TaskRepository.saveCurrentUserStreakState(newState)
         }
+
+        return@withContext if (streakIncreased) newStreak else oldStreak
     }
 
     private fun getCurrentDayOfWeek(): Int {
@@ -271,10 +287,117 @@ class CalendarActivity : AppCompatActivity() {
             .start()
     }
 
+    // [PERBAIKAN]: Tambahkan fungsi showStreakSuccessDialog
+    private fun showStreakSuccessDialog(newStreak: Int) {
+        val layoutResId = resources.getIdentifier("dialog_streak_success", "layout", packageName)
+        if (layoutResId == 0) {
+            Log.e("CalendarActivity", "FATAL: Layout 'dialog_streak_success.xml' not found. Dialog cannot be shown.")
+            return
+        }
+
+        try {
+            val dialogView = LayoutInflater.from(this).inflate(layoutResId, null)
+
+            val tvStreakMessage = dialogView.findViewById<TextView>(R.id.tv_streak_message)
+            val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
+
+            if (tvStreakMessage == null || btnOk == null) {
+                Log.e("CalendarActivity", "FATAL: Views inside dialog_streak_success not found.")
+                return
+            }
+
+            tvStreakMessage.text = "$newStreak streak"
+            // Menggunakan warna orange
+            tvStreakMessage.setTextColor(resources.getColor(R.color.orange, theme))
+
+            val alertDialog = AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create()
+
+            alertDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+            btnOk.setOnClickListener {
+                alertDialog.dismiss()
+            }
+
+            alertDialog.show()
+        } catch (e: Exception) {
+            Log.e("CalendarActivity", "Error showing streak dialog: ${e.message}", e)
+        }
+    }
+
+
+    private fun showConfirmationDialog(taskTitle: String, action: String, newStreak: Int = -1, oldStreak: Int = -1) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_save_success, null)
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        val mainMessageTextView = (dialogView as ViewGroup).getChildAt(0) as? TextView
+
+        val btnConfirm1 = dialogView.findViewById<TextView>(R.id.btnIgnore)
+        val btnConfirm2 = dialogView.findViewById<TextView>(R.id.btnView)
+
+        val message = if (action == "selesai") {
+            "Selamat! Tugas '$taskTitle' berhasil diselesaikan."
+        } else {
+            "Tugas '$taskTitle' berhasil dihapus."
+        }
+
+        mainMessageTextView?.text = message
+        mainMessageTextView?.setTextColor(Color.parseColor("#283F6D"))
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        val dismissListener = View.OnClickListener {
+            dialog.dismiss()
+            // Pengecekan Streak hanya dilakukan setelah dialog konfirmasi ditutup
+            if (action == "selesai" && newStreak > oldStreak) {
+                showStreakSuccessDialog(newStreak)
+            }
+        }
+
+        // Memastikan hanya satu tombol OK yang muncul (sesuai TaskActivity)
+        btnConfirm2.visibility = View.GONE
+        val buttonContainer = dialogView.getChildAt(2) as LinearLayout
+        val verticalDivider = buttonContainer.getChildAt(1)
+        verticalDivider.visibility = View.GONE
+
+        btnConfirm1.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 2.0f).apply {
+            gravity = Gravity.CENTER
+        }
+
+        btnConfirm1.text = "OK"
+        btnConfirm1.setTextColor(Color.parseColor("#283F6D"))
+
+        btnConfirm1.setOnClickListener(dismissListener)
+
+        dialog.show()
+    }
+
+    // [PERBAIKAN UTAMA]: Menghapus referensi FullScreenDialogTheme
     private fun showTaskRightSheet(date: Calendar, tasks: List<Task>) {
-        val lexendFont = ResourcesCompat.getFont(this, R.font.lexend)
-        val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        // [PERBAIKAN]: Ganti R.style.FullScreenDialogTheme dengan 0 atau tema bawaan
+        val dialog = Dialog(this, android.R.style.Theme_DeviceDefault_Light_NoActionBar_Fullscreen) // Menggunakan tema fullscreen bawaan
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+
+        // Mengatur flag agar dialog meluas ke seluruh layar, termasuk di bawah status/nav bar
+        dialog.window?.apply {
+            setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundDrawableResource(android.R.color.transparent)
+            // Flag untuk layout edge-to-edge
+            setFlags(
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+            )
+        }
+
+        val lexendFont = ResourcesCompat.getFont(this, R.font.lexend)
 
         val overlayContainer = LinearLayout(this).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -298,6 +421,15 @@ class CalendarActivity : AppCompatActivity() {
             setOnClickListener { }
         }
 
+        ViewCompat.setOnApplyWindowInsetsListener(sheetContainer) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            view.setPadding(view.paddingLeft, systemBars.top, view.paddingRight, systemBars.bottom)
+
+            WindowInsetsCompat.CONSUMED
+        }
+
+
         overlayContainer.addView(sheetContainer)
 
         val headerContainer = LinearLayout(this).apply {
@@ -307,7 +439,7 @@ class CalendarActivity : AppCompatActivity() {
             )
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(16.dp, 16.dp, 16.dp, 16.dp)
+            setPadding(16.dp, 0, 16.dp, 16.dp)
             setBackgroundColor(Color.WHITE)
         }
 
@@ -372,7 +504,6 @@ class CalendarActivity : AppCompatActivity() {
             }
             tasksContainer.addView(noTask)
         } else {
-            // Menggunakan layout list_item_task.xml yang baru
             tasks.forEach { task ->
                 createTaskItemUsingLayout(tasksContainer, task, dialog)
             }
@@ -387,11 +518,6 @@ class CalendarActivity : AppCompatActivity() {
             performCloseAnimation(dialog, overlayContainer, sheetContainer)
         }
 
-        dialog.window?.apply {
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setBackgroundDrawableResource(android.R.color.transparent)
-        }
-
         overlayContainer.animate().alpha(1f).setDuration(250).start()
         sheetContainer.translationX = sheetContainer.layoutParams.width.toFloat()
         sheetContainer.post {
@@ -404,26 +530,21 @@ class CalendarActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    /**
-     * Membuat item tugas menggunakan list_item_task.xml
-     */
     private fun createTaskItemUsingLayout(container: LinearLayout, task: Task, dialog: Dialog) {
         val context = this@CalendarActivity
-        val lexendFont = ResourcesCompat.getFont(context, R.font.lexend)
 
         val decorView = dialog.window?.decorView as? ViewGroup
         val overlayContainerView = decorView?.getChildAt(0) as? LinearLayout
         val sheetContainerView = overlayContainerView?.getChildAt(0) as? LinearLayout
+        val tasksContainerView = sheetContainerView?.findViewById<LinearLayout>(R.id.tasksContainer) ?: container
 
-        // 1. Muat layout item tugas
-        val mainContainer = LayoutInflater.from(context).inflate(R.layout.list_item_task, container, false) as LinearLayout
+        val mainContainer = LayoutInflater.from(context).inflate(R.layout.list_item_task, tasksContainerView, false) as LinearLayout
         mainContainer.layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply {
             setMargins(0, 0, 0, 10.dp)
         }
 
-        // 2. Dapatkan referensi views dari layout item
         val taskItem = mainContainer.findViewById<LinearLayout>(R.id.taskItem)
         val checklistBox = mainContainer.findViewById<View>(R.id.checklistBox)
         val taskTitle = mainContainer.findViewById<TextView>(R.id.taskTitle)
@@ -437,7 +558,6 @@ class CalendarActivity : AppCompatActivity() {
         val btnEdit = mainContainer.findViewById<LinearLayout>(R.id.btnEdit)
         val btnDelete = mainContainer.findViewById<LinearLayout>(R.id.btnDelete)
 
-        // 3. Mengisi data
         taskTitle.text = task.title
 
         val timeText = task.time.ifEmpty { "" }
@@ -459,7 +579,6 @@ class CalendarActivity : AppCompatActivity() {
         }
 
 
-        // 4. Logika prioritas & status
         if (task.priority != "None") {
             val colorResId = priorityColorMap[task.priority] ?: R.color.dark_blue
             val colorInt = ContextCompat.getColor(context, colorResId)
@@ -470,10 +589,8 @@ class CalendarActivity : AppCompatActivity() {
             exclamationIcon.visibility = View.GONE
         }
 
-        // Atur tampilan checklist (asumsi task di sini adalah pending)
         checklistBox.setBackgroundResource(R.drawable.bg_checklist)
 
-        // Nonaktifkan flow timer jika durasinya 0
         if (task.flowDurationMillis <= 0L) {
             btnFlowTimer.isEnabled = false
             btnFlowTimer.alpha = 0.5f
@@ -483,20 +600,24 @@ class CalendarActivity : AppCompatActivity() {
         }
 
 
-        // 5. Setup Listeners
         checklistBox.setOnClickListener {
             lifecycleScope.launch(Dispatchers.IO) {
+                val oldStreak = TaskRepository.getCurrentUserStreakState().currentStreak
+
                 val success = TaskRepository.completeTask(task.id)
+
                 if (success) {
-                    updateStreakOnTaskComplete()
+                    val newStreak = updateStreakOnTaskComplete()
+
                     withContext(Dispatchers.Main) {
                         if (overlayContainerView != null && sheetContainerView != null) {
                             performCloseAnimation(dialog, overlayContainerView, sheetContainerView)
                         } else {
                             dialog.dismiss()
                         }
-                        showConfirmationDialog(task.title, "selesai")
-                        updateCalendar() // Muat ulang kalender setelah selesai
+
+                        showConfirmationDialog(task.title, "selesai", newStreak, oldStreak)
+                        updateCalendar()
                     }
                 } else {
                     withContext(Dispatchers.Main) {
@@ -547,7 +668,7 @@ class CalendarActivity : AppCompatActivity() {
                             dialog.dismiss()
                         }
                         showConfirmationDialog(task.title, "dihapus")
-                        updateCalendar() // Muat ulang kalender setelah dihapus
+                        updateCalendar()
                     } else {
                         Toast.makeText(context, "Gagal menghapus tugas. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
                     }
@@ -556,7 +677,6 @@ class CalendarActivity : AppCompatActivity() {
         }
 
         taskItem.setOnClickListener {
-            // Toggle visibility of actionButtonsContainer
             if (actionButtonsContainer.visibility == View.GONE) {
                 actionButtonsContainer.visibility = View.VISIBLE
                 arrowRight.rotation = 90f
@@ -566,55 +686,7 @@ class CalendarActivity : AppCompatActivity() {
             }
         }
 
-        container.addView(mainContainer)
-    }
-
-    private fun showConfirmationDialog(taskTitle: String, action: String) {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_save_success, null)
-
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setCancelable(true)
-            .create()
-
-        val mainMessageTextView = (dialogView as ViewGroup).getChildAt(0) as? TextView
-
-        val btnConfirm1 = dialogView.findViewById<TextView>(R.id.btnIgnore)
-        val btnConfirm2 = dialogView.findViewById<TextView>(R.id.btnView)
-
-        val message = if (action == "selesai") {
-            "Selamat! Tugas '$taskTitle' berhasil diselesaikan."
-        } else {
-            "Tugas '$taskTitle' berhasil dihapus."
-        }
-
-        mainMessageTextView?.text = message
-        mainMessageTextView?.setTextColor(Color.parseColor("#283F6D"))
-
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
-        val dismissListener = View.OnClickListener {
-            dialog.dismiss()
-        }
-
-        val buttonContainer = dialogView.getChildAt(2) as LinearLayout
-        val verticalDivider = buttonContainer.getChildAt(1)
-
-        btnConfirm1.visibility = View.GONE
-        verticalDivider.visibility = View.GONE
-
-        btnConfirm2.text = "OK"
-
-        val viewParams = btnConfirm2.layoutParams as LinearLayout.LayoutParams
-        viewParams.width = 0
-        viewParams.weight = 2.0f
-        btnConfirm2.layoutParams = viewParams
-        btnConfirm2.gravity = Gravity.CENTER
-        btnConfirm2.setTextColor(Color.parseColor("#283F6D"))
-
-        btnConfirm2.setOnClickListener(dismissListener)
-
-        dialog.show()
+        tasksContainerView.addView(mainContainer)
     }
 
     override fun onResume() {
@@ -630,7 +702,6 @@ class CalendarActivity : AppCompatActivity() {
 
             calendarGrid.removeAllViews()
 
-            // Perbaikan: Pastikan updateMissedTasks dijalankan sebelum fetching data
             withContext(Dispatchers.IO) {
                 TaskRepository.updateMissedTasks()
             }

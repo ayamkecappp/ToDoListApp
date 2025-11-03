@@ -1,3 +1,4 @@
+// main/java/com/example/todolistapp/SearchFilterActivity.kt
 package com.example.todolistapp
 
 import android.app.Activity
@@ -11,6 +12,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -28,7 +30,6 @@ import android.util.Log
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.runBlocking
 
 class SearchFilterActivity : AppCompatActivity() {
 
@@ -46,11 +47,6 @@ class SearchFilterActivity : AppCompatActivity() {
         "High" to R.color.high_priority
     )
 
-    private val PREFS_NAME = "TimyTimePrefs"
-    private val KEY_STREAK = "current_streak"
-    private val KEY_LAST_DATE = "last_completion_date"
-    private val KEY_STREAK_DAYS = "streak_days"
-
     private val editTaskLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -59,11 +55,9 @@ class SearchFilterActivity : AppCompatActivity() {
         }
     }
 
-    // Perbaikan: Tambahkan extension property untuk konversi dp ke pixel Int
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
 
-    // Perbaikan: Tambahkan extension property untuk konversi sp ke pixel Float
     private val Int.sp: Float
         get() = (this * resources.displayMetrics.scaledDensity)
 
@@ -110,81 +104,78 @@ class SearchFilterActivity : AppCompatActivity() {
         performSearch("", activeMonthFilter)
     }
 
-    private fun updateStreakOnTaskComplete(): Int {
-        return runBlocking { // Menambahkan runBlocking untuk menyelesaikan Unresolved reference 'runBlocking'
-            withContext(Dispatchers.IO) {
-                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                val todayStr = sdf.format(Date())
-                val todayCalendar = Calendar.getInstance()
+    private suspend fun updateStreakOnTaskComplete(): Int = withContext(Dispatchers.IO) {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val todayStr = sdf.format(Date())
+        val todayCalendar = Calendar.getInstance()
 
-                val oldStreak = prefs.getInt(KEY_STREAK, 0)
-                val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+        val currentState = TaskRepository.getCurrentUserStreakState()
+        val oldStreak = currentState.currentStreak
+        val lastDateStr = currentState.lastCompletionDate
 
-                val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
-                val hasCompletedToday = completedToday.isNotEmpty()
+        val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
+        val hasCompletedToday = completedToday.isNotEmpty()
 
-                var newStreak = oldStreak
-                var shouldUpdate = false
-                var streakIncreased = false
+        var newStreak = oldStreak
+        var shouldUpdate = false
+        var streakIncreased = false
 
-                when {
-                    lastDateStr == null -> {
-                        if (hasCompletedToday) {
-                            newStreak = 1
-                            shouldUpdate = true
-                            streakIncreased = true
-                        }
-                    }
-                    lastDateStr == todayStr -> {
-                    }
-                    isYesterday(lastDateStr, todayStr) -> {
-                        if (hasCompletedToday) {
-                            newStreak = oldStreak + 1
-                            shouldUpdate = true
-                            streakIncreased = true
-                        }
-                    }
-                    else -> {
-                        if (hasCompletedToday) {
-                            newStreak = 1
-                            shouldUpdate = true
-                            streakIncreased = true
-                        } else {
-                            newStreak = 0
-                            shouldUpdate = true
-                        }
-                    }
+        when {
+            lastDateStr == null -> {
+                if (hasCompletedToday) {
+                    newStreak = 1
+                    shouldUpdate = true
+                    streakIncreased = true
                 }
-
-                if (shouldUpdate) {
-                    val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
-                    val currentDay = getCurrentDayOfWeek()
-                    val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
-
-                    val newStreakDays = if (newStreak > oldStreak) {
-                        if (!existingDays.contains(currentDay)) {
-                            if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
-                        } else {
-                            streakDays
-                        }
-                    } else if (newStreak == 1) {
-                        currentDay.toString()
-                    } else {
-                        ""
-                    }
-
-                    prefs.edit().apply {
-                        putInt(KEY_STREAK, newStreak)
-                        putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
-                        putString(KEY_STREAK_DAYS, newStreakDays)
-                        apply()
-                    }
+            }
+            lastDateStr == todayStr -> {
+            }
+            isYesterday(lastDateStr, todayStr) -> {
+                if (hasCompletedToday) {
+                    newStreak = oldStreak + 1
+                    shouldUpdate = true
+                    streakIncreased = true
                 }
-
-                return@withContext if (streakIncreased) newStreak else oldStreak
+            }
+            else -> {
+                if (hasCompletedToday) {
+                    newStreak = 1
+                    shouldUpdate = true
+                    streakIncreased = true
+                } else {
+                    newStreak = 0
+                    shouldUpdate = true
+                }
             }
         }
+
+        if (shouldUpdate) {
+            val streakDays = currentState.streakDays
+            val currentDay = getCurrentDayOfWeek()
+            val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+
+            val newStreakDays = if (newStreak > oldStreak) {
+                if (!existingDays.contains(currentDay)) {
+                    if (streakDays.isEmpty()) currentDay.toString() else "$streakDays,$currentDay"
+                } else {
+                    streakDays
+                }
+            } else if (newStreak == 1) {
+                currentDay.toString()
+            } else {
+                ""
+            }
+
+            val newState = StreakState(
+                currentStreak = newStreak,
+                lastCompletionDate = if (newStreak > 0) todayStr else null,
+                streakDays = newStreakDays
+            )
+
+            TaskRepository.saveCurrentUserStreakState(newState)
+        }
+
+        return@withContext if (streakIncreased) newStreak else oldStreak
     }
 
     private fun getCurrentDayOfWeek(): Int {
@@ -219,6 +210,8 @@ class SearchFilterActivity : AppCompatActivity() {
             setActiveChip(-1, it)
             performSearch(inputSearch.text.toString(), -1)
         }
+        // [PERBAIKAN FONT]: Mengatur ukuran font untuk chip 'All' menjadi 12sp
+        chipAll.textSize = 6.sp
         setActiveChip(-1, chipAll)
 
         for (monthIndex in 0 until 12) {
@@ -231,7 +224,8 @@ class SearchFilterActivity : AppCompatActivity() {
                 text = " ${monthNames[monthIndex]} "
                 setPaddingRelative(12.dp, 0, 12.dp, 0)
                 gravity = Gravity.CENTER
-                textSize = 14.sp // Perbaikan: Gunakan extension property 'sp'
+                // [PERBAIKAN FONT]: Mengatur ukuran font untuk chip bulan menjadi 12sp
+                textSize = 6.sp
                 setTextColor(Color.BLACK)
                 background = ResourcesCompat.getDrawable(resources, R.drawable.chip_unselected, null)
                 tag = monthIndex
@@ -265,10 +259,8 @@ class SearchFilterActivity : AppCompatActivity() {
         }
     }
 
-    // Menggunakan wrapper sinkron
     private fun performSearch(query: String, monthFilter: Int) {
         lifecycleScope.launch(Dispatchers.IO) {
-            // searchTasks sekarang hanya mengembalikan tugas "pending"
             val filteredTasks = TaskRepository.searchTasks(query, monthFilter)
 
             withContext(Dispatchers.Main) {
@@ -286,7 +278,6 @@ class SearchFilterActivity : AppCompatActivity() {
                     taskResultsContainer.addView(noResults)
                 } else {
                     for (task in filteredTasks) {
-                        // MENGGUNAKAN list_item_task.xml
                         createTaskItemUsingLayout(taskResultsContainer, task)
                     }
                 }
@@ -294,31 +285,21 @@ class SearchFilterActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * MENGGANTIKAN addNewTaskToUI DENGAN LOGIKA BERDASARKAN list_item_task.xml
-     */
     private fun createTaskItemUsingLayout(container: LinearLayout, task: Task) {
         val context = this
-        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val oldStreak = sharedPrefs.getInt(KEY_STREAK, 0)
 
-        // 1. Muat layout item tugas
         val mainContainer = LayoutInflater.from(context).inflate(R.layout.list_item_task, container, false) as LinearLayout
         mainContainer.layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply {
-            setMargins(0, 0, 0, 8.dp) // Sesuaikan margin bawah
-            // Hapus margin samping karena parent sudah ada padding
-            marginStart = 0
-            marginEnd = 0
+            setMargins(0, 0, 0, 16.dp)
         }
 
-        // 2. Dapatkan referensi views dari layout item
         val taskItem = mainContainer.findViewById<LinearLayout>(R.id.taskItem)
         val checklistBox = mainContainer.findViewById<View>(R.id.checklistBox)
         val taskTitle = mainContainer.findViewById<TextView>(R.id.taskTitle)
         val taskTime = mainContainer.findViewById<TextView>(R.id.taskTime)
-        val taskCategory = mainContainer.findViewById<TextView>(R.id.taskCategory)
+        val taskCategoryXml = mainContainer.findViewById<TextView>(R.id.taskCategory)
         val exclamationIcon = mainContainer.findViewById<ImageView>(R.id.exclamationIcon)
         val arrowRight = mainContainer.findViewById<ImageView>(R.id.arrowRight)
         val actionButtonsContainer = mainContainer.findViewById<LinearLayout>(R.id.actionButtonsContainer)
@@ -327,32 +308,27 @@ class SearchFilterActivity : AppCompatActivity() {
         val btnEdit = mainContainer.findViewById<LinearLayout>(R.id.btnEdit)
         val btnDelete = mainContainer.findViewById<LinearLayout>(R.id.btnDelete)
 
-        // 3. Mengisi data
         taskTitle.text = task.title
 
-        // Menggabungkan Time & Category jika perlu
-        val timeCategoryText = if (task.category.isNotEmpty()) {
-            if (task.time.isNotEmpty()) "${task.time}\n${task.category}" else task.category
-        } else {
-            task.time
-        }
-        taskTime.text = timeCategoryText
+        val timeText = task.time.ifEmpty { "" }
+        val categoryText = task.category.ifEmpty { "" }
 
-        // Tambahkan info bulan di bawah waktu/kategori (khusus untuk SearchFilter)
-        val dateText = TextView(context).apply {
-            layoutParams = taskCategory.layoutParams
-            // Menggunakan Calendar.MONTH dari dueDate Timestamp
-            val taskCal = Calendar.getInstance().apply { time = task.dueDate.toDate() }
-            val monthIndex = taskCal.get(Calendar.MONTH)
-            val dayOfMonth = taskCal.get(Calendar.DAY_OF_MONTH)
-            text = "${dayOfMonth} ${monthNames[monthIndex]}"
-            textSize = 12.sp // Perbaikan: Gunakan extension property 'sp'
-            setTextColor(Color.parseColor("#283F6D"))
-            typeface = ResourcesCompat.getFont(context, R.font.lexend)
-            gravity = Gravity.END
+        // [PERBAIKAN LOGIKA]: Pastikan time dan category disetel ke GONE jika kosong
+        if (timeText.isNotEmpty()) {
+            taskTime.text = timeText
+            taskTime.visibility = View.VISIBLE
+        } else {
+            taskTime.text = ""
+            taskTime.visibility = View.GONE
         }
-        (taskTime.parent as LinearLayout).addView(dateText)
-        (taskTime.parent as LinearLayout).removeView(taskCategory) // Hapus yang asli
+
+        if (categoryText.isNotEmpty()) {
+            taskCategoryXml.text = categoryText
+            taskCategoryXml.visibility = View.VISIBLE
+        } else {
+            taskCategoryXml.text = ""
+            taskCategoryXml.visibility = View.GONE
+        }
 
         // 4. Logika prioritas
         if (task.priority != "None") {
@@ -378,6 +354,8 @@ class SearchFilterActivity : AppCompatActivity() {
         // 5. Setup Listeners
         checklistBox.setOnClickListener {
             lifecycleScope.launch(Dispatchers.IO) {
+                val oldStreak = TaskRepository.getCurrentUserStreakState().currentStreak
+
                 val success = TaskRepository.completeTask(task.id)
                 if (success) {
                     val newStreak = updateStreakOnTaskComplete()
@@ -438,6 +416,44 @@ class SearchFilterActivity : AppCompatActivity() {
         container.addView(mainContainer)
     }
 
+    private fun showStreakSuccessDialog(newStreak: Int) {
+        val layoutResId = resources.getIdentifier("dialog_streak_success", "layout", packageName)
+        if (layoutResId == 0) {
+            Log.e("SearchFilterActivity", "FATAL: Layout 'dialog_streak_success.xml' not found. Dialog cannot be shown.")
+            return
+        }
+
+        try {
+            val dialogView = LayoutInflater.from(this).inflate(layoutResId, null)
+
+            val tvStreakMessage = dialogView.findViewById<TextView>(R.id.tv_streak_message)
+            val btnOk = dialogView.findViewById<Button>(R.id.btn_ok)
+
+            if (tvStreakMessage == null || btnOk == null) {
+                Log.e("SearchFilterActivity", "FATAL: Views inside dialog_streak_success not found.")
+                return
+            }
+
+            tvStreakMessage.text = "$newStreak streak"
+            tvStreakMessage.setTextColor(resources.getColor(R.color.orange, theme))
+
+            val alertDialog = AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create()
+
+            alertDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+            btnOk.setOnClickListener {
+                alertDialog.dismiss()
+            }
+
+            alertDialog.show()
+        } catch (e: Exception) {
+            Log.e("SearchFilterActivity", "Error showing streak dialog: ${e.message}", e)
+        }
+    }
+
+
     private fun showConfirmationDialogWithStreakCheck(taskTitle: String, action: String, newStreak: Int, oldStreak: Int) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_save_success, null)
 
@@ -464,15 +480,11 @@ class SearchFilterActivity : AppCompatActivity() {
 
         val dismissListener = View.OnClickListener {
             dialog.dismiss()
+            if (action == "selesai" && newStreak > oldStreak) {
+                showStreakSuccessDialog(newStreak)
+            }
         }
 
-        btnConfirm1.text = "OK"
-        btnConfirm2.text = "Tutup"
-
-        btnConfirm1.setTextColor(Color.parseColor("#283F6D"))
-        btnConfirm2.setTextColor(Color.parseColor("#283F6D"))
-
-        // Memastikan hanya satu tombol yang muncul (agar konsisten dengan TaskActivity)
         btnConfirm2.visibility = View.GONE
         val buttonContainer = dialogView.getChildAt(2) as LinearLayout
         val verticalDivider = buttonContainer.getChildAt(1)
@@ -482,9 +494,10 @@ class SearchFilterActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
         }
 
+        btnConfirm1.text = "OK"
+        btnConfirm1.setTextColor(Color.parseColor("#283F6D"))
 
         btnConfirm1.setOnClickListener(dismissListener)
-        // btnConfirm2.setOnClickListener(dismissListener) // Dihapus karena tombol disembunyikan
 
         dialog.show()
     }

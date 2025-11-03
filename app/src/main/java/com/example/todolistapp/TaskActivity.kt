@@ -35,9 +35,7 @@ import kotlinx.coroutines.*
 import androidx.lifecycle.lifecycleScope
 
 /**
- * Catatan: Fungsi getCalendarData() diubah kembali ke versi yang menggunakan TaskRepository.hasTasksOnDate()
- * (Versi asli Anda) untuk menyelesaikan error 'Unresolved reference: getDatesWithPendingTasks'.
- * Struktur Coroutine utama (loadAllContent) dan refaktorisasi UI tetap dipertahankan.
+ * Catatan: Asumsi StreakState diimpor dari TaskRepository.kt atau file model bersama.
  */
 
 class TaskActivity : AppCompatActivity() {
@@ -68,10 +66,12 @@ class TaskActivity : AppCompatActivity() {
 
     // Konstanta Intent/Prefs
     private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
-    private val PREFS_NAME = "TimyTimePrefs"
-    private val KEY_STREAK = "current_streak"
-    private val KEY_LAST_DATE = "last_completion_date"
-    private val KEY_STREAK_DAYS = "streak_days"
+
+    // HAPUS SEMUA KONSTANTA SHAREDPREFERENCES UNTUK STREAK
+    // private val PREFS_NAME = "TimyTimePrefs"
+    // private val KEY_STREAK = "current_streak"
+    // private val KEY_LAST_DATE = "last_completion_date"
+    // private val KEY_STREAK_DAYS = "streak_days"
 
     companion object {
         const val RESULT_TASK_DELETED = 101
@@ -93,13 +93,13 @@ class TaskActivity : AppCompatActivity() {
         super.onResume()
         currentCalendar = Calendar.getInstance()
         loadAllContent() // Sudah ada
-        startMissedTaskChecker() // ✅ TAMBAHKAN baris ini
+        startMissedTaskChecker()
     }
 
     // MODIFIKASI fungsi onPause() yang sudah ada
     override fun onPause() {
         super.onPause()
-        stopMissedTaskChecker() // ✅ TAMBAHKAN baris ini
+        stopMissedTaskChecker()
     }
 
     // ✅ TAMBAHKAN kedua fungsi baru ini di akhir class (sebelum closing bracket)
@@ -213,8 +213,6 @@ class TaskActivity : AppCompatActivity() {
 
     /**
      * Fungsi Utama Pemuatan Konten (Optimized)
-     * - Menjalankan proses tugas missed, data kalender, dan daftar tugas hari ini secara paralel.
-     * - Memastikan pembaruan UI hanya dilakukan setelah semua data siap.
      */
     private fun loadAllContent() {
         lifecycleScope.launch(Dispatchers.Main) {
@@ -312,7 +310,7 @@ class TaskActivity : AppCompatActivity() {
         endCal.set(Calendar.SECOND, 59); endCal.set(Calendar.MILLISECOND, 999)
 
         // 2. Fetch semua tugas dalam rentang yang besar (Misal: 3 bulan untuk memastikan cakupan)
-        // Kita menggunakan fungsi CalendarActivity yang mengambil 3 bulan, lalu memfilter hasilnya.
+        // Kita menggunakan fungsi TaskRepository yang mengambil 3 bulan, lalu memfilter hasilnya.
         val allTasksInLargeRange = TaskRepository.getTasksInDateRangeForCalendar(Calendar.getInstance())
 
         // 3. Filter dan map hasilnya ke set tanggal (String)
@@ -575,7 +573,7 @@ class TaskActivity : AppCompatActivity() {
             }
 
             tvStreakMessage.text = "$newStreak streak"
-            tvStreakMessage.setTextColor(Color.parseColor("#FFC107"))
+            tvStreakMessage.setTextColor(resources.getColor(R.color.orange, theme))
 
             val alertDialog = AlertDialog.Builder(this)
                 .setView(dialogView)
@@ -593,15 +591,16 @@ class TaskActivity : AppCompatActivity() {
         }
     }
 
-    // MEMPERBAIKI PEMANGGILAN SUSPEND FUNCTION
+    // MEMPERBAIKI PEMANGGILAN SUSPEND FUNCTION DAN MENGHAPUS LOCAL STORAGE
     private suspend fun updateStreakOnTaskComplete(): Int = withContext(Dispatchers.IO) {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val todayStr = sdf.format(Date())
         val todayCalendar = Calendar.getInstance()
 
-        val oldStreak = prefs.getInt(KEY_STREAK, 0)
-        val lastDateStr = prefs.getString(KEY_LAST_DATE, null)
+        // GANTI: Ambil status streak dari TaskRepository
+        val currentState = TaskRepository.getCurrentUserStreakState()
+        val oldStreak = currentState.currentStreak
+        val lastDateStr = currentState.lastCompletionDate
 
         // MEMANGGIL SUSPEND FUNCTION
         val completedToday = TaskRepository.getCompletedTasksByDate(todayCalendar)
@@ -638,6 +637,7 @@ class TaskActivity : AppCompatActivity() {
                     shouldUpdate = true
                     streakIncreased = true
                 } else {
+                    // Reset streak HANYA jika hari ini tidak ada task yang selesai
                     newStreak = 0
                     shouldUpdate = true
                 }
@@ -645,9 +645,11 @@ class TaskActivity : AppCompatActivity() {
         }
 
         if (shouldUpdate) {
-            val streakDays = prefs.getString(KEY_STREAK_DAYS, "") ?: ""
+            // Gunakan streakDays dari state sebelumnya
+            val streakDays = currentState.streakDays
             val currentDay = getCurrentDayOfWeek()
-            val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }
+            val existingDays = streakDays.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+
 
             val newStreakDays = if (newStreak > oldStreak) {
                 if (!existingDays.contains(currentDay)) {
@@ -661,12 +663,14 @@ class TaskActivity : AppCompatActivity() {
                 ""
             }
 
-            prefs.edit().apply {
-                putInt(KEY_STREAK, newStreak)
-                putString(KEY_LAST_DATE, if (newStreak > 0) todayStr else null)
-                putString(KEY_STREAK_DAYS, newStreakDays)
-                apply()
-            }
+            val newState = StreakState(
+                currentStreak = newStreak,
+                lastCompletionDate = if (newStreak > 0) todayStr else null,
+                streakDays = newStreakDays
+            )
+
+            // GANTI: Simpan status streak ke TaskRepository (remote)
+            TaskRepository.saveCurrentUserStreakState(newState)
         }
 
         return@withContext if (streakIncreased) newStreak else oldStreak
@@ -696,8 +700,8 @@ class TaskActivity : AppCompatActivity() {
 
     private fun addNewTaskToUI(task: Task) {
         val context = this
-        val sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val oldStreak = sharedPrefs.getInt(KEY_STREAK, 0)
+        // oldStreak hanya di-mock sebagai placeholder karena nilai sebenarnya diambil di dalam listener
+        val oldStreak = 0 // Placeholder
 
         // 1. Muat layout item tugas
         val mainContainer = LayoutInflater.from(context).inflate(R.layout.list_item_task, tasksContainer, false) as LinearLayout
@@ -769,6 +773,9 @@ class TaskActivity : AppCompatActivity() {
         // 5. Setup Listeners
         checklistBox.setOnClickListener {
             lifecycleScope.launch(Dispatchers.IO) {
+                // AMBIL oldStreak SEBELUM task diselesaikan
+                val oldStreak = TaskRepository.getCurrentUserStreakState().currentStreak
+
                 val success = TaskRepository.completeTask(task.id)
                 withContext(Dispatchers.Main) {
                     if (success) {
