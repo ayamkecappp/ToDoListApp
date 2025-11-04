@@ -6,16 +6,19 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import android.content.Intent // <-- BARIS KOREKSI
+import android.content.Intent
+import com.google.firebase.auth.FirebaseAuth // <-- TAMBAHKAN IMPORT INI
 
 class ForgotPasswordActivity : AppCompatActivity() {
 
+    private lateinit var auth: FirebaseAuth // <-- TAMBAHKAN INI
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Pastikan nama file layout Anda benar (misal: forgot_password.xml)
         setContentView(R.layout.forgot_password)
 
-        // Dapatkan referensi ke view dari layout Anda
+        auth = FirebaseAuth.getInstance() // <-- TAMBAHKAN INISIALISASI
+
         val emailInput = findViewById<EditText>(R.id.input_username)
         val verifyBtn = findViewById<Button>(R.id.btn_forgotpass)
         val backToLoginText = findViewById<TextView>(R.id.tvBackLogin)
@@ -26,19 +29,28 @@ class ForgotPasswordActivity : AppCompatActivity() {
             val email = emailInput.text.toString().trim()
 
             if (email.isEmpty()) {
-                Toast.makeText(this, "Please enter your email address", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Silakan masukkan alamat email Anda", Toast.LENGTH_SHORT).show()
             } else {
-                // 1. Ganti simulasi pesan
-                Toast.makeText(this, "Verification successful. Please set your new password.", Toast.LENGTH_LONG).show()
+                // KIRIM EMAIL RESET KATA SANDI DARI FIREBASE
+                auth.sendPasswordResetEmail(email)
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            // Berhasil mengirim email
+                            Toast.makeText(this, "Email pengaturan ulang kata sandi telah dikirim. Silakan periksa email Anda.", Toast.LENGTH_LONG).show()
 
-                // 2. PINDAH KE NEWPASSWORD ACTIVITY
-                val intent = Intent(this, NewPasswordActivity::class.java)
-                // (Opsional) Kirim data email ke activity berikutnya
-                intent.putExtra("USER_EMAIL", email)
-                startActivity(intent)
+                            // Kembali ke halaman Login setelah email terkirim
+                            finish()
+                        } else {
+                            // Gagal mengirim email
+                            Toast.makeText(this, "Gagal mengirim email: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
 
-                // 3. JANGAN finish(), biarkan ForgotPasswordActivity di stack
-                // finish() // Baris ini dihapus/dinonaktifkan
+                // HAPUS LOGIKA LAMA (PINDAH KE NEWPASSWORD ACTIVITY)
+                // Toast.makeText(this, "Verification successful. Please set your new password.", Toast.LENGTH_LONG).show()
+                // val intent = Intent(this, NewPasswordActivity::class.java)
+                // intent.putExtra("USER_EMAIL", email)
+                // startActivity(intent)
             }
         }
 

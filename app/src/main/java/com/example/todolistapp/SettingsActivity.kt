@@ -1,6 +1,7 @@
 package com.example.todolistapp
 
 import android.app.Dialog
+import android.content.ContentValues.TAG
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -17,7 +18,10 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import android.content.Context
+import android.util.Log
 import com.bumptech.glide.Glide
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
+import com.google.firebase.firestore.FirebaseFirestore
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -30,12 +34,15 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var googleSignInClient: GoogleSignInClient
 
+    private lateinit var firestore: FirebaseFirestore
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.settings)
 
         // Inisialisasi Firebase Auth
         auth = FirebaseAuth.getInstance()
+        firestore = FirebaseFirestore.getInstance()
 
         // Konfigurasi Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -68,6 +75,7 @@ class SettingsActivity : AppCompatActivity() {
         // Delete Account (Placeholder)
         findViewById<View>(R.id.rectangleSettings7).setOnClickListener {
             Toast.makeText(this, "Fungsionalitas Hapus Akun dipicu.", Toast.LENGTH_SHORT).show()
+            showCustomDeleteAccountDialog()
         }
 
         // Report a Bug
@@ -123,6 +131,139 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         dialog.show()
+    }
+
+    // --- FUNGSI BARU UNTUK HAPUS AKUN ---
+
+    /**
+     * Menampilkan custom dialog konfirmasi Hapus Akun.
+     */
+    private fun showCustomDeleteAccountDialog() {
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_save_success) // Bisa gunakan layout yang sama
+        dialog.window?.setLayout(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.setCancelable(true)
+
+        val tvMessage = dialog.findViewById<TextView>(R.id.tvMessageTitle)
+        val btnYes = dialog.findViewById<TextView>(R.id.btnView)
+        val btnNo = dialog.findViewById<TextView>(R.id.btnIgnore)
+
+        // Ubah teks untuk konfirmasi hapus akun
+        tvMessage?.text = "Apakah Anda yakin ingin menghapus akun ini secara permanen?"
+        tvMessage?.setTextColor(resources.getColor(R.color.dark_blue, theme)) // Atau warna merah jika ada
+
+        btnYes?.text = "Ya, Hapus"
+        btnNo?.text = "Batal"
+        btnYes?.setTextColor(resources.getColor(R.color.dark_blue, theme)) // Atau warna merah
+        btnNo?.setTextColor(resources.getColor(R.color.dark_blue, theme))
+
+        btnYes?.setOnClickListener {
+            dialog.dismiss()
+            performDeleteAccountData() // Panggil fungsi hapus akun
+        }
+
+        btnNo?.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    /**
+     * Menjalankan proses penghapusan akun Firebase.
+     */
+    /**
+     * LANGKAH 1: Menghapus semua data pengguna dari Firestore.
+     */
+    private fun performDeleteAccountData() {
+        val user = auth.currentUser
+        if (user == null) {
+            Toast.makeText(this, "Tidak ada pengguna yang login", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val uid = user.uid
+
+        // Tampilkan dialog loading di sini (SANGAT DISARANKAN)
+        // ...
+
+        // 1. Hapus semua 'tasks' milik pengguna
+        // ASUMSI: Anda punya koleksi 'tasks' dan setiap dokumen task punya field 'userId'
+        firestore.collection("tasks")
+            .whereEqualTo("userId", uid)
+            .get()
+            .addOnSuccessListener { tasksSnapshot ->
+                val batch = firestore.batch()
+                for (document in tasksSnapshot) {
+                    batch.delete(document.reference)
+                }
+
+                // Jalankan penghapusan batch untuk semua task
+                batch.commit().addOnCompleteListener { taskBatch ->
+                    if (taskBatch.isSuccessful) {
+                        Log.d(TAG, "Semua tasks pengguna berhasil dihapus.")
+
+                        // 2. Hapus dokumen profil pengguna (jika ada)
+                        // ASUMSI: Anda punya koleksi 'users' dengan ID dokumen = uid
+                        firestore.collection("users").document(uid)
+                            .delete()
+                            .addOnSuccessListener {
+                                Log.d(TAG, "Dokumen profil pengguna berhasil dihapus.")
+
+                                // 3. (Opsional) Hapus foto profil dari Storage
+                                // ASUMSI: Foto profil disimpan di "profile_pictures/UID.jpg"
+                                // val photoRef = storage.reference.child("profile_pictures/$uid.jpg")
+                                // photoRef.delete().addOnCompleteListener { ... }
+
+                                // 4. Setelah semua data bersih, baru panggil penghapusan Akun Auth
+                                deleteFirebaseAuthUser(user)
+
+                            }.addOnFailureListener { e ->
+                                Log.w(TAG, "Gagal menghapus profil Firestore.", e)
+                                Toast.makeText(this, "Gagal menghapus data: ${e.message}", Toast.LENGTH_LONG).show()
+                                // Sembunyikan dialog loading
+                            }
+                    } else {
+                        Log.w(TAG, "Gagal menghapus tasks.", taskBatch.exception)
+                        Toast.makeText(this, "Gagal menghapus data: ${taskBatch.exception?.message}", Toast.LENGTH_LONG).show()
+                        // Sembunyikan dialog loading
+                    }
+                }
+            }.addOnFailureListener { e ->
+                Log.w(TAG, "Gagal mengambil tasks.", e)
+                Toast.makeText(this, "Gagal mengambil data: ${e.message}", Toast.LENGTH_LONG).show()
+                // Sembunyikan dialog loading
+            }
+    }
+
+    /**
+     * LANGKAH 2: Menghapus akun Firebase Auth (setelah data Firestore bersih).
+     */
+    private fun deleteFirebaseAuthUser(user: com.google.firebase.auth.FirebaseUser) {
+        user.delete()
+            .addOnCompleteListener { task ->
+                // Sembunyikan dialog loading di sini
+                if (task.isSuccessful) {
+                    // Akun berhasil dihapus
+                    Log.d(TAG, "Akun Firebase berhasil dihapus.")
+                    Toast.makeText(this, "Akun Anda telah berhasil dihapus.", Toast.LENGTH_LONG).show()
+
+                    // Setelah akun dihapus, jalankan proses logout
+                    performLogout()
+                } else {
+                    // Gagal menghapus akun
+                    Log.w(TAG, "Gagal menghapus akun.", task.exception)
+
+                    // Cek apakah error karena perlu re-autentikasi
+                    if (task.exception is FirebaseAuthRecentLoginRequiredException) {
+                        Toast.makeText(this, "Gagal menghapus akun. Silakan login ulang dan coba lagi.", Toast.LENGTH_LONG).show()
+                        // Arahkan ke logout agar pengguna bisa login ulang
+                        performLogout()
+                    } else {
+                        Toast.makeText(this, "Gagal menghapus akun: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
     }
 
     /**
