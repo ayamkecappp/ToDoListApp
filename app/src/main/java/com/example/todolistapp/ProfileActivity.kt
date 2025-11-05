@@ -45,7 +45,7 @@ import kotlin.math.roundToInt
 import android.graphics.Matrix
 import androidx.exifinterface.media.ExifInterface
 
-// [BARU] Konstanta untuk SharedPrefs Streak
+// Konstanta untuk SharedPrefs Streak (INI AMAN, tidak diubah)
 private val STREAK_PREFS_NAME = "TimyTimePrefs"
 private val KEY_STREAK = "current_streak"
 
@@ -55,15 +55,15 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var viewPager: ViewPager2
     private lateinit var tvUsername: TextView
     private lateinit var ivProfilePicture: CircleImageView
-    private lateinit var sharedPrefs: SharedPreferences
-    private lateinit var streakPrefs: SharedPreferences // DEKLARASI BARU
+    // --- HAPUS --- private lateinit var sharedPrefs: SharedPreferences
+    private lateinit var streakPrefs: SharedPreferences // Ini untuk streak, jadi tetap aman
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var tvCompletedTasksLabel: TextView
     private lateinit var tvMissedTasksLabel: TextView
     private lateinit var tvDeletedTasksLabel: TextView
     private lateinit var tvStreakValue: TextView
 
-    // --- Cloudinary and OkHttp client (Dicopy dari EditProfileActivity) ---
+    // --- Cloudinary and OkHttp client (Tetap) ---
     private val CLOUD_NAME = "dk2jrlugl"
     private val UPLOAD_PRESET = "android_profile_upload"
     private val client = OkHttpClient()
@@ -74,6 +74,8 @@ class ProfileActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
+            // Cukup panggil loadProfileData.
+            // Ini sekarang akan mengambil data baru dari Firestore.
             loadProfileData()
             updateTaskCounts()
             updateStreakValue()
@@ -98,8 +100,11 @@ class ProfileActivity : AppCompatActivity() {
         setContentView(R.layout.profile)
 
         // Inisialisasi dan Binding Views
-        sharedPrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
-        // [BARU]: Inisialisasi streakPrefs
+
+        // --- HAPUS --- Inisialisasi sharedPrefs untuk profil
+        // sharedPrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
+
+        // Inisialisasi streakPrefs (Ini tetap ada)
         streakPrefs = getSharedPreferences(STREAK_PREFS_NAME, Context.MODE_PRIVATE)
 
         tabLayout = findViewById(R.id.tabLayout)
@@ -212,6 +217,8 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Panggil loadProfileData di onResume untuk menangkap perubahan
+        // yang mungkin terjadi di EditProfileActivity
         loadProfileData()
         updateTaskCounts()
         updateStreakValue()
@@ -219,18 +226,19 @@ class ProfileActivity : AppCompatActivity() {
 
     /**
      * Mengambil nilai streak dari SharedPreferences dan memperbarui TextView.
+     * (Fungsi ini aman, tidak diubah)
      */
     private fun updateStreakValue() {
-        // [UBAH]: Membaca langsung dari SharedPreferences, menghilangkan panggilan ke TaskRepository yang berat
         val streak = streakPrefs.getInt(KEY_STREAK, 0)
         tvStreakValue.text = streak.toString()
     }
 
 
     // --------------------------------------------------------------------------------------
-    // --- FUNGSI UPLOAD GAMBAR & SIMPAN DATA BARU (Kode Tetap) ---
+    // --- FUNGSI UPLOAD GAMBAR & KOMPRESI (Tidak ada perubahan) ---
     // --------------------------------------------------------------------------------------
     private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        // ... (Kode tetap sama) ...
         val (height: Int, width: Int) = options.outHeight to options.outWidth
         var inSampleSize = 1
         if (height > reqWidth || width > reqWidth) {
@@ -246,7 +254,7 @@ class ProfileActivity : AppCompatActivity() {
     private fun getCompressedImageBytes(imageUri: Uri, targetSizeKB: Int): ByteArray? {
         var inputStream: InputStream? = null
         try {
-            // 1. Decode Bounds (Kode asli)
+            // ... (Kode kompresi dan rotasi Anda tetap sama) ...
             inputStream = contentResolver.openInputStream(imageUri)
             val options = BitmapFactory.Options()
             options.inJustDecodeBounds = true
@@ -259,8 +267,6 @@ class ProfileActivity : AppCompatActivity() {
                 return null
             }
 
-            // 2. Kalkulasi inSampleSize (Kode asli)
-            // (Kita gunakan maxDimension sementara untuk kalkulasi sample size)
             val maxDimension = 1024.0
             val tempScale = min(
                 maxDimension / originalWidth,
@@ -269,10 +275,9 @@ class ProfileActivity : AppCompatActivity() {
             val tempWidth = (originalWidth * tempScale).roundToInt()
             val tempHeight = (originalHeight * tempScale).roundToInt()
 
-            options.inSampleSize = calculateInSampleSize(options, tempWidth, tempHeight) // Memanggil helper yg sudah ada
+            options.inSampleSize = calculateInSampleSize(options, tempWidth, tempHeight)
             options.inJustDecodeBounds = false
 
-            // 3. Decode Bitmap Awal (Kode asli)
             inputStream = contentResolver.openInputStream(imageUri)
             var bitmapToProcess = BitmapFactory.decodeStream(inputStream, null, options)
             inputStream?.close()
@@ -282,62 +287,44 @@ class ProfileActivity : AppCompatActivity() {
                 return null
             }
 
-            // 4. --- TAMBAHAN: ROTASI BERDASARKAN EXIF ---
             try {
                 inputStream = contentResolver.openInputStream(imageUri) // Buka stream BARU untuk EXIF
                 if (inputStream != null) {
-                    bitmapToProcess = rotateBitmapBasedOnExif(bitmapToProcess, inputStream) // Panggil helper baru
+                    bitmapToProcess = rotateBitmapBasedOnExif(bitmapToProcess, inputStream)
                     Log.d("ImageCompression", "Rotasi EXIF diterapkan.")
                 }
             } catch (exifError: Exception) {
                 Log.e("ImageCompression", "Gagal membaca EXIF/rotasi", exifError)
-                // Lanjutkan proses tanpa rotasi jika gagal
             } finally {
-                inputStream?.close() // Pastikan stream EXIF ditutup
+                inputStream?.close()
             }
-            // --- AKHIR TAMBAHAN ---
 
-            // 5. Hitung Ulang Scaling SETELAH Rotasi
             val rotatedWidth = bitmapToProcess.width
             val rotatedHeight = bitmapToProcess.height
-
             val scaleAfterRotation = min(
                 maxDimension / rotatedWidth,
                 maxDimension / rotatedHeight
             ).let { if (it > 1.0) 1.0 else it }
-
             val finalNewWidth = (rotatedWidth * scaleAfterRotation).roundToInt()
             val finalNewHeight = (rotatedHeight * scaleAfterRotation).roundToInt()
 
-            // 6. Scale Bitmap (Resize)
             val finalBitmap = Bitmap.createScaledBitmap(bitmapToProcess, finalNewWidth, finalNewHeight, true)
             if (finalBitmap != bitmapToProcess) {
-                bitmapToProcess.recycle() // Bebaskan bitmap hasil decode/rotasi
+                bitmapToProcess.recycle()
             }
 
-            // 7. Kompresi (Kode asli Anda)
             var quality = 95
             val outputStream = ByteArrayOutputStream()
             var compressedBytes: ByteArray
             val targetSizeBytes = targetSizeKB * 1024
-
             do {
                 outputStream.reset()
                 finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
                 compressedBytes = outputStream.toByteArray()
-
-                // Hapus log ini jika tidak diperlukan lagi
-                // val currentSizeKB = compressedBytes.size / 1024
-                // Log.d("ImageCompression", "Kualitas: $quality, Ukuran: ${currentSizeKB}KB")
-
                 quality -= 5
-
             } while (compressedBytes.size > targetSizeBytes && quality > 40)
-
-            finalBitmap.recycle() // Bebaskan bitmap hasil scaling
+            finalBitmap.recycle()
             outputStream.close()
-
-            // Log.d("ImageCompression", "Ukuran final: ${compressedBytes.size / 1024}KB")
             return compressedBytes
 
         } catch (e: Exception) {
@@ -347,6 +334,7 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
     private fun extractSecureUrl(jsonResponse: String): String? {
+        // ... (Kode tetap sama) ...
         return try {
             val startIndex = jsonResponse.indexOf("\"secure_url\":\"") + 14
             if (startIndex < 14) return null
@@ -360,6 +348,7 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun rotateBitmapBasedOnExif(source: Bitmap, inputStream: InputStream): Bitmap {
+        // ... (Kode tetap sama) ...
         val exif = ExifInterface(inputStream)
         val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
         val matrix = Matrix()
@@ -377,35 +366,30 @@ class ProfileActivity : AppCompatActivity() {
                 matrix.postRotate(270.0f)
                 matrix.preScale(-1.0f, 1.0f)
             }
-            else -> return source // Tidak perlu rotasi
+            else -> return source
         }
-
         return try {
-            // Buat bitmap baru yang sudah dirotasi
             val rotatedBitmap = Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
             if (rotatedBitmap != source) {
-                source.recycle() // Bebaskan memori bitmap asli jika rotasi berhasil
+                source.recycle()
             }
             rotatedBitmap
         } catch (e: OutOfMemoryError) {
             Log.e("RotateBitmap", "OutOfMemoryError saat merotasi bitmap", e)
-            source // Kembalikan bitmap asli jika error
+            source
         }
     }
     private suspend fun uploadImageToCloudinary(userId: String, imageUri: Uri): String? {
+        // ... (Kode tetap sama) ...
         if (userId.isEmpty()) return null
-
         return withContext(Dispatchers.IO) {
             try {
                 val compressedBytes = getCompressedImageBytes(imageUri, 500)
                 if (compressedBytes == null) return@withContext null
-
                 val tempFile = File(cacheDir, "temp_upload_${System.currentTimeMillis()}.jpg")
                 FileOutputStream(tempFile).use { it.write(compressedBytes) }
-
                 val timestamp = (System.currentTimeMillis() / 1000).toString()
                 val publicId = "profile_images/$userId/profile_$timestamp"
-
                 val requestBody = MultipartBody.Builder()
                     .setType(MultipartBody.FORM)
                     .addFormDataPart("file", tempFile.name, tempFile.asRequestBody("image/jpeg".toMediaType()))
@@ -413,15 +397,12 @@ class ProfileActivity : AppCompatActivity() {
                     .addFormDataPart("folder", "profile_images/$userId")
                     .addFormDataPart("public_id", publicId)
                     .build()
-
                 val request = Request.Builder()
                     .url("https://api.cloudinary.com/v1_1/$CLOUD_NAME/image/upload")
                     .post(requestBody)
                     .build()
-
                 val response = client.newCall(request).execute()
                 tempFile.delete()
-
                 if (response.isSuccessful) {
                     val responseBody = response.body?.string()
                     return@withContext responseBody?.let { extractSecureUrl(it) }
@@ -429,7 +410,6 @@ class ProfileActivity : AppCompatActivity() {
                     Log.e("CloudinaryUpload", "Upload failed: ${response.code} - ${response.message}. Body: ${response.body?.string()}")
                     return@withContext null
                 }
-
             } catch (e: Exception) {
                 Log.e("CloudinaryUpload", "Exception: ${e.message}", e)
                 return@withContext null
@@ -437,7 +417,7 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
-    // FUNGSI PENTING: Menangani foto baru, upload, dan update Firestore
+    // --- UBAH --- Fungsi ini disederhanakan (dihapus SharedPreferences)
     private fun handleNewProfilePhoto(imageUri: Uri) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
@@ -448,18 +428,21 @@ class ProfileActivity : AppCompatActivity() {
         // 1. Tampilkan gambar secara instan (preview)
         val options = RequestOptions().transform(CircleCrop())
         Glide.with(this).load(imageUri).apply(options).into(ivProfilePicture)
-        Toast.makeText(this, "Foto sedang diunggah. Mohon tunggu...", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Foto sedang diunggah...", Toast.LENGTH_LONG).show()
 
         lifecycleScope.launch {
-            // 2. Simpan URI lokal ke SharedPreferences (fallback)
-            sharedPrefs.edit().putString(EditProfileActivity.KEY_IMAGE_URI, imageUri.toString()).apply()
+            // 2. --- HAPUS --- Simpan URI lokal ke SharedPreferences
+            // sharedPrefs.edit().putString(EditProfileActivity.KEY_IMAGE_URI, imageUri.toString()).apply()
 
             // 3. Upload ke Cloudinary
             val uploadedUrl = uploadImageToCloudinary(userId, imageUri)
 
             if (uploadedUrl == null) {
+                // Gagal upload, kembali ke Main thread untuk UI
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@ProfileActivity, "Gagal mengunggah foto. Perubahan mungkin hilang saat aplikasi ditutup.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@ProfileActivity, "Gagal mengunggah foto.", Toast.LENGTH_LONG).show()
+                    // Muat ulang data (untuk mengembalikan foto lama dari Firestore)
+                    loadProfileData()
                 }
                 return@launch
             }
@@ -479,35 +462,36 @@ class ProfileActivity : AppCompatActivity() {
                 }
             }
 
-            // 5. Finalisasi
+            // 5. Finalisasi (di Main thread)
             withContext(Dispatchers.Main) {
                 if (success) {
-                    // Update SharedPreferences dengan URL permanen
-                    sharedPrefs.edit().putString(EditProfileActivity.KEY_IMAGE_URI, uploadedUrl).apply()
-                    // Muat ulang data untuk memastikan Glide memuat URL permanen
+                    // --- HAPUS --- Update SharedPreferences dengan URL permanen
+                    // sharedPrefs.edit().putString(EditProfileActivity.KEY_IMAGE_URI, uploadedUrl).apply()
+
+                    // Muat ulang data untuk memastikan Glide memuat URL permanen dari Firestore
                     loadProfileData()
-                    Toast.makeText(this@ProfileActivity, "Foto profil berhasil diperbarui dan disimpan!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ProfileActivity, "Foto profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this@ProfileActivity, "Gagal menyimpan foto ke database.", Toast.LENGTH_SHORT).show()
+                    // Muat ulang data (untuk mengembalikan foto lama dari Firestore)
+                    loadProfileData()
                 }
             }
         }
     }
 
     // --------------------------------------------------------------------------------------
-    // --- FUNGSI LOAD DATA (Kode Tetap) ---
+    // --- FUNGSI LOAD DATA (Kode Diubah) ---
     // --------------------------------------------------------------------------------------
 
     private fun updateTaskCounts() {
+        // ... (Fungsi ini tidak diubah, tampaknya sudah benar) ...
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // Asumsi TaskRepository.processTasksForMissed() sudah ada
                 TaskRepository.processTasksForMissed()
-
                 val completedCount = TaskRepository.getCompletedTasks().size
                 val missedCount = TaskRepository.getMissedTasks().size
                 val deletedCount = TaskRepository.getDeletedTasks().size
-
                 withContext(Dispatchers.Main) {
                     tvCompletedTasksLabel.text = "Completed Tasks ($completedCount)"
                     tvMissedTasksLabel.text = "Missed Tasks ($missedCount)"
@@ -519,79 +503,68 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
+    // --- UBAH --- Logika loadProfileData diubah total
     private fun loadProfileData() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
+            // Tampilkan default jika user tidak login (di Main thread)
             tvUsername.text = "Guest"
             ivProfilePicture.setImageResource(R.drawable.ic_profile)
             return
         }
 
         lifecycleScope.launch {
-            val profileData = withContext(Dispatchers.IO) {
-                try {
+            // 1. Ambil data dari Firestore di thread IO
+            var profileData: Map<String, Any>? = null
+            var error: Exception? = null
+            try {
+                profileData = withContext(Dispatchers.IO) {
                     val db = FirebaseFirestore.getInstance()
                     val document = db.collection("users").document(userId).get().await()
                     document.data
-                } catch (e: Exception) {
-                    Log.e("FirestoreLoad", "Error loading profile data", e)
-                    null
                 }
+            } catch (e: Exception) {
+                Log.e("FirestoreLoad", "Error loading profile data", e)
+                error = e
             }
 
-            val options = RequestOptions().transform(CircleCrop())
+            // 2. Update UI di Main thread
+            withContext(Dispatchers.Main) {
+                val options = RequestOptions().transform(CircleCrop())
 
-            if (profileData != null) {
-                val username = profileData["username"] as? String ?: "@username"
-                val imageUrl = profileData["profileImageUrl"] as? String
+                if (profileData != null) {
+                    // Berhasil mengambil dari Firestore
+                    val username = profileData["username"] as? String ?: "@username"
+                    val imageUrl = profileData["profileImageUrl"] as? String
 
-                tvUsername.text = username
-                ivProfilePicture.scaleX = 1f
+                    tvUsername.text = username
+                    ivProfilePicture.scaleX = 1f
 
-                // Muat gambar
-                if (imageUrl != null && imageUrl.isNotEmpty()) {
-                    Glide.with(this@ProfileActivity)
-                        .load(imageUrl)
-                        .apply(options)
-                        .placeholder(R.drawable.ic_profile)
-                        .error(R.drawable.ic_profile)
-                        .into(ivProfilePicture)
-                } else {
-                    ivProfilePicture.setImageResource(R.drawable.ic_profile)
-                }
-
-                // Update SharedPreferences
-                sharedPrefs.edit().apply {
-                    putString(EditProfileActivity.KEY_USERNAME, username)
-                    putString(EditProfileActivity.KEY_NAME, profileData["name"] as? String ?: "Nama Pengguna")
-                    putString(EditProfileActivity.KEY_GENDER, profileData["gender"] as? String ?: "Male")
-                    putString(EditProfileActivity.KEY_IMAGE_URI, imageUrl)
-                    apply()
-                }
-
-            } else {
-                // Fallback: Load dari SharedPreferences
-                val savedUsername = sharedPrefs.getString(EditProfileActivity.KEY_USERNAME, "Username")
-                val imageUriString = sharedPrefs.getString(EditProfileActivity.KEY_IMAGE_URI, null)
-                tvUsername.text = savedUsername
-                ivProfilePicture.scaleX = 1f
-
-                if (imageUriString != null) {
-                    try {
+                    // Muat gambar
+                    if (imageUrl != null && imageUrl.isNotEmpty()) {
                         Glide.with(this@ProfileActivity)
-                            .load(imageUriString)
+                            .load(imageUrl)
                             .apply(options)
                             .placeholder(R.drawable.ic_profile)
                             .error(R.drawable.ic_profile)
                             .into(ivProfilePicture)
-                    } catch (e: Exception) {
+                    } else {
                         ivProfilePicture.setImageResource(R.drawable.ic_profile)
                     }
+
+                    // --- HAPUS --- Seluruh blok Update SharedPreferences
+
                 } else {
+                    // Gagal mengambil dari Firestore
+                    Toast.makeText(this@ProfileActivity, "Gagal memuat profil.", Toast.LENGTH_SHORT).show()
+                    // Tampilkan default (daripada data basi)
+                    tvUsername.text = "Guest"
                     ivProfilePicture.setImageResource(R.drawable.ic_profile)
+
+                    // --- HAPUS --- Seluruh blok Fallback SharedPreferences
                 }
-            }
-        }
+            } // Akhir withContext(Dispatchers.Main)
+        } // Akhir lifecycleScope.launch
     }
 
     override fun finish() {

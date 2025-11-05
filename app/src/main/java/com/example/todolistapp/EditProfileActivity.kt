@@ -50,16 +50,14 @@ class EditProfileActivity : AppCompatActivity() {
     private lateinit var ivBackArrow: ImageView
     private lateinit var tvEditPhoto: TextView
     private lateinit var ivProfilePicture: CircleImageView
-    private lateinit var sharedPrefs: SharedPreferences
+    //private lateinit var sharedPrefs: SharedPreferences
 
     private var currentGender: String = "Male"
     private var currentImageUri: Uri? = null
     private val genders = arrayOf("Male", "Female")
-
+    private var currentPermanentImageUrl: String? = null
     // Cloudinary credentials
     private val CLOUD_NAME = "dk2jrlugl"
-    private val API_KEY = "791225435148732"
-    private val API_SECRET = "mlCaQzDFef6crC79tEJ0hEKWZ_s"
     private val UPLOAD_PRESET = "android_profile_upload"
 
     private val client = OkHttpClient()
@@ -71,12 +69,12 @@ class EditProfileActivity : AppCompatActivity() {
         if (result.resultCode == Activity.RESULT_OK) {
             val uriString = result.data?.getStringExtra("PROFILE_PHOTO_URI")
             if (uriString != null) {
-                currentImageUri = Uri.parse(uriString)
+                currentImageUri = Uri.parse(uriString) // 1. Set variabel instance
                 try {
-                    // PENTING: Segera simpan URI lokal ke SharedPreferences. Ini akan digunakan oleh loadProfileData saat onResume.
-                    sharedPrefs.edit().putString(KEY_IMAGE_URI, currentImageUri.toString()).apply()
+                    // 2. HAPUS baris SharedPreferences dari kode asli Anda
+                    // sharedPrefs.edit().putString(KEY_IMAGE_URI, currentImageUri.toString()).apply() // <-- HAPUS
 
-                    // Memuat URI gambar yang baru diambil untuk pratinjau
+                    // 3. Muat pratinjau langsung dari variabel instance
                     val options = RequestOptions().transform(CircleCrop())
                     Glide.with(this).load(currentImageUri).apply(options).into(ivProfilePicture)
                     Toast.makeText(this, "Foto profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
@@ -206,13 +204,7 @@ class EditProfileActivity : AppCompatActivity() {
         }
     }
 
-    companion object {
-        const val PREFS_NAME = "ProfilePrefs"
-        const val KEY_NAME = "name"
-        const val KEY_USERNAME = "username"
-        const val KEY_GENDER = "gender"
-        const val KEY_IMAGE_URI = "image_uri"
-    }
+
 
     private fun rotateBitmapBasedOnExif(source: Bitmap, inputStream: InputStream): Bitmap {
         val exif = ExifInterface(inputStream)
@@ -251,7 +243,6 @@ class EditProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_profile)
 
-        sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         // Hubungkan Views
         inputName = findViewById(R.id.inputName)
@@ -404,41 +395,69 @@ class EditProfileActivity : AppCompatActivity() {
     }
 
     private fun loadProfileData() {
-        val name = sharedPrefs.getString(KEY_NAME, "Nama Pengguna")
-        val username = sharedPrefs.getString(KEY_USERNAME, "@username")
-        currentGender = sharedPrefs.getString(KEY_GENDER, "Male")!!
-        val imageUriString = sharedPrefs.getString(KEY_IMAGE_URI, null)
-
-        inputName.setText(name)
-        inputUsername.setText(username)
-        inputGender.setText(currentGender)
-
-        // Muat gambar jika URI/URL ada
-        if (imageUriString != null) {
-            val options = RequestOptions().transform(CircleCrop())
-
-            if (imageUriString.startsWith("http")) {
-                // Ini adalah URL dari Cloudinary (permanen)
-                currentImageUri = null
-                Glide.with(this).load(imageUriString).apply(options).into(ivProfilePicture)
-            } else {
-                // Ini adalah URI lokal (sementara dari kamera)
-                currentImageUri = Uri.parse(imageUriString)
-                try {
-                    // Muat dari URI lokal
-                    Glide.with(this).load(currentImageUri).apply(options).into(ivProfilePicture)
-                } catch (e: Exception) {
-                    // Fallback jika URI lokal tidak valid/hilang
-                    Log.e("EditProfile", "Error loading local image URI: ${e.message}")
-                    currentImageUri = null
-                    sharedPrefs.edit().remove(KEY_IMAGE_URI).apply()
-                    ivProfilePicture.setImageResource(R.drawable.ic_profile)
-                }
-            }
-        } else {
-            // Tidak ada URI, gunakan default
-            currentImageUri = null
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId == null) {
+            Toast.makeText(this, "User tidak login.", Toast.LENGTH_SHORT).show()
+            // Set default jika user null
+            inputName.setText("Nama Pengguna")
+            inputUsername.setText("@username")
+            inputGender.setText(currentGender) // Default "Male"
             ivProfilePicture.setImageResource(R.drawable.ic_profile)
+            return
+        }
+
+        // Reset URI lokal (karena kita baru memuat)
+        currentImageUri = null
+
+        // Tampilkan loading (opsional, tapi disarankan)
+        // Misal: progressBar.visibility = View.VISIBLE
+        Toast.makeText(this, "Memuat profil...", Toast.LENGTH_SHORT).show()
+
+        lifecycleScope.launch {
+            try {
+                val db = FirebaseFirestore.getInstance()
+                val document = withContext(Dispatchers.IO) {
+                    db.collection("users").document(userId).get().await()
+                }
+
+                if (document.exists()) {
+                    // Ambil data dari dokumen Firestore
+                    val name = document.getString("name") ?: "Nama Pengguna"
+                    val username = document.getString("username") ?: "@username"
+                    currentGender = document.getString("gender") ?: "Male" // Tetap set currentGender
+
+                    // Simpan URL permanen ke variabel instance
+                    currentPermanentImageUrl = document.getString("profileImageUrl")
+
+                    // Set view
+                    inputName.setText(name)
+                    inputUsername.setText(username)
+                    inputGender.setText(currentGender)
+
+                    if (!currentPermanentImageUrl.isNullOrEmpty()) {
+                        val options = RequestOptions().transform(CircleCrop())
+                        Glide.with(this@EditProfileActivity)
+                            .load(currentPermanentImageUrl)
+                            .apply(options)
+                            .into(ivProfilePicture)
+                    } else {
+                        ivProfilePicture.setImageResource(R.drawable.ic_profile)
+                    }
+                } else {
+                    // Jika user baru dan dokumen belum ada, set default
+                    inputName.setText("Nama Pengguna")
+                    inputUsername.setText("@username")
+                    inputGender.setText(currentGender)
+                    ivProfilePicture.setImageResource(R.drawable.ic_profile)
+                    currentPermanentImageUrl = null // Pastikan null
+                }
+            } catch (e: Exception) {
+                Log.e("FirestoreLoad", "Error loading profile data", e)
+                Toast.makeText(this@EditProfileActivity, "Gagal memuat profil.", Toast.LENGTH_SHORT).show()
+            } finally {
+                // Sembunyikan loading (opsional)
+                // Misal: progressBar.visibility = View.GONE
+            }
         }
     }
 
@@ -461,36 +480,36 @@ class EditProfileActivity : AppCompatActivity() {
         Toast.makeText(this, "Menyimpan profil...", Toast.LENGTH_SHORT).show()
 
         lifecycleScope.launch {
-            var finalImageString: String? = sharedPrefs.getString(KEY_IMAGE_URI, null)
+            // Mulai dengan URL yang tadi kita ambil dari Firestore
+            var finalImageString: String? = currentPermanentImageUrl
 
-            // 1. Cek apakah currentImageUri adalah URI lokal yang perlu diupload
-            val isLocalUriForUpload = currentImageUri != null && !currentImageUri.toString().startsWith("http")
+            // 1. Cek apakah ada URI LOKAL BARU (dari kamera)
+            val isLocalUriForUpload = currentImageUri != null
 
             if (isLocalUriForUpload) {
                 // 1a. Upload ke Cloudinary
                 val uploadedUrl = uploadImageToCloudinary(userId, currentImageUri!!)
 
                 if (uploadedUrl == null) {
-                    // Upload GAGAL, pertahankan nilai lama yang ada di finalImageString
+                    // Upload GAGAL, beri tahu pengguna.
+                    // 'finalImageString' tidak diubah (tetap menggunakan URL lama)
                     withContext(Dispatchers.Main) {
                         Toast.makeText(this@EditProfileActivity, "Gagal mengunggah gambar profil. Data foto tidak diubah.", Toast.LENGTH_LONG).show()
                     }
                 } else {
-                    // Upload SUKSES, URL Cloudinary menjadi string gambar baru permanen
+                    // Upload SUKSES, URL Cloudinary menjadi string gambar baru
                     finalImageString = uploadedUrl
                 }
-            } else if (currentImageUri == null) {
-                // Gambar di-reset/tidak ada gambar
-                finalImageString = ""
             }
-
+            // Tidak perlu 'else if (currentImageUri == null)'
+            // Jika tidak ada URI lokal baru, 'finalImageString' (URL lama) akan otomatis digunakan.
 
             // 2. Simpan data ke Firestore
             val profileData = hashMapOf(
                 "name" to newName,
                 "username" to newUsername,
                 "gender" to newGender,
-                "profileImageUrl" to (finalImageString ?: ""),
+                "profileImageUrl" to (finalImageString ?: ""), // Pakai final string
                 "updatedAt" to System.currentTimeMillis()
             )
 
@@ -508,17 +527,10 @@ class EditProfileActivity : AppCompatActivity() {
                 }
             }
 
-            // 3. Update SharedPreferences dan Navigasi
+            // 3. Navigasi (TANPA SharedPreferences)
             if (success) {
-                // Update SharedPreferences dengan URL permanen
-                sharedPrefs.edit().apply {
-                    putString(KEY_NAME, newName)
-                    putString(KEY_USERNAME, newUsername)
-                    putString(KEY_GENDER, newGender)
-                    // Simpan URL permanen yang baru atau yang lama
-                    putString(KEY_IMAGE_URI, finalImageString)
-                    apply()
-                }
+                // HAPUS SEMUA 'sharedPrefs.edit()...'
+
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@EditProfileActivity, "Profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
                     setResult(Activity.RESULT_OK)

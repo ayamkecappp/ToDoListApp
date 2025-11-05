@@ -279,8 +279,8 @@ class SettingsActivity : AppCompatActivity() {
             LoginManager.getInstance().logOut()
 
             // 3. BERSIHKAN SharedPreferences PROFIL <-- TAMBAHAN
-            val profilePrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
-            profilePrefs.edit().clear().apply() // Hapus semua data di ProfilePrefs
+            //val profilePrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
+            //profilePrefs.edit().clear().apply() // Hapus semua data di ProfilePrefs
 
             // 4. Arahkan kembali ke LoginActivity
             val intent = Intent(this, LoginActivity::class.java).apply {
