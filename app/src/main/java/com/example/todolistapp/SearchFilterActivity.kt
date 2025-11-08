@@ -1,4 +1,3 @@
-// main/java/com/example/todolistapp/SearchFilterActivity.kt
 package com.example.todolistapp
 
 import android.app.Activity
@@ -296,6 +295,7 @@ class SearchFilterActivity : AppCompatActivity() {
         }
 
         val taskItem = mainContainer.findViewById<LinearLayout>(R.id.taskItem)
+
         val checklistBox = mainContainer.findViewById<View>(R.id.checklistBox)
         val taskTitle = mainContainer.findViewById<TextView>(R.id.taskTitle)
         val taskTime = mainContainer.findViewById<TextView>(R.id.taskTime)
@@ -310,25 +310,44 @@ class SearchFilterActivity : AppCompatActivity() {
 
         taskTitle.text = task.title
 
-        val timeText = task.time.ifEmpty { "" }
-        val categoryText = task.category.ifEmpty { "" }
+        // Logika untuk taskTime dan taskCategory
+        val timeText = task.time.trim()
+        val categoryText = task.category.trim()
 
-        // [PERBAIKAN LOGIKA]: Pastikan time dan category disetel ke GONE jika kosong
-        if (timeText.isNotEmpty()) {
-            taskTime.text = timeText
+        // FIX UTAMA: HANYA tampilkan time range atau category, BUKAN durasi Flow Timer di sini.
+        val isFlowTimerOnly = task.flowDurationMillis > 0L && timeText.contains("(Flow)")
+
+        if (categoryText.isNotEmpty() && !isFlowTimerOnly) {
+            // Tampilkan Lokasi di baris pertama
+            taskTime.text = categoryText
             taskTime.visibility = View.VISIBLE
-        } else {
-            taskTime.text = ""
-            taskTime.visibility = View.GONE
-        }
 
-        if (categoryText.isNotEmpty()) {
-            taskCategoryXml.text = categoryText
-            taskCategoryXml.visibility = View.VISIBLE
-        } else {
+            // Periksa apakah ada waktu manual yang terpisah dari Flow Timer
+            if (timeText.isNotEmpty() && !isFlowTimerOnly) {
+                // Tampilkan Waktu manual di baris kedua
+                taskCategoryXml.text = timeText
+                taskCategoryXml.visibility = View.VISIBLE
+            } else {
+                taskCategoryXml.text = ""
+                taskCategoryXml.visibility = View.GONE
+            }
+        } else if (categoryText.isNotEmpty()) {
+            // Jika ada lokasi tetapi time adalah Flow Timer, tampilkan Lokasi saja
+            taskTime.text = categoryText
+            taskTime.visibility = View.VISIBLE
             taskCategoryXml.text = ""
             taskCategoryXml.visibility = View.GONE
+        } else if (timeText.isNotEmpty() && !isFlowTimerOnly) {
+            // Jika hanya ada Waktu Manual (bukan Flow Timer)
+            taskTime.text = timeText
+            taskTime.visibility = View.VISIBLE
+            taskCategoryXml.visibility = View.GONE
+        } else {
+            // Kosongkan kedua field jika hanya Flow Timer atau keduanya kosong
+            taskTime.visibility = View.GONE
+            taskCategoryXml.visibility = View.GONE
         }
+
 
         // 4. Logika prioritas
         if (task.priority != "None") {

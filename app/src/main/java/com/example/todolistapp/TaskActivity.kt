@@ -67,12 +67,6 @@ class TaskActivity : AppCompatActivity() {
     // Konstanta Intent/Prefs
     private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
 
-    // HAPUS SEMUA KONSTANTA SHAREDPREFERENCES UNTUK STREAK
-    // private val PREFS_NAME = "TimyTimePrefs"
-    // private val KEY_STREAK = "current_streak"
-    // private val KEY_LAST_DATE = "last_completion_date"
-    // private val KEY_STREAK_DAYS = "streak_days"
-
     companion object {
         const val RESULT_TASK_DELETED = 101
     }
@@ -714,6 +708,9 @@ class TaskActivity : AppCompatActivity() {
 
         // 2. Dapatkan referensi views dari layout item
         val taskItem = mainContainer.findViewById<LinearLayout>(R.id.taskItem)
+        // Hapus shadow dengan mengatur elevation ke 0 di sini, meskipun tidak ada tag XML untuk ini.
+        // taskItem.elevation = 0f // Opsional, jika elevation diatur di Java
+
         val checklistBox = mainContainer.findViewById<View>(R.id.checklistBox)
         val taskTitle = mainContainer.findViewById<TextView>(R.id.taskTitle)
         val taskTime = mainContainer.findViewById<TextView>(R.id.taskTime)
@@ -730,23 +727,44 @@ class TaskActivity : AppCompatActivity() {
         taskTitle.text = task.title
 
         // Logika untuk taskTime dan taskCategory
-        val timeText = task.time.ifEmpty { "" }
-        val categoryText = task.category.ifEmpty { "" }
+        val timeText = task.time.trim()
+        val categoryText = task.category.trim()
 
-        if (categoryText.isNotEmpty() && timeText.isNotEmpty()) {
-            taskTime.text = timeText
-            taskCategoryXml.text = categoryText
-            taskCategoryXml.visibility = View.VISIBLE
-        } else if (timeText.isNotEmpty()) {
-            taskTime.text = timeText
-            taskCategoryXml.visibility = View.GONE
-        } else if (categoryText.isNotEmpty()) {
+        // FIX UTAMA: HANYA tampilkan time range atau category, BUKAN durasi Flow Timer di sini.
+        // Gunakan 'timeText' yang sudah dideklarasikan di scope fungsi ini.
+        val isFlowTimerOnly = task.flowDurationMillis > 0L && timeText.contains("(Flow)")
+
+        if (categoryText.isNotEmpty() && !isFlowTimerOnly) {
+            // Tampilkan Lokasi di baris pertama
             taskTime.text = categoryText
+            taskTime.visibility = View.VISIBLE
+
+            // Periksa apakah ada waktu manual yang terpisah dari Flow Timer
+            if (timeText.isNotEmpty() && !isFlowTimerOnly) {
+                // Tampilkan Waktu manual di baris kedua
+                taskCategoryXml.text = timeText // Perbaikan: Menggunakan 'timeText'
+                taskCategoryXml.visibility = View.VISIBLE
+            } else {
+                taskCategoryXml.text = ""
+                taskCategoryXml.visibility = View.GONE
+            }
+        } else if (categoryText.isNotEmpty()) {
+            // Jika ada lokasi tetapi time adalah Flow Timer, tampilkan Lokasi saja
+            taskTime.text = categoryText
+            taskTime.visibility = View.VISIBLE
+            taskCategoryXml.text = ""
+            taskCategoryXml.visibility = View.GONE
+        } else if (timeText.isNotEmpty() && !isFlowTimerOnly) {
+            // Jika hanya ada Waktu Manual (bukan Flow Timer)
+            taskTime.text = timeText
+            taskTime.visibility = View.VISIBLE
             taskCategoryXml.visibility = View.GONE
         } else {
+            // Kosongkan kedua field jika hanya Flow Timer atau keduanya kosong
             taskTime.visibility = View.GONE
             taskCategoryXml.visibility = View.GONE
         }
+
 
         // 4. Logika prioritas
         if (task.priority != "None") {

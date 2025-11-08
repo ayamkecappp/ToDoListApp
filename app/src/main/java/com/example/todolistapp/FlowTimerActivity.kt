@@ -19,6 +19,8 @@ import android.view.ViewGroup
 import android.graphics.drawable.ColorDrawable
 import android.widget.Button
 import android.view.Gravity
+import android.media.MediaPlayer // PENTING: Tambahkan ini
+import android.view.MotionEvent // PENTING: Tambahkan ini
 
 class FlowTimerActivity : AppCompatActivity() {
 
@@ -31,9 +33,11 @@ class FlowTimerActivity : AppCompatActivity() {
     private lateinit var layoutSetDuration: LinearLayout
     private lateinit var btnBack: ImageView
     private lateinit var btnSetDurationOK: Button
+    private lateinit var rootConstraintLayout: View // Diambil dari ID yang baru di XML
 
     private var countDownTimer: CountDownTimer? = null
     private var isTimerRunning = false
+    private var mediaPlayer: MediaPlayer? = null // PENTING: Deklarasi MediaPlayer
 
     // Durasi awal - PENTING: Prioritas dari task, baru fallback ke default
     private var totalDurationMillis: Long = 30 * 60 * 1000L
@@ -81,11 +85,16 @@ class FlowTimerActivity : AppCompatActivity() {
         layoutSetDuration = findViewById(R.id.layoutSetDuration)
         btnBack = findViewById(R.id.btnBack)
         btnSetDurationOK = findViewById(R.id.btnSetDurationOK)
+        // Hubungkan ke ID yang baru ditambahkan di XML
+        rootConstraintLayout = findViewById(R.id.root_constraint_layout)
 
         tvTaskName.text = taskName
 
         setupNumberPickers()
         updateTimerDisplay()
+
+        // PENTING: Setup Swipe Listener di root layout
+        setupSwipeListener()
 
         tvTimerDisplay.setOnClickListener {
             if (!isTimerRunning) {
@@ -110,6 +119,29 @@ class FlowTimerActivity : AppCompatActivity() {
                 startTimer()
             }
         }
+    }
+
+    // PENTING: Setup Swipe Listener
+    private fun setupSwipeListener() {
+        // Mengatur listener swipe di root layout
+        rootConstraintLayout.setOnTouchListener(object : OnSwipeTouchListener(this) {
+            override fun onSwipeUp() {
+                // LOGIKA UTAMA: Berhenti Alarm saat Swipe Up
+                if (mediaPlayer?.isPlaying == true) {
+                    stopAlarm()
+                    Toast.makeText(this@FlowTimerActivity, "Alarm Stopped", Toast.LENGTH_SHORT).show()
+                }
+            }
+            // Mengonsumsi event agar tidak diteruskan ke elemen lain
+            override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
+                if (mediaPlayer?.isPlaying == true) {
+                    // Jika alarm berbunyi, kita ingin event diserap oleh listener ini
+                    super.onTouch(view, motionEvent)
+                    return true // Penting untuk mengonsumsi event saat alarm berbunyi
+                }
+                return super.onTouch(view, motionEvent)
+            }
+        })
     }
 
     private fun setupNumberPickers() {
@@ -197,12 +229,38 @@ class FlowTimerActivity : AppCompatActivity() {
 
     private fun timerFinishedFlow() {
         isTimerRunning = false
-        btnPlayPause.setImageResource(R.drawable.ic_play)
+        btnPlayPause.setImageResource(R.drawable.ic_alarm) // Ubah ikon menjadi alarm
 
         timeRemainingMillis = 0
         updateTimerDisplay()
 
+        startAlarm() // PENTING: Memulai Alarm
+
         showDoneDialog()
+    }
+
+    // PENTING: Fungsi untuk memulai alarm
+    private fun startAlarm() {
+        // ASUMSI: File alarm_sound.mp3 ada di res/raw
+        try {
+            // Jika Anda ingin menggunakan suara bawaan, ganti R.raw.alarm_sound dengan
+            // RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            mediaPlayer = MediaPlayer.create(this, R.raw.alarm_sound)
+            mediaPlayer?.isLooping = true // Ulangi suara alarm
+            mediaPlayer?.start()
+            Toast.makeText(this, "Alarm Berbunyi! Swipe ke atas untuk mematikan.", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Gagal memutar alarm. Pastikan file alarm_sound.mp3 ada di folder res/raw.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // PENTING: Fungsi untuk menghentikan alarm
+    private fun stopAlarm() {
+        if (mediaPlayer?.isPlaying == true) {
+            mediaPlayer?.stop()
+        }
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 
     private fun buildCustomDialog(context: Context, message: String, positiveText: String, negativeText: String, onPositive: () -> Unit, onNegative: () -> Unit): AlertDialog {
@@ -244,6 +302,7 @@ class FlowTimerActivity : AppCompatActivity() {
             "Are you done with your task?",
             "Yes", "No",
             onPositive = {
+                stopAlarm() // Pastikan alarm mati sebelum keluar
                 Toast.makeText(this, "Tugas Selesai!", Toast.LENGTH_SHORT).show()
                 finish()
             },
@@ -260,9 +319,11 @@ class FlowTimerActivity : AppCompatActivity() {
             "Adjust Time?",
             "Yes", "No",
             onPositive = {
+                stopAlarm() // Matikan alarm saat pengguna ingin set waktu baru
                 showSetNewTimeDialog()
             },
             onNegative = {
+                stopAlarm() // Matikan alarm saat pengguna ingin keluar
                 Toast.makeText(this, "Kembali ke daftar tugas.", Toast.LENGTH_SHORT).show()
                 finish()
             }
@@ -286,9 +347,20 @@ class FlowTimerActivity : AppCompatActivity() {
         toggleInputVisibility(true)
     }
 
+    override fun onBackPressed() {
+        if (mediaPlayer?.isPlaying == true) {
+            // Jika alarm berbunyi, jangan izinkan back press tanpa mematikan
+            Toast.makeText(this, "Swipe ke atas untuk mematikan alarm terlebih dahulu.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        super.onBackPressed()
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         countDownTimer?.cancel()
+        stopAlarm() // Pastikan MediaPlayer dilepaskan saat Activity dihancurkan
     }
 
     private val Int.dp: Int

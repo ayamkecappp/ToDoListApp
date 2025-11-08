@@ -1,4 +1,3 @@
-// main/java/com/example/todolistapp/CalendarActivity.kt
 package com.example.todolistapp
 
 import android.content.Intent
@@ -560,18 +559,37 @@ class CalendarActivity : AppCompatActivity() {
 
         taskTitle.text = task.title
 
-        val timeText = task.time.ifEmpty { "" }
-        val categoryText = task.category.ifEmpty { "" }
+        // Logika untuk taskTime dan taskCategory (SAMA DENGAN TaskActivity.kt)
+        val timeText = task.time.trim()
+        val categoryText = task.category.trim()
 
-        if (categoryText.isNotEmpty() && timeText.isNotEmpty()) {
-            taskTime.text = timeText
-            taskCategoryXml.text = categoryText
-            taskCategoryXml.visibility = View.VISIBLE
-        } else if (timeText.isNotEmpty()) {
-            taskTime.text = timeText
-            taskCategoryXml.visibility = View.GONE
-        } else if (categoryText.isNotEmpty()) {
+        // FIX UTAMA: HANYA tampilkan time range atau category, BUKAN durasi Flow Timer di sini.
+        val isFlowTimerOnly = task.flowDurationMillis > 0L && timeText.contains("(Flow)")
+
+        if (categoryText.isNotEmpty() && !isFlowTimerOnly) {
+            // Tampilkan Lokasi di baris pertama
             taskTime.text = categoryText
+            taskTime.visibility = View.VISIBLE
+
+            // Periksa apakah ada waktu manual yang terpisah dari Flow Timer
+            if (timeText.isNotEmpty() && !isFlowTimerOnly) {
+                // Tampilkan Waktu manual di baris kedua
+                taskCategoryXml.text = timeText
+                taskCategoryXml.visibility = View.VISIBLE
+            } else {
+                taskCategoryXml.text = ""
+                taskCategoryXml.visibility = View.GONE
+            }
+        } else if (categoryText.isNotEmpty()) {
+            // Jika ada lokasi tetapi time adalah Flow Timer, tampilkan Lokasi saja
+            taskTime.text = categoryText
+            taskTime.visibility = View.VISIBLE
+            taskCategoryXml.text = ""
+            taskCategoryXml.visibility = View.GONE
+        } else if (timeText.isNotEmpty() && !isFlowTimerOnly) {
+            // Jika hanya ada Waktu Manual (bukan Flow Timer)
+            taskTime.text = timeText
+            taskTime.visibility = View.VISIBLE
             taskCategoryXml.visibility = View.GONE
         } else {
             taskTime.visibility = View.GONE

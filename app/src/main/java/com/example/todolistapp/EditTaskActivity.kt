@@ -1,4 +1,3 @@
-// main/java/com/example/todolistapp/EditTaskActivity.kt
 package com.example.todolistapp
 
 import android.app.Activity
@@ -115,7 +114,6 @@ class EditTaskActivity : AppCompatActivity() {
 
                     // --- Mengisi Form ---
                     inputActivity.setText(existingTask.title)
-                    inputTime.setText(existingTask.time)
                     inputLocation.setText(existingTask.category)
                     inputPriority.setText(existingTask.priority)
                     inputDetails.setText(existingTask.details)
@@ -129,19 +127,49 @@ class EditTaskActivity : AppCompatActivity() {
                     inputDate.setText(uiDateFormat.format(initialDate))
 
                     // Set Flow Timer State
-                    flowTimerDurationMillis = existingTask.flowDurationMillis.coerceAtLeast(DEFAULT_FLOW_TIMER_DURATION)
+                    // 1. Ambil durasi Flow Timer yang disimpan
+                    val actualFlowDuration = existingTask.flowDurationMillis
+
+                    // 2. Tentukan nilai flowTimerDurationMillis untuk state internal
+                    if (actualFlowDuration > 0L) {
+                        flowTimerDurationMillis = actualFlowDuration
+                    } else {
+                        flowTimerDurationMillis = DEFAULT_FLOW_TIMER_DURATION
+                    }
+
+                    // 3. Tentukan string tampilan Flow Timer berdasarkan flowTimerDurationMillis
                     val timeDisplayString = formatDurationToString(flowTimerDurationMillis)
 
-                    if (existingTask.time.contains("(Flow)")) {
+                    // 4. Set tvAddFlowTimer (selalu mencerminkan flowDurationMillis yang dimiliki task)
+                    if (actualFlowDuration > 0L) {
                         tvAddFlowTimer.text = "Flow Timer Set (${timeDisplayString})"
-                        inputTime.tag = true
-                        inputTime.setText(existingTask.time)
-                    } else if (existingTask.endTimeMillis > 0L && existingTask.time.isNotEmpty()) {
-                        inputTime.tag = existingTask.endTimeMillis
-                        tvAddFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
                     } else {
+                        // Jika Flow Timer 0, tampilkan prompt dengan durasi default
+                        tvAddFlowTimer.text = "+ Add Flow Timer (${formatDurationToString(DEFAULT_FLOW_TIMER_DURATION)})"
+                    }
+
+                    // 5. Tentukan isi inputTime dan tag
+                    val taskTimeText = existingTask.time.trim()
+
+                    if (existingTask.endTimeMillis > 0L) {
+                        // Memiliki Range Time (tag = Long)
+                        inputTime.tag = existingTask.endTimeMillis
+                        inputTime.setText(taskTimeText)
+                    } else if (actualFlowDuration > 0L) {
+                        // Memiliki Flow Timer (tag = Boolean True)
+                        inputTime.tag = true
+
+                        // KOSONGKAN inputTime sesuai permintaan jika hanya Flow Timer yang disetel
+                        if (taskTimeText.contains("(Flow)")) {
+                            inputTime.setText("")
+                        } else {
+                            // Jika ada teks lain yang disimpan di field 'time', biarkan tetap ada
+                            inputTime.setText(taskTimeText)
+                        }
+                    } else {
+                        // Tidak ada waktu spesifik (tag = null)
                         inputTime.tag = null
-                        tvAddFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
+                        inputTime.setText(taskTimeText)
                     }
 
                     // Set tombol dan judul untuk mode reschedule (jika ada)
@@ -224,15 +252,18 @@ class EditTaskActivity : AppCompatActivity() {
             return
         }
 
+        // Ambil teks dari kolom time
+        val inputTimeText = inputTime.text.toString().trim()
+        time = inputTimeText // Default: gunakan teks yang diinput user
+
         // Mulai calendar dengan tanggal yang telah dipilih (taskDateMillis)
         val selectedDayCalendar = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
 
         if (isTimeRangeSet) {
             newEndTimeMillis = inputTime.tag as Long
-            time = inputTime.text.toString().trim()
             savedFlowDuration = flowTimerDurationMillis
 
-            // *** PERBAIKAN LOGIKA UTAMA: Gabungkan tanggal baru dengan waktu lama ***
+            // *** LOGIKA UTAMA: Gabungkan tanggal baru dengan waktu lama ***
             val oldTimeCal = Calendar.getInstance().apply { timeInMillis = newEndTimeMillis }
 
             // Terapkan komponen waktu (jam, menit, dll.) dari waktu lama ke tanggal baru
@@ -243,17 +274,26 @@ class EditTaskActivity : AppCompatActivity() {
 
             // Simpan waktu akhir yang telah digabungkan
             newEndTimeMillis = selectedDayCalendar.timeInMillis
-            // *** END PERBAIKAN ***
+            // *** END LOGIKA ***
         } else if (isFlowTimerActive && flowTimerDurationMillis > 0L) {
-            // Logika Flow Timer (dimulai dari NOW)
-            val flowEndTime = System.currentTimeMillis() + flowTimerDurationMillis
-            taskEndTimeMillis = flowEndTime
-            val timeDisplay = formatDurationToString(flowTimerDurationMillis) + " (Flow)"
-            time = timeDisplay
+            // FIX: Jangan gunakan waktu akhir Flow Timer sebagai deadline Missed Task.
+            newEndTimeMillis = 0L
             savedFlowDuration = flowTimerDurationMillis
-            selectedDayCalendar.timeInMillis = flowEndTime
+
+            // PERBAIKAN: Hanya isi field time jika inputTime kosong.
+            if (inputTimeText.isEmpty()) {
+                time = formatDurationToString(flowTimerDurationMillis) + " (Flow)"
+            } else {
+                // Biarkan 'time' menggunakan inputTimeText
+            }
+
+            // FIX: Atur DueDate ke akhir hari (23:59:59)
+            selectedDayCalendar.set(Calendar.HOUR_OF_DAY, 23)
+            selectedDayCalendar.set(Calendar.MINUTE, 59)
+            selectedDayCalendar.set(Calendar.SECOND, 59)
+            selectedDayCalendar.set(Calendar.MILLISECOND, 999)
         } else {
-            time = ""
+            time = inputTimeText
             newEndTimeMillis = 0L
             savedFlowDuration = flowTimerDurationMillis
             // Set DueDate ke akhir hari (23:59:59) jika tidak ada waktu spesifik
@@ -419,12 +459,12 @@ class EditTaskActivity : AppCompatActivity() {
 
             flowTimerDurationMillis = totalMillis
 
+            // Set flag: Flow Timer adalah opsi waktu utama
             inputTime.tag = true
 
             val timeDisplayString = formatDurationToString(totalMillis)
+            // FIX: Update teks tvAddFlowTimer dengan durasi Flow Timer yang baru
             tvAddFlowTimer.text = "Flow Timer Set (${timeDisplayString})"
-
-            inputTime.setText("")
 
             Toast.makeText(this, "Flow Timer berhasil disetel: ${timeDisplayString}.", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
@@ -435,6 +475,7 @@ class EditTaskActivity : AppCompatActivity() {
 
     private fun showTimeRangePicker() {
         inputTime.tag = null
+        // FIX: Menggunakan nilai flowTimerDurationMillis yang sudah disetel user
         val timeDisplayString = formatDurationToString(flowTimerDurationMillis)
         tvAddFlowTimer.text = "+ Add Flow Timer (${timeDisplayString})"
         inputTime.setText("")

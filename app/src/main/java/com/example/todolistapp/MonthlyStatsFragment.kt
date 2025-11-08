@@ -216,14 +216,27 @@ class MonthlyStatsFragment : Fragment() {
                         .setDuration(400)
                         .start()
 
-                    bar.setOnClickListener {
-                        setBarHighlight(i)
+                    // --- PERBAIKAN: Hanya aktifkan klik jika ada task (taskCount > 0) ---
+                    if (taskCount > 0) {
+                        bar.setOnClickListener {
+                            setBarHighlight(i)
+                        }
+                    } else {
+                        bar.setOnClickListener(null)
                     }
                 }
 
                 barData = tempBarData
 
-                setBarHighlight(maxIndex)
+                // Set highlight awal, pastikan bar yang dipilih memiliki count > 0 jika maxCount > 0
+                if (maxIndex != -1 && maxCount > 0) {
+                    setBarHighlight(maxIndex)
+                } else {
+                    // Jika tidak ada data sama sekali, set streak value ke 0 dan reset highlight
+                    barViews.forEach { it.setBackgroundResource(R.drawable.rectangle_2) }
+                    streakValue.text = "0"
+                    currentHighlightedIndex = -1
+                }
             }
         }
     }

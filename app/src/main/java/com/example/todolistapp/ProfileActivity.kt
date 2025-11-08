@@ -45,9 +45,9 @@ import kotlin.math.roundToInt
 import android.graphics.Matrix
 import androidx.exifinterface.media.ExifInterface
 
-// Konstanta untuk SharedPrefs Streak (INI AMAN, tidak diubah)
-private val STREAK_PREFS_NAME = "TimyTimePrefs"
-private val KEY_STREAK = "current_streak"
+// HAPUS: Konstan untuk SharedPrefs Streak
+// private val STREAK_PREFS_NAME = "TimyTimePrefs"
+// private val KEY_STREAK = "current_streak"
 
 class ProfileActivity : AppCompatActivity() {
 
@@ -56,7 +56,7 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var tvUsername: TextView
     private lateinit var ivProfilePicture: CircleImageView
     // --- HAPUS --- private lateinit var sharedPrefs: SharedPreferences
-    private lateinit var streakPrefs: SharedPreferences // Ini untuk streak, jadi tetap aman
+    // HAPUS: private lateinit var streakPrefs: SharedPreferences // Ini untuk streak, jadi tetap aman
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var tvCompletedTasksLabel: TextView
     private lateinit var tvMissedTasksLabel: TextView
@@ -104,8 +104,8 @@ class ProfileActivity : AppCompatActivity() {
         // --- HAPUS --- Inisialisasi sharedPrefs untuk profil
         // sharedPrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
 
-        // Inisialisasi streakPrefs (Ini tetap ada)
-        streakPrefs = getSharedPreferences(STREAK_PREFS_NAME, Context.MODE_PRIVATE)
+        // HAPUS: Inisialisasi streakPrefs
+        // streakPrefs = getSharedPreferences(STREAK_PREFS_NAME, Context.MODE_PRIVATE)
 
         tabLayout = findViewById(R.id.tabLayout)
         viewPager = findViewById(R.id.viewPager)
@@ -225,12 +225,16 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     /**
-     * Mengambil nilai streak dari SharedPreferences dan memperbarui TextView.
-     * (Fungsi ini aman, tidak diubah)
+     * Mengambil nilai streak dari TaskRepository (Firestore) dan memperbarui TextView.
      */
     private fun updateStreakValue() {
-        val streak = streakPrefs.getInt(KEY_STREAK, 0)
-        tvStreakValue.text = streak.toString()
+        lifecycleScope.launch(Dispatchers.Main) {
+            val currentState = withContext(Dispatchers.IO) {
+                // Pastikan untuk selalu memanggil TaskRepository
+                TaskRepository.getCurrentUserStreakState()
+            }
+            tvStreakValue.text = currentState.currentStreak.toString()
+        }
     }
 
 
