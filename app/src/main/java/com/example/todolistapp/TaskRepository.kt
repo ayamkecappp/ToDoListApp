@@ -50,6 +50,7 @@ data class Task(
     val endTimeMillis: Long = 0L, // Digunakan hanya jika time adalah range/manual time
     val flowDurationMillis: Long = 0L, // Durasi Flow Timer
     val details: String = "",
+    var createdAt: Timestamp = Timestamp.now()
 ) {
     // Konstruktor tanpa argumen untuk deserialisasi Firebase
     constructor() : this(id = UUID.randomUUID().toString())
