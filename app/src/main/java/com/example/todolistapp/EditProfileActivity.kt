@@ -44,6 +44,10 @@ import android.graphics.Matrix
 
 class EditProfileActivity : AppCompatActivity() {
 
+    // HAPUS KONSTANTA SHAREDPREFERENCES UNTUK USERNAME
+    // private val PROFILE_PREFS_NAME = "ProfilePrefs"
+    // private val KEY_USERNAME = "username"
+
     private lateinit var inputName: EditText
     private lateinit var inputUsername: EditText
     private lateinit var inputGender: EditText
@@ -403,6 +407,9 @@ class EditProfileActivity : AppCompatActivity() {
             inputUsername.setText("@username")
             inputGender.setText(currentGender) // Default "Male"
             ivProfilePicture.setImageResource(R.drawable.ic_profile)
+
+            // HAPUS LOGIKA SHARED PREFERENCES UNTUK USERNAME
+
             return
         }
 
@@ -434,6 +441,9 @@ class EditProfileActivity : AppCompatActivity() {
                     inputUsername.setText(username)
                     inputGender.setText(currentGender)
 
+                    // HAPUS SINKRONISASI SHARED PREFERENCES UNTUK USERNAME
+                    // END HAPUS
+
                     if (!currentPermanentImageUrl.isNullOrEmpty()) {
                         val options = RequestOptions().transform(CircleCrop())
                         Glide.with(this@EditProfileActivity)
@@ -450,6 +460,9 @@ class EditProfileActivity : AppCompatActivity() {
                     inputGender.setText(currentGender)
                     ivProfilePicture.setImageResource(R.drawable.ic_profile)
                     currentPermanentImageUrl = null // Pastikan null
+
+                    // HAPUS SETTING DEFAULT DI SHARED PREFERENCES
+                    // END HAPUS
                 }
             } catch (e: Exception) {
                 Log.e("FirestoreLoad", "Error loading profile data", e)
@@ -504,7 +517,7 @@ class EditProfileActivity : AppCompatActivity() {
             // Tidak perlu 'else if (currentImageUri == null)'
             // Jika tidak ada URI lokal baru, 'finalImageString' (URL lama) akan otomatis digunakan.
 
-            // 2. Simpan data ke Firestore
+            // 2. Simpan data ke Firestore (INI ADALAH SUMBER DATA BARU UNTUK HOMEACTIVITY)
             val profileData = hashMapOf(
                 "name" to newName,
                 "username" to newUsername,
@@ -527,9 +540,10 @@ class EditProfileActivity : AppCompatActivity() {
                 }
             }
 
-            // 3. Navigasi (TANPA SharedPreferences)
+            // 3. Navigasi (HAPUS SEMUA SINKRONISASI SHARED PREFERENCES)
             if (success) {
-                // HAPUS SEMUA 'sharedPrefs.edit()...'
+                // HAPUS SINKRONISASI SHARED PREFERENCES
+                // END HAPUS
 
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@EditProfileActivity, "Profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()

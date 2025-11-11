@@ -34,6 +34,12 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 
+// TAMBAHKAN IMPOR FIREBASE
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+// END TAMBAH
+
 // HAPUS DEFINISI DUPLIKASI STREAKSTATE DI SINI.
 // ASUMSI: StreakState diimpor dari TaskRepository.kt atau file model bersama.
 
@@ -51,8 +57,9 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var dayEllipses: List<View>
     private lateinit var dayRunnerIcons: List<View>
 
-    private val PROFILE_PREFS_NAME = "ProfilePrefs"
-    private val KEY_USERNAME = "username"
+    // HAPUS KONSTANTA SHARED PREFERENCES UNTUK USERNAME
+    // private val PROFILE_PREFS_NAME = "ProfilePrefs"
+    // private val KEY_USERNAME = "username"
 
     // HAPUS SEMUA DEKLARASI SHAREDPREFERENCES UNTUK STREAK
     // private val PREFS_NAME = "TimyTimePrefs"
@@ -133,7 +140,7 @@ class HomeActivity : AppCompatActivity() {
         checkAndUpdateStreak()
         updateWeeklyProgressUI()
         bottomNav.selectedItemId = R.id.nav_home
-        startChatLoop()
+        startChatLoop() // Memanggil fungsi fetch username dari Firebase
     }
 
     override fun onPause() {
@@ -146,19 +153,47 @@ class HomeActivity : AppCompatActivity() {
         scope.cancel()
     }
 
+    // FUNGSI BARU UNTUK MENGAMBIL USERNAME DARI FIREBASE
+    private suspend fun fetchUserNameFromFirebase(): String {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+        return if (userId != null) {
+            try {
+                val db = FirebaseFirestore.getInstance()
+                // Mengambil data secara sinkron menggunakan await()
+                val document = db.collection("users").document(userId).get().await()
+
+                if (document.exists()) {
+                    // Mengambil username dari Firestore, default ke "Guest"
+                    val username = document.getString("username") ?: "Guest"
+                    username
+                } else {
+                    "Guest" // Dokumen user tidak ditemukan
+                }
+            } catch (e: Exception) {
+                Log.e("HomeActivity", "Error fetching username from Firebase", e)
+                "Guest" // Error fetching data
+            }
+        } else {
+            "Guest" // User tidak login
+        }
+    }
+    // FUNGSI startChatLoop() DIMODIFIKASI UNTUK MENGGUNAKAN COROUTINE UNTUK FETCH DATA
     private fun startChatLoop() {
         stopChatLoop()
-        val profilePrefs = getSharedPreferences(PROFILE_PREFS_NAME, Context.MODE_PRIVATE)
-        val userName = profilePrefs.getString(KEY_USERNAME, "Guest") ?: "Guest"
-        val messages = getTimyMessages(userName)
 
-        // Menggunakan scope coroutine yang didefinisikan di atas (bukan lifecycleScope)
-        chatJob = scope.launch {
-            var index = 0
-            while (isActive) {
-                tvTimyChatText.text = messages[index % messages.size]
-                index++
-                delay(5000L)
+        // Gunakan scope coroutine untuk operasi asinkron (fetch Firebase)
+        chatJob = scope.launch(Dispatchers.IO) {
+            val userName = fetchUserNameFromFirebase() // Ambil username dari Firebase
+
+            withContext(Dispatchers.Main) { // Pindah ke Main Thread untuk update UI
+                val messages = getTimyMessages(userName)
+                var index = 0
+                while (isActive) {
+                    tvTimyChatText.text = messages[index % messages.size]
+                    index++
+                    delay(5000L)
+                }
             }
         }
     }
