@@ -40,6 +40,7 @@
         app:tint="@color/very_dark_blue"/>
 
     <ScrollView
+        android:id="@+id/scrollViewBadges"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:paddingTop="32dp"
@@ -55,6 +56,7 @@
             android:paddingBottom="40dp"
             android:gravity="center_horizontal">
 
+            <!-- Main Badge Image (Badge yang sedang aktif / kosong jika belum ada) -->
             <ImageView
                 android:id="@+id/ivMainBadge"
                 android:layout_width="550dp"
@@ -65,90 +67,114 @@
                 android:layout_marginBottom="-170dp"
                 android:layout_marginTop="-130dp"/>
 
+            <!-- Dynamic Title Text -->
             <TextView
                 android:id="@+id/tvOnFire"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="You're on Fire!"
+                android:text="Start Your Journey!"
                 android:textSize="24sp"
                 android:textStyle="bold"
                 android:textColor="@color/very_dark_blue"
                 android:fontFamily="@font/lexend"
-                android:layout_marginBottom="48dp"/>
+                android:layout_marginBottom="16dp"/>
+
+            <!-- Streak Info Text (NEW) -->
+            <TextView
+                android:id="@+id/tvStreakInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Complete tasks to unlock your first badge!"
+                android:textSize="14sp"
+                android:textColor="@color/orange"
+                android:fontFamily="@font/lexend"
+                android:gravity="center"
+                android:paddingHorizontal="24dp"
+                android:layout_marginBottom="32dp"
+                android:visibility="gone"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Previous Badges"
+                android:text="All Badges"
                 android:textSize="20sp"
                 android:textStyle="bold"
                 android:textColor="@color/very_dark_blue"
                 android:fontFamily="@font/lexend"
                 android:layout_marginBottom="32dp"/>
 
+            <!-- First Grid: Badges 2, 3, 4 (7, 15, 30 days) -->
             <GridLayout
+                android:id="@+id/gridFirstRow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:columnCount="3"
-                android:rowCount="2"
+                android:rowCount="1"
                 android:alignmentMode="alignBounds"
                 android:useDefaultMargins="true"
                 android:padding="8dp"
                 android:layout_marginTop="-39dp">
 
+                <!-- Badge 2: 7 days -->
                 <ImageView
                     android:layout_width="80dp"
                     android:layout_height="80dp"
                     android:src="@drawable/streak_badge_2"
                     android:scaleType="fitCenter"
-                    android:contentDescription="Badge 7"
+                    android:contentDescription="Badge 7 Days"
                     android:layout_margin="8dp"/>
 
+                <!-- Badge 3: 15 days -->
                 <ImageView
                     android:layout_width="80dp"
                     android:layout_height="80dp"
                     android:src="@drawable/streak_badge_3"
                     android:scaleType="fitCenter"
-                    android:contentDescription="Badge 15"
+                    android:contentDescription="Badge 15 Days"
                     android:layout_margin="8dp"/>
 
+                <!-- Badge 4: 30 days -->
                 <ImageView
                     android:layout_width="80dp"
                     android:layout_height="80dp"
                     android:src="@drawable/streak_badge_4"
                     android:scaleType="fitCenter"
-                    android:contentDescription="Badge 30"
+                    android:contentDescription="Badge 30 Days"
                     android:layout_margin="8dp"/>
-
 
             </GridLayout>
 
+            <!-- Second Grid: Badges 5, 6 (50, 100 days) -->
             <GridLayout
+                android:id="@+id/gridSecondRow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:columnCount="3"
-                android:rowCount="2"
+                android:rowCount="1"
                 android:alignmentMode="alignBounds"
                 android:useDefaultMargins="true"
                 android:padding="8dp"
                 android:layout_marginTop="-39dp">
-            <ImageView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:src="@drawable/streak_badge_5"
-                android:scaleType="fitCenter"
-                android:contentDescription="Badge 50"
-                android:layout_margin="8dp" />
 
-            <ImageView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:src="@drawable/streak_badge_6"
-                android:scaleType="fitCenter"
-                android:contentDescription="Badge 100"
-                android:layout_margin="8dp"/>
+                <!-- Badge 5: 50 days -->
+                <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:src="@drawable/streak_badge_5"
+                    android:scaleType="fitCenter"
+                    android:contentDescription="Badge 50 Days"
+                    android:layout_margin="8dp" />
 
-        </GridLayout>
+                <!-- Badge 6: 100 days -->
+                <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:src="@drawable/streak_badge_6"
+                    android:scaleType="fitCenter"
+                    android:contentDescription="Badge 100 Days"
+                    android:layout_margin="8dp"/>
+
+            </GridLayout>
         </LinearLayout>
     </ScrollView>
 

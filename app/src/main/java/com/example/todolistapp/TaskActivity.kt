@@ -85,6 +85,9 @@ class TaskActivity : AppCompatActivity() {
     // MODIFIKASI fungsi onResume() yang sudah ada
     override fun onResume() {
         super.onResume()
+
+        NotificationHelper.updateLastAppOpenTime(this)
+
         currentCalendar = Calendar.getInstance()
         loadAllContent() // Sudah ada
         startMissedTaskChecker()

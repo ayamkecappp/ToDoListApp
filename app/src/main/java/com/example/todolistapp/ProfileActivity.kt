@@ -217,6 +217,9 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+
+        NotificationHelper.updateLastAppOpenTime(this)
+
         // Panggil loadProfileData di onResume untuk menangkap perubahan
         // yang mungkin terjadi di EditProfileActivity
         loadProfileData()

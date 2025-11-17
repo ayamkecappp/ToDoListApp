@@ -131,8 +131,10 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun navigateToHome(useAnimation: Boolean = true) {
+        // Update waktu terakhir app dibuka
+        NotificationHelper.updateLastAppOpenTime(this)
+
         val intent = Intent(this, HomeActivity::class.java)
-        // Membersihkan stack aktivitas sehingga pengguna tidak bisa kembali ke halaman login
         intent.flags = FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         if (useAnimation) {

@@ -20,4 +20,5 @@
     <color name="blue_primary">#FF007AFF</color>
     <!-- WARNA TIDAK AKTIF BOTTOM NAV (Gunakan nilai Abu-abu Netral) -->
     <color name="gray_inactive">#808080</color>
+    <color name="light_gray">#E0E0E0</color>
 </resources>

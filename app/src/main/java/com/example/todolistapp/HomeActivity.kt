@@ -34,6 +34,12 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
 // TAMBAHKAN IMPOR FIREBASE
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -84,6 +90,28 @@ class HomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.home)
+
+        // Inisialisasi notification channels
+        NotificationHelper.createNotificationChannels(this)
+
+        // Jadwalkan notification checks
+        NotificationHelper.scheduleTaskReminderCheck(this)
+        NotificationHelper.scheduleInactivityCheck(this)
+
+        // Request notification permission untuk Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    1001
+                )
+            }
+        }
 
         // HAPUS INISIALISASI SHAREDPREFERENCES UNTUK STREAK
         // prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -137,6 +165,9 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+
+        NotificationHelper.updateLastAppOpenTime(this)
+
         checkAndUpdateStreak()
         updateWeeklyProgressUI()
         bottomNav.selectedItemId = R.id.nav_home
