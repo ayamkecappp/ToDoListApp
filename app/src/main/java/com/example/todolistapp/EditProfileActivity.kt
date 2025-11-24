@@ -81,10 +81,10 @@ class EditProfileActivity : AppCompatActivity() {
                     // 3. Muat pratinjau langsung dari variabel instance
                     val options = RequestOptions().transform(CircleCrop())
                     Glide.with(this).load(currentImageUri).apply(options).into(ivProfilePicture)
-                    Toast.makeText(this, "Foto profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Profile photo successfully updated!", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Log.e("EditProfile", "Error setting image URI from camera: ${e.message}")
-                    Toast.makeText(this, "Gagal memuat gambar dari kamera. Coba lagi.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Failed to load image from camera. Try again.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -116,7 +116,7 @@ class EditProfileActivity : AppCompatActivity() {
 
             val (originalWidth, originalHeight) = options.outWidth to options.outHeight
             if (originalWidth <= 0 || originalHeight <= 0) {
-                Log.e("ImageCompression", "Gagal membaca dimensi gambar.")
+                Log.e("ImageCompression", "Failed to read image dimensions.")
                 return null
             }
 
@@ -139,7 +139,7 @@ class EditProfileActivity : AppCompatActivity() {
             inputStream?.close()
 
             if (bitmapToProcess == null) {
-                Log.e("ImageCompression", "Gagal men-decode bitmap.")
+                Log.e("ImageCompression", "Failed to decode bitmap.")
                 return null
             }
 
@@ -148,10 +148,10 @@ class EditProfileActivity : AppCompatActivity() {
                 inputStream = contentResolver.openInputStream(imageUri) // Buka stream BARU untuk EXIF
                 if (inputStream != null) {
                     bitmapToProcess = rotateBitmapBasedOnExif(bitmapToProcess, inputStream)
-                    Log.d("ImageCompression", "Rotasi EXIF diterapkan.")
+                    Log.d("ImageCompression", "EXIF rotation applied.")
                 }
             } catch (exifError: Exception) {
-                Log.e("ImageCompression", "Gagal membaca EXIF/rotasi", exifError)
+                Log.e("ImageCompression", "Failed to read EXIF/rotation", exifError)
                 // Lanjutkan proses tanpa rotasi jika gagal
             } finally {
                 inputStream?.close() // Pastikan stream EXIF ditutup
@@ -189,7 +189,7 @@ class EditProfileActivity : AppCompatActivity() {
                 compressedBytes = outputStream.toByteArray()
 
                 val currentSizeKB = compressedBytes.size / 1024
-                Log.d("ImageCompression", "Kualitas: $quality, Ukuran: ${currentSizeKB}KB")
+                Log.d("ImageCompression", "Quality: $quality, Size: ${currentSizeKB}KB")
 
                 quality -= 5
 
@@ -198,11 +198,11 @@ class EditProfileActivity : AppCompatActivity() {
             finalBitmap.recycle() // Bebaskan bitmap hasil scaling
             outputStream.close()
 
-            Log.d("ImageCompression", "Ukuran final: ${compressedBytes.size / 1024}KB")
+            Log.d("ImageCompression", "Final size: ${compressedBytes.size / 1024}KB")
             return compressedBytes
 
         } catch (e: Exception) {
-            Log.e("ImageCompression", "Gagal mengkompresi gambar", e)
+            Log.e("ImageCompression", "Failed to compress image", e)
             try { inputStream?.close() } catch (eClose: Exception) { /* abaikan */ }
             return null
         }
@@ -306,18 +306,18 @@ class EditProfileActivity : AppCompatActivity() {
 
     private suspend fun uploadImageToCloudinary(userId: String, imageUri: Uri): String? {
         if (userId.isEmpty()) {
-            Log.e("CloudinaryUpload", "userId kosong!")
+            Log.e("CloudinaryUpload", "userId is empty!")
             return null
         }
 
-        Log.d("CloudinaryUpload", "Memulai upload untuk userId: $userId")
+        Log.d("CloudinaryUpload", "Starting upload for userId: $userId")
 
         return withContext(Dispatchers.IO) {
             try {
                 // 1. Kompresi gambar
                 val compressedBytes = getCompressedImageBytes(imageUri, 500) // 500KB max
                 if (compressedBytes == null) {
-                    Log.e("CloudinaryUpload", "Kompresi gambar gagal")
+                    Log.e("CloudinaryUpload", "Image compression failed")
                     return@withContext null
                 }
 
@@ -364,14 +364,14 @@ class EditProfileActivity : AppCompatActivity() {
                     val secureUrl = responseBody?.let { extractSecureUrl(it) }
 
                     if (secureUrl != null) {
-                        Log.d("CloudinaryUpload", "Upload berhasil: $secureUrl")
+                        Log.d("CloudinaryUpload", "Upload successful: $secureUrl")
                         return@withContext secureUrl
                     } else {
-                        Log.e("CloudinaryUpload", "Secure URL tidak ditemukan di response")
+                        Log.e("CloudinaryUpload", "Secure URL not found in response")
                         return@withContext null
                     }
                 } else {
-                    Log.e("CloudinaryUpload", "Upload gagal: ${response.code} - ${response.message}")
+                    Log.e("CloudinaryUpload", "Upload failed: ${response.code} - ${response.message}")
                     val errorBody = response.body?.string()
                     Log.e("CloudinaryUpload", "Error body: $errorBody")
                     return@withContext null
@@ -401,9 +401,9 @@ class EditProfileActivity : AppCompatActivity() {
     private fun loadProfileData() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
-            Toast.makeText(this, "User tidak login.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "User is not logged in.", Toast.LENGTH_SHORT).show()
             // Set default jika user null
-            inputName.setText("Nama Pengguna")
+            inputName.setText("Name")
             inputUsername.setText("@username")
             inputGender.setText(currentGender) // Default "Male"
             ivProfilePicture.setImageResource(R.drawable.ic_profile)
@@ -418,7 +418,7 @@ class EditProfileActivity : AppCompatActivity() {
 
         // Tampilkan loading (opsional, tapi disarankan)
         // Misal: progressBar.visibility = View.VISIBLE
-        Toast.makeText(this, "Memuat profil...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Loading profile...", Toast.LENGTH_SHORT).show()
 
         lifecycleScope.launch {
             try {
@@ -429,7 +429,7 @@ class EditProfileActivity : AppCompatActivity() {
 
                 if (document.exists()) {
                     // Ambil data dari dokumen Firestore
-                    val name = document.getString("name") ?: "Nama Pengguna"
+                    val name = document.getString("name") ?: "Name"
                     val username = document.getString("username") ?: "@username"
                     currentGender = document.getString("gender") ?: "Male" // Tetap set currentGender
 
@@ -455,7 +455,7 @@ class EditProfileActivity : AppCompatActivity() {
                     }
                 } else {
                     // Jika user baru dan dokumen belum ada, set default
-                    inputName.setText("Nama Pengguna")
+                    inputName.setText("Name")
                     inputUsername.setText("@username")
                     inputGender.setText(currentGender)
                     ivProfilePicture.setImageResource(R.drawable.ic_profile)
@@ -466,7 +466,7 @@ class EditProfileActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e("FirestoreLoad", "Error loading profile data", e)
-                Toast.makeText(this@EditProfileActivity, "Gagal memuat profil.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@EditProfileActivity, "Failed to load profile.", Toast.LENGTH_SHORT).show()
             } finally {
                 // Sembunyikan loading (opsional)
                 // Misal: progressBar.visibility = View.GONE
@@ -481,16 +481,16 @@ class EditProfileActivity : AppCompatActivity() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
 
         if (newName.isEmpty() || newUsername.isEmpty()) {
-            Toast.makeText(this, "Nama dan Username tidak boleh kosong.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Name and Username cannot be empty.", Toast.LENGTH_SHORT).show()
             return
         }
 
         if (userId == null) {
-            Toast.makeText(this, "User tidak login.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "User is not logged in.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        Toast.makeText(this, "Menyimpan profil...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Saving profile...", Toast.LENGTH_SHORT).show()
 
         lifecycleScope.launch {
             // Mulai dengan URL yang tadi kita ambil dari Firestore
@@ -507,7 +507,7 @@ class EditProfileActivity : AppCompatActivity() {
                     // Upload GAGAL, beri tahu pengguna.
                     // 'finalImageString' tidak diubah (tetap menggunakan URL lama)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@EditProfileActivity, "Gagal mengunggah gambar profil. Data foto tidak diubah.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@EditProfileActivity, "Failed to upload profile image. Photo data not changed.", Toast.LENGTH_LONG).show()
                     }
                 } else {
                     // Upload SUKSES, URL Cloudinary menjadi string gambar baru
@@ -546,13 +546,13 @@ class EditProfileActivity : AppCompatActivity() {
                 // END HAPUS
 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@EditProfileActivity, "Profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@EditProfileActivity, "Profile successfully updated!", Toast.LENGTH_SHORT).show()
                     setResult(Activity.RESULT_OK)
                     finish()
                 }
             } else {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@EditProfileActivity, "Gagal menyimpan profil ke database.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@EditProfileActivity, "Failed to save profile to database.", Toast.LENGTH_SHORT).show()
                 }
             }
         }

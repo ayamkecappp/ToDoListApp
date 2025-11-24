@@ -53,7 +53,7 @@ class CalendarActivity : AppCompatActivity() {
     private val CORNER_RADIUS_DP = 8
 
     private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
-    private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
+    private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.ENGLISH)
     private val dateOnlyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     private val priorityColorMap = mapOf(
@@ -339,10 +339,10 @@ class CalendarActivity : AppCompatActivity() {
         val btnConfirm1 = dialogView.findViewById<TextView>(R.id.btnIgnore)
         val btnConfirm2 = dialogView.findViewById<TextView>(R.id.btnView)
 
-        val message = if (action == "selesai") {
-            "Selamat! Tugas '$taskTitle' berhasil diselesaikan."
+        val message = if (action == "completed") {
+            "Congratulations! Task '$taskTitle' has been completed."
         } else {
-            "Tugas '$taskTitle' berhasil dihapus."
+            "Task '$taskTitle' has been deleted."
         }
 
         mainMessageTextView?.text = message
@@ -353,7 +353,7 @@ class CalendarActivity : AppCompatActivity() {
         val dismissListener = View.OnClickListener {
             dialog.dismiss()
             // Pengecekan Streak hanya dilakukan setelah dialog konfirmasi ditutup
-            if (action == "selesai" && newStreak > oldStreak) {
+            if (action == "completed" && newStreak > oldStreak) {
                 showStreakSuccessDialog(newStreak)
             }
         }
@@ -495,7 +495,7 @@ class CalendarActivity : AppCompatActivity() {
                 ).apply {
                     setMargins(0, 50.dp, 0, 50.dp)
                 }
-                text = "Tidak ada tugas aktif di tanggal ini."
+                text = "No active tasks on this date."
                 textSize = 14f
                 setTextColor(Color.parseColor("#98A8C8"))
                 typeface = lexendFont
@@ -634,12 +634,12 @@ class CalendarActivity : AppCompatActivity() {
                             dialog.dismiss()
                         }
 
-                        showConfirmationDialog(task.title, "selesai", newStreak, oldStreak)
+                        showConfirmationDialog(task.title, "completed", newStreak, oldStreak)
                         updateCalendar()
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Gagal menandai tugas selesai. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Failed to mark task as complete. Please make sure you're logged in.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -647,7 +647,7 @@ class CalendarActivity : AppCompatActivity() {
 
         btnFlowTimer.setOnClickListener {
             if (task.flowDurationMillis <= 0L) {
-                Toast.makeText(context, "Tidak ada Flow Timer disetel untuk tugas ini.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "No Flow Timer set for this task.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             if (overlayContainerView != null && sheetContainerView != null) {
@@ -685,10 +685,10 @@ class CalendarActivity : AppCompatActivity() {
                         } else {
                             dialog.dismiss()
                         }
-                        showConfirmationDialog(task.title, "dihapus")
+                        showConfirmationDialog(task.title, "deleted")
                         updateCalendar()
                     } else {
-                        Toast.makeText(context, "Gagal menghapus tugas. Pastikan Anda sudah login.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Failed to delete task. Please make sure you're logged in.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }

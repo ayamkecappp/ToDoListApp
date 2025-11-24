@@ -48,7 +48,7 @@ class AddTaskActivity : AppCompatActivity() {
 
     private var taskDateMillis: Long = System.currentTimeMillis()
     private val EXTRA_SELECTED_DATE_MILLIS = "EXTRA_SELECTED_DATE_MILLIS"
-    private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
+    private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.ENGLISH)
 
     private var currentSelectedPriority: String = "None"
     private val priorities = arrayOf("None", "Low", "Medium", "High")
@@ -88,11 +88,11 @@ class AddTaskActivity : AppCompatActivity() {
         if (selectedMillis != -1L) {
             taskDateMillis = selectedMillis
             val selectedDate = Date(taskDateMillis)
-            Toast.makeText(this, "Aktivitas akan ditambahkan pada: ${uiDateFormat.format(selectedDate)}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Activity will be added on: ${uiDateFormat.format(selectedDate)}", Toast.LENGTH_LONG).show()
         } else {
             taskDateMillis = System.currentTimeMillis()
             val todayDate = Date(taskDateMillis)
-            Toast.makeText(this, "Aktivitas akan ditambahkan pada hari ini: ${uiDateFormat.format(todayDate)}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Activity will be added today: ${uiDateFormat.format(todayDate)}", Toast.LENGTH_SHORT).show()
         }
 
         inputPriority.setText(currentSelectedPriority)
@@ -123,7 +123,7 @@ class AddTaskActivity : AppCompatActivity() {
 
     private fun saveTask() {
         if (FirebaseAuth.getInstance().currentUser == null) {
-            Toast.makeText(this, "Login diperlukan untuk menyimpan task.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Login required to save task.", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -136,7 +136,7 @@ class AddTaskActivity : AppCompatActivity() {
         val selectedDayCalendar = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
 
         if (title.isEmpty()) {
-            Toast.makeText(this, "Nama Aktivitas tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Activity name cannot be empty!", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -206,11 +206,11 @@ class AddTaskActivity : AppCompatActivity() {
 
                 withContext(Dispatchers.Main) {
                     showConfirmationDialog(newTask)
-                    Toast.makeText(this@AddTaskActivity, "Task berhasil disimpan ke Cloud Firestore!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@AddTaskActivity, "Task successfully saved to Cloud Firestore!", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@AddTaskActivity, "Gagal menyimpan task: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@AddTaskActivity, "Failed to save task: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             } finally {
                 withContext(Dispatchers.Main) {
@@ -277,7 +277,7 @@ class AddTaskActivity : AppCompatActivity() {
             val totalMillis = (hours * MILLIS_IN_HOUR) + (minutes * MILLIS_IN_MINUTE) + (seconds * MILLIS_IN_SECOND)
 
             if (totalMillis <= 0L) {
-                Toast.makeText(this, "Durasi Flow Timer harus lebih dari 0.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Flow Timer duration must be greater than 0.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -292,7 +292,7 @@ class AddTaskActivity : AppCompatActivity() {
 
             // Hapus inputTime.setText("") yang lama agar teks yang ada tetap dipertahankan
 
-            Toast.makeText(this, "Flow Timer berhasil disetel: ${timeDisplayString}.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Flow Timer successfully set: ${timeDisplayString}.", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
         }
 
@@ -353,14 +353,14 @@ class AddTaskActivity : AppCompatActivity() {
                     currentMinute,
                     true
                 )
-                endTimePicker.setTitle("Pilih Waktu Berakhir")
+                endTimePicker.setTitle("Select End Time")
                 endTimePicker.show()
             },
             currentHour,
             currentMinute,
             true
         )
-        startTimePicker.setTitle("Pilih Waktu Mulai")
+        startTimePicker.setTitle("Select Start Time")
         startTimePicker.show()
     }
 
@@ -433,7 +433,7 @@ class AddTaskActivity : AppCompatActivity() {
             currentSelectedPriority = selectedPriority
             inputPriority.setText(selectedPriority)
 
-            Toast.makeText(this, "Prioritas diatur ke: $selectedPriority", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Priority set to: $selectedPriority", Toast.LENGTH_SHORT).show()
             listPopupWindow.dismiss()
         }
 

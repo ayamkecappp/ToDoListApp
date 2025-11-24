@@ -110,7 +110,7 @@ class CameraActivity : AppCompatActivity() {
 
                 setUiMode(false)
             } catch (e: Exception) {
-                Toast.makeText(this, "Gagal membuka kamera: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Failed to open camera: ${e.message}", Toast.LENGTH_SHORT).show()
             }
 
         }, ContextCompat.getMainExecutor(this))
@@ -141,7 +141,7 @@ class CameraActivity : AppCompatActivity() {
                     showPreview(capturedImageUri)
                 }
                 override fun onError(exception: ImageCaptureException) {
-                    Toast.makeText(applicationContext, "Gagal mengambil foto: ${exception.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, "Failed to capture photo: ${exception.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         )
@@ -168,7 +168,7 @@ class CameraActivity : AppCompatActivity() {
 
     private fun setAsProfilePhoto() {
         if (capturedImageUri == null) {
-            Toast.makeText(this, "Tidak ada foto untuk diset.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No photo to set.", Toast.LENGTH_SHORT).show()
             return
         }
 

@@ -68,93 +68,133 @@
         <activity
             android:name=".SplashActivity"
             android:exported="true"
-            android:theme="@style/Theme.AppCompat.NoActionBar"> <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
 
         <activity
             android:name=".LoginActivity"
-            android:exported="false">
-        </activity>
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".MainActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".HomeActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".TaskActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".ProfileActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".SignUpActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".AddTaskActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".CalendarActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".SettingsActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".SearchFilterActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".CompletedTasksActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".MissedTasksActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".DeletedTasksActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".CameraActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".FlowTimerActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".PrivacyPolicyActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".AboutUsActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".SendFeedbackActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".ReportBugActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".StreakBadgeActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".EditProfileActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".EditTaskActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".ForgotPasswordActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".NewPasswordActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <provider
             android:name="androidx.work.impl.WorkManagerInitializer"

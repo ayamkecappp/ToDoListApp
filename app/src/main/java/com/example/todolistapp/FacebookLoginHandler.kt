@@ -26,12 +26,12 @@ class FacebookLoginHandler(private val activity: AppCompatActivity, private val 
 
             override fun onCancel() {
                 Log.d("FacebookLoginHandler", "facebook:onCancel")
-                Toast.makeText(activity, "Login Facebook dibatalkan.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(activity, "Facebook login cancelled.", Toast.LENGTH_SHORT).show()
             }
 
             override fun onError(error: FacebookException) {
                 Log.d("FacebookLoginHandler", "facebook:onError", error)
-                Toast.makeText(activity, "Login Facebook gagal: ${error.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(activity, "Facebook login failed: ${error.message}", Toast.LENGTH_LONG).show()
             }
         })
     }
@@ -52,7 +52,7 @@ class FacebookLoginHandler(private val activity: AppCompatActivity, private val 
                 } else {
                     // If sign in fails, display a message to the user.
                     Log.w("FacebookLoginHandler", "signInWithCredential:failure", task.exception)
-                    Toast.makeText(activity, "Autentikasi Firebase dengan Facebook gagal.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(activity, "Firebase authentication with Facebook failed.", Toast.LENGTH_SHORT).show()
                 }
             }
     }

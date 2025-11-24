@@ -105,7 +105,7 @@ class FlowTimerActivity : AppCompatActivity() {
         btnSetDurationOK.setOnClickListener {
             updateDurationFromPickers()
             toggleInputVisibility(false)
-            Toast.makeText(this, "Durasi diatur ke ${tvTimerDisplay.text}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Duration set to ${tvTimerDisplay.text}", Toast.LENGTH_SHORT).show()
         }
 
         btnBack.setOnClickListener {
@@ -169,7 +169,7 @@ class FlowTimerActivity : AppCompatActivity() {
         }
 
         if (timeRemainingMillis <= 0) {
-            Toast.makeText(this, "Mohon set durasi lebih dari 00:00:00", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Please set duration greater than 00:00:00", Toast.LENGTH_SHORT).show()
             toggleInputVisibility(true)
             return
         }
@@ -248,9 +248,9 @@ class FlowTimerActivity : AppCompatActivity() {
             mediaPlayer = MediaPlayer.create(this, R.raw.alarm_sound)
             mediaPlayer?.isLooping = true // Ulangi suara alarm
             mediaPlayer?.start()
-            Toast.makeText(this, "Alarm Berbunyi! Swipe ke atas untuk mematikan.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Alarm Ringing! Swipe up to stop.", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Gagal memutar alarm. Pastikan file alarm_sound.mp3 ada di folder res/raw.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Failed to play alarm. Make sure alarm_sound.mp3 exists in res/raw folder.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -303,7 +303,7 @@ class FlowTimerActivity : AppCompatActivity() {
             "Yes", "No",
             onPositive = {
                 stopAlarm() // Pastikan alarm mati sebelum keluar
-                Toast.makeText(this, "Tugas Selesai!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Task Completed!", Toast.LENGTH_SHORT).show()
                 finish()
             },
             onNegative = {
@@ -324,7 +324,7 @@ class FlowTimerActivity : AppCompatActivity() {
             },
             onNegative = {
                 stopAlarm() // Matikan alarm saat pengguna ingin keluar
-                Toast.makeText(this, "Kembali ke daftar tugas.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Returning to task list.", Toast.LENGTH_SHORT).show()
                 finish()
             }
         )
@@ -332,7 +332,7 @@ class FlowTimerActivity : AppCompatActivity() {
     }
 
     private fun showSetNewTimeDialog() {
-        Toast.makeText(this, "Atur durasi baru, lalu tekan OK untuk menyimpan.", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Set new duration, then press OK to save.", Toast.LENGTH_LONG).show()
 
         val timeToShow = if(totalDurationMillis > 0) totalDurationMillis else 30 * MILLIS_IN_MINUTE
 
@@ -350,7 +350,7 @@ class FlowTimerActivity : AppCompatActivity() {
     override fun onBackPressed() {
         if (mediaPlayer?.isPlaying == true) {
             // Jika alarm berbunyi, jangan izinkan back press tanpa mematikan
-            Toast.makeText(this, "Swipe ke atas untuk mematikan alarm terlebih dahulu.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Swipe up to stop alarm first.", Toast.LENGTH_SHORT).show()
             return
         }
         super.onBackPressed()

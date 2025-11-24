@@ -32,7 +32,7 @@ class MissedTasksActivity : AppCompatActivity() {
     private lateinit var scrollView: androidx.core.widget.NestedScrollView
     private lateinit var emptyStateContainer: LinearLayout
     private lateinit var ivTimyTasks: ImageView
-    private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
+    private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.ENGLISH)
     private val groupingDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     // Launcher untuk Edit Task Activity (Reschedule)
