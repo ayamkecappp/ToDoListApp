@@ -25,12 +25,12 @@ class ReportBugActivity : AppCompatActivity() {
         if (uri != null) {
             selectedFileUri = uri
             // Tampilkan status file yang dipilih (misalnya nama file atau "File Selected")
-            tvUploadStatus.text = "File berhasil dipilih (${getFileName(uri)})"
-            Toast.makeText(this, "Screenshot berhasil dipilih.", Toast.LENGTH_SHORT).show()
+            tvUploadStatus.text = "File selected (${getFileName(uri)})"
+            Toast.makeText(this, "Screenshot selected successfully.", Toast.LENGTH_SHORT).show()
         } else {
             selectedFileUri = null
             tvUploadStatus.text = "Upload Files" // Kembali ke status default
-            Toast.makeText(this, "Pemilihan file dibatalkan.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "File selection canceled.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -63,9 +63,9 @@ class ReportBugActivity : AppCompatActivity() {
             // Logika validasi dan pengiriman bug report di sini
             if (selectedFileUri != null) {
                 // Di sini Anda bisa mengirim selectedFileUri ke server atau layanan
-                Toast.makeText(this, "Laporan Bug berhasil dikirim dengan 1 lampiran.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Bug report submitted successfully with 1 attachment.", Toast.LENGTH_LONG).show()
             } else {
-                Toast.makeText(this, "Laporan Bug berhasil dikirim.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Bug report submitted successfully.", Toast.LENGTH_LONG).show()
             }
 
             // Kembali ke Settings setelah kirim

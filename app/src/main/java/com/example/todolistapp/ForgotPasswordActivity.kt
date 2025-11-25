@@ -29,20 +29,20 @@ class ForgotPasswordActivity : AppCompatActivity() {
             val email = emailInput.text.toString().trim()
 
             if (email.isEmpty()) {
-                Toast.makeText(this, "Silakan masukkan alamat email Anda", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please enter your email address", Toast.LENGTH_SHORT).show()
             } else {
                 // KIRIM EMAIL RESET KATA SANDI DARI FIREBASE
                 auth.sendPasswordResetEmail(email)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
                             // Berhasil mengirim email
-                            Toast.makeText(this, "Email pengaturan ulang kata sandi telah dikirim. Silakan periksa email Anda.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this, "Password reset email has been sent. Please check your email.", Toast.LENGTH_LONG).show()
 
                             // Kembali ke halaman Login setelah email terkirim
                             finish()
                         } else {
                             // Gagal mengirim email
-                            Toast.makeText(this, "Gagal mengirim email: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this, "Failed to send email: ${task.exception?.message}", Toast.LENGTH_LONG).show()
                         }
                     }
 

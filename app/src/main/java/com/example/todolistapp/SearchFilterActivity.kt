@@ -38,7 +38,7 @@ class SearchFilterActivity : AppCompatActivity() {
     private lateinit var btnBack: ImageView
 
     private var activeMonthFilter: Int = -1
-    private val monthNames = arrayOf("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
+    private val monthNames = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
     private val priorityColorMap = mapOf(
         "Low" to R.color.low_priority,
@@ -266,10 +266,10 @@ class SearchFilterActivity : AppCompatActivity() {
                 taskResultsContainer.removeAllViews()
 
                 if (filteredTasks.isEmpty()) {
-                    val filterName = if (monthFilter == -1) "Semua Bulan" else monthNames[monthFilter]
+                    val filterName = if (monthFilter == -1) "All Months" else monthNames[monthFilter]
 
                     val noResults = TextView(this@SearchFilterActivity).apply {
-                        text = "Tidak ada hasil ditemukan untuk filter:\n'${query.ifEmpty { "Semua Tugas" }}' di bulan $filterName"
+                        text = "No results found for filter:\n'${query.ifEmpty { "All Tasks" }}' in month $filterName"
                         gravity = Gravity.CENTER_HORIZONTAL
                         setPadding(0, 50.dp, 0, 50.dp)
                         typeface = ResourcesCompat.getFont(context, R.font.lexend)
@@ -379,12 +379,12 @@ class SearchFilterActivity : AppCompatActivity() {
                 if (success) {
                     val newStreak = updateStreakOnTaskComplete()
                     withContext(Dispatchers.Main) {
-                        showConfirmationDialogWithStreakCheck(task.title, "selesai", newStreak, oldStreak)
+                        showConfirmationDialogWithStreakCheck(task.title, "completed", newStreak, oldStreak)
                         performSearch(inputSearch.text.toString(), activeMonthFilter)
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Gagal menandai tugas selesai.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Failed to mark task as completed.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -411,12 +411,12 @@ class SearchFilterActivity : AppCompatActivity() {
                 val success = TaskRepository.deleteTask(task.id)
                 if (success) {
                     withContext(Dispatchers.Main) {
-                        showConfirmationDialogWithStreakCheck(task.title, "dihapus", -1, -1)
+                        showConfirmationDialogWithStreakCheck(task.title, "deleted", -1, -1)
                         performSearch(inputSearch.text.toString(), activeMonthFilter)
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Failed to delete task.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -486,10 +486,10 @@ class SearchFilterActivity : AppCompatActivity() {
         val btnConfirm1 = dialogView.findViewById<TextView>(R.id.btnIgnore)
         val btnConfirm2 = dialogView.findViewById<TextView>(R.id.btnView)
 
-        val message = if (action == "selesai") {
-            "Selamat! Tugas '$taskTitle' berhasil diselesaikan."
+        val message = if (action == "completed") {
+            "Congratulations! Task '$taskTitle' has been completed successfully."
         } else {
-            "Tugas '$taskTitle' berhasil dihapus."
+            "Task '$taskTitle' has been deleted successfully."
         }
 
         mainMessageTextView?.text = message
@@ -499,7 +499,7 @@ class SearchFilterActivity : AppCompatActivity() {
 
         val dismissListener = View.OnClickListener {
             dialog.dismiss()
-            if (action == "selesai" && newStreak > oldStreak) {
+            if (action == "completed" && newStreak > oldStreak) {
                 showStreakSuccessDialog(newStreak)
             }
         }

@@ -28,7 +28,7 @@ class GoogleSignInHandler(private val activity: AppCompatActivity, private val a
                 firebaseAuthWithGoogle(account.idToken!!)
             } catch (e: ApiException) {
                 Log.w("GoogleSignInHandler", "Google sign in failed", e)
-                Toast.makeText(activity, "Login Google Gagal", Toast.LENGTH_SHORT).show()
+                Toast.makeText(activity, "Google Sign In Failed", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -55,7 +55,7 @@ class GoogleSignInHandler(private val activity: AppCompatActivity, private val a
                 if (task.isSuccessful) {
                     navigateToHome()
                 } else {
-                    Toast.makeText(activity, "Autentikasi Firebase Gagal", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(activity, "Firebase Authentication Failed", Toast.LENGTH_SHORT).show()
                 }
             }
     }

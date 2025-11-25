@@ -74,7 +74,7 @@ class SettingsActivity : AppCompatActivity() {
 
         // Delete Account (Placeholder)
         findViewById<View>(R.id.rectangleSettings7).setOnClickListener {
-            Toast.makeText(this, "Fungsionalitas Hapus Akun dipicu.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Delete Account functionality triggered.", Toast.LENGTH_SHORT).show()
             showCustomDeleteAccountDialog()
         }
 
@@ -113,11 +113,11 @@ class SettingsActivity : AppCompatActivity() {
         val btnYes = dialog.findViewById<TextView>(R.id.btnView)
         val btnNo = dialog.findViewById<TextView>(R.id.btnIgnore)
 
-        tvMessage?.text = "Apakah Anda yakin ingin keluar dari akun?"
+        tvMessage?.text = "Are you sure you want to log out?"
         tvMessage?.setTextColor(resources.getColor(R.color.dark_blue, theme))
 
-        btnYes?.text = "Ya"
-        btnNo?.text = "Tidak"
+        btnYes?.text = "Yes"
+        btnNo?.text = "No"
         btnYes?.setTextColor(resources.getColor(R.color.dark_blue, theme))
         btnNo?.setTextColor(resources.getColor(R.color.dark_blue, theme))
 
@@ -150,11 +150,11 @@ class SettingsActivity : AppCompatActivity() {
         val btnNo = dialog.findViewById<TextView>(R.id.btnIgnore)
 
         // Ubah teks untuk konfirmasi hapus akun
-        tvMessage?.text = "Apakah Anda yakin ingin menghapus akun ini secara permanen?"
+        tvMessage?.text = "Are you sure you want to permanently delete this account?"
         tvMessage?.setTextColor(resources.getColor(R.color.dark_blue, theme)) // Atau warna merah jika ada
 
-        btnYes?.text = "Ya, Hapus"
-        btnNo?.text = "Batal"
+        btnYes?.text = "Yes, Delete"
+        btnNo?.text = "Cancel"
         btnYes?.setTextColor(resources.getColor(R.color.dark_blue, theme)) // Atau warna merah
         btnNo?.setTextColor(resources.getColor(R.color.dark_blue, theme))
 
@@ -179,7 +179,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun performDeleteAccountData() {
         val user = auth.currentUser
         if (user == null) {
-            Toast.makeText(this, "Tidak ada pengguna yang login", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No user is currently logged in", Toast.LENGTH_SHORT).show()
             return
         }
         val uid = user.uid
@@ -220,18 +220,18 @@ class SettingsActivity : AppCompatActivity() {
 
                             }.addOnFailureListener { e ->
                                 Log.w(TAG, "Gagal menghapus profil Firestore.", e)
-                                Toast.makeText(this, "Gagal menghapus data: ${e.message}", Toast.LENGTH_LONG).show()
+                                Toast.makeText(this, "Failed to delete data: ${e.message}", Toast.LENGTH_LONG).show()
                                 // Sembunyikan dialog loading
                             }
                     } else {
                         Log.w(TAG, "Gagal menghapus tasks.", taskBatch.exception)
-                        Toast.makeText(this, "Gagal menghapus data: ${taskBatch.exception?.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this, "Failed to delete data: ${taskBatch.exception?.message}", Toast.LENGTH_LONG).show()
                         // Sembunyikan dialog loading
                     }
                 }
             }.addOnFailureListener { e ->
                 Log.w(TAG, "Gagal mengambil tasks.", e)
-                Toast.makeText(this, "Gagal mengambil data: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Failed to retrieve data: ${e.message}", Toast.LENGTH_LONG).show()
                 // Sembunyikan dialog loading
             }
     }
@@ -246,21 +246,21 @@ class SettingsActivity : AppCompatActivity() {
                 if (task.isSuccessful) {
                     // Akun berhasil dihapus
                     Log.d(TAG, "Akun Firebase berhasil dihapus.")
-                    Toast.makeText(this, "Akun Anda telah berhasil dihapus.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Your account has been successfully deleted.", Toast.LENGTH_LONG).show()
 
                     // Setelah akun dihapus, jalankan proses logout
                     performLogout()
                 } else {
                     // Gagal menghapus akun
-                    Log.w(TAG, "Gagal menghapus akun.", task.exception)
+                    Log.w(TAG, "Failed to delete account.", task.exception)
 
                     // Cek apakah error karena perlu re-autentikasi
                     if (task.exception is FirebaseAuthRecentLoginRequiredException) {
-                        Toast.makeText(this, "Gagal menghapus akun. Silakan login ulang dan coba lagi.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this, "Failed to delete account. Please log in again and try again.", Toast.LENGTH_LONG).show()
                         // Arahkan ke logout agar pengguna bisa login ulang
                         performLogout()
                     } else {
-                        Toast.makeText(this, "Gagal menghapus akun: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this, "Failed to delete account: ${task.exception?.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }

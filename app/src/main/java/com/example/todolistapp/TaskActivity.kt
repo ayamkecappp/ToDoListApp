@@ -812,7 +812,7 @@ class TaskActivity : AppCompatActivity() {
                             loadAllContent()
                         }, 300)
                     } else {
-                        Toast.makeText(context, "Gagal menandai tugas selesai.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Failed to mark task as complete.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -850,7 +850,7 @@ class TaskActivity : AppCompatActivity() {
                             loadAllContent()
                         }, 300)
                     } else {
-                        Toast.makeText(context, "Gagal menghapus tugas.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Failed to delete task.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -888,9 +888,9 @@ class TaskActivity : AppCompatActivity() {
         val btnConfirm2 = dialogView.findViewById<TextView>(R.id.btnView)
 
         val message = if (action == "selesai") {
-            "Selamat! Tugas '$taskTitle' berhasil diselesaikan."
+            "Congratulations! Task  '$taskTitle' successfully completed."
         } else {
-            "Tugas '$taskTitle' berhasil dihapus."
+            "Task  '$taskTitle' successfully deleted."
         }
 
         mainMessageTextView?.text = message

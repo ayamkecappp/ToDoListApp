@@ -84,7 +84,7 @@ class LoginActivity : AppCompatActivity() {
             val password = passwordEditText.text.toString().trim()
 
             if (email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Email dan kata sandi tidak boleh kosong.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Email and password cannot be empty.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -95,7 +95,7 @@ class LoginActivity : AppCompatActivity() {
                         navigateToHome()
                     } else {
                         Log.w("LoginActivity", "signInWithEmail:failure", task.exception)
-                        Toast.makeText(baseContext, "Autentikasi gagal.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(baseContext, "Authentication failed.", Toast.LENGTH_SHORT).show()
                     }
                 }
         }

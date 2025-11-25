@@ -428,14 +428,14 @@ class ProfileActivity : AppCompatActivity() {
     private fun handleNewProfilePhoto(imageUri: Uri) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
-            Toast.makeText(this, "Silakan login untuk menyimpan foto.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Please log in to save photo.", Toast.LENGTH_SHORT).show()
             return
         }
 
         // 1. Tampilkan gambar secara instan (preview)
         val options = RequestOptions().transform(CircleCrop())
         Glide.with(this).load(imageUri).apply(options).into(ivProfilePicture)
-        Toast.makeText(this, "Foto sedang diunggah...", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Photo is being uploaded...", Toast.LENGTH_LONG).show()
 
         lifecycleScope.launch {
             // 2. --- HAPUS --- Simpan URI lokal ke SharedPreferences
@@ -447,7 +447,7 @@ class ProfileActivity : AppCompatActivity() {
             if (uploadedUrl == null) {
                 // Gagal upload, kembali ke Main thread untuk UI
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@ProfileActivity, "Gagal mengunggah foto.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@ProfileActivity, "Failed to upload photo.", Toast.LENGTH_LONG).show()
                     // Muat ulang data (untuk mengembalikan foto lama dari Firestore)
                     loadProfileData()
                 }
@@ -477,9 +477,9 @@ class ProfileActivity : AppCompatActivity() {
 
                     // Muat ulang data untuk memastikan Glide memuat URL permanen dari Firestore
                     loadProfileData()
-                    Toast.makeText(this@ProfileActivity, "Foto profil berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ProfileActivity, "Profile photo successfully updated!", Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this@ProfileActivity, "Gagal menyimpan foto ke database.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ProfileActivity, "Failed to save photo to database.", Toast.LENGTH_SHORT).show()
                     // Muat ulang data (untuk mengembalikan foto lama dari Firestore)
                     loadProfileData()
                 }
@@ -563,7 +563,7 @@ class ProfileActivity : AppCompatActivity() {
 
                 } else {
                     // Gagal mengambil dari Firestore
-                    Toast.makeText(this@ProfileActivity, "Gagal memuat profil.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ProfileActivity, "Failed to load profile.", Toast.LENGTH_SHORT).show()
                     // Tampilkan default (daripada data basi)
                     tvUsername.text = "Guest"
                     ivProfilePicture.setImageResource(R.drawable.ic_profile)

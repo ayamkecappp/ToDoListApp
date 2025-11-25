@@ -34,17 +34,17 @@ class SignUpActivity : AppCompatActivity() {
             val confirmPassword = confirmPasswordEditText.text.toString().trim()
 
             if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-                Toast.makeText(this, "Semua kolom harus diisi.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "All fields must be filled.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             if (password != confirmPassword) {
-                Toast.makeText(this, "Kata sandi tidak cocok.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Passwords do not match.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             if (password.length < 6) {
-                Toast.makeText(this, "Kata sandi harus terdiri dari minimal 6 karakter.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Password must be at least 6 characters long.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -53,11 +53,11 @@ class SignUpActivity : AppCompatActivity() {
                 .addOnCompleteListener(this) { task ->
                     if (task.isSuccessful) {
                         Log.d("SignUpActivity", "createUserWithEmail:success")
-                        Toast.makeText(this, "Pendaftaran berhasil.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Registration successful.", Toast.LENGTH_SHORT).show()
                         navigateToHome()
                     } else {
                         Log.w("SignUpActivity", "createUserWithEmail:failure", task.exception)
-                        Toast.makeText(baseContext, "Pendaftaran gagal: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(baseContext, "Registration failed: ${task.exception?.message}", Toast.LENGTH_LONG).show()
                     }
                 }
         }
