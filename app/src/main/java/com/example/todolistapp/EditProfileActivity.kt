@@ -280,6 +280,7 @@ class EditProfileActivity : AppCompatActivity() {
         loadProfileData()
 
         // 2. Setup Listeners
+        // Setup Listeners - Letakkan SETELAH loadProfileData()
         ivBackArrow.setOnClickListener {
             finish()
         }
@@ -288,11 +289,18 @@ class EditProfileActivity : AppCompatActivity() {
             saveProfileData()
         }
 
-        // Mengklik ikon edit foto akan membuka CameraActivity
-        tvEditPhoto.setOnClickListener { launchCamera() }
-        ivProfilePicture.setOnClickListener { launchCamera() }
+// Pastikan tvEditPhoto dan ivProfilePicture mendapat listener yang benar
+        tvEditPhoto.setOnClickListener {
+            Log.d("EditProfile", "tvEditPhoto clicked - launching camera")
+            launchCamera()
+        }
 
-        // 3. Setup Dropdown Gender
+        ivProfilePicture.setOnClickListener {
+            Log.d("EditProfile", "ivProfilePicture clicked - launching camera")
+            launchCamera()
+        }
+
+// Setup Dropdown Gender
         inputGender.setOnClickListener {
             showGenderDropdown()
         }

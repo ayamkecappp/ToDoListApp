@@ -58,7 +58,7 @@ class EditTaskActivity : AppCompatActivity() {
         const val DEFAULT_FLOW_TIMER_DURATION = 30 * 60 * 1000L // 30 menit default
     }
 
-    private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale("in", "ID"))
+    private val uiDateFormat = SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.ENGLISH)
 
     private var currentSelectedPriority: String = "None"
     private val priorities = arrayOf("None", "Low", "Medium", "High")
@@ -89,7 +89,7 @@ class EditTaskActivity : AppCompatActivity() {
         val isRescheduleMode = intent.getBooleanExtra(EXTRA_RESCHEDULE_MODE, false)
 
         if (taskIdToEdit.isEmpty()) {
-            Toast.makeText(this, "Error: Task ID tidak valid.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Error: Invalid Task ID.", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
@@ -196,9 +196,9 @@ class EditTaskActivity : AppCompatActivity() {
                         btnSave.text = "Update"
                     }
 
-                    Toast.makeText(this@EditTaskActivity, "Tugas '${existingTask.title}' siap diedit.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@EditTaskActivity, "Task '${existingTask.title}' ready to edit.", Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this@EditTaskActivity, "Error: Tugas tidak ditemukan.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@EditTaskActivity, "Error: Task not found.", Toast.LENGTH_SHORT).show()
                     finish()
                 }
             }
@@ -248,7 +248,7 @@ class EditTaskActivity : AppCompatActivity() {
         val isFlowTimerActive = inputTime.tag is Boolean && inputTime.tag as Boolean
 
         if (title.isEmpty()) {
-            Toast.makeText(this, "Nama Aktivitas tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Activity name cannot be empty!", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -338,15 +338,15 @@ class EditTaskActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     if (success) {
                         val message = if (isDateChanged && !isRescheduleMode) {
-                            "Task berhasil dipindahkan ke ${uiDateFormat.format(Date(taskDateMillis))}"
+                            "Task successfully moved to ${uiDateFormat.format(Date(taskDateMillis))}"
                         } else if (isRescheduleMode) {
-                            "Task berhasil dijadwalkan ulang"
+                            "Task successfully rescheduled"
                         } else {
-                            "Task berhasil diperbarui"
+                            "Task successfully updated"
                         }
                         showConfirmationDialog(updatedTask, message)
                     } else {
-                        Toast.makeText(this@EditTaskActivity, "Gagal menyimpan pembaruan tugas.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@EditTaskActivity, "Failed to save task updates.", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
@@ -394,7 +394,7 @@ class EditTaskActivity : AppCompatActivity() {
                 inputDate.setText(uiDateFormat.format(calendar.time))
 
                 if (!isSameDay(taskDateMillis, originalTaskDateMillis)) {
-                    Toast.makeText(this, "Tanggal diubah. Task akan dipindahkan ke tanggal baru.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Date changed. Task will be moved to the new date.", Toast.LENGTH_SHORT).show()
                 }
             }, year, month, day)
 
@@ -453,7 +453,7 @@ class EditTaskActivity : AppCompatActivity() {
             val totalMillis = (hours * MILLIS_IN_HOUR) + (minutes * MILLIS_IN_MINUTE) + (seconds * MILLIS_IN_SECOND)
 
             if (totalMillis <= 0L) {
-                Toast.makeText(this, "Durasi Flow Timer harus lebih dari 0.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Flow Timer duration must be greater than 0.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -466,7 +466,7 @@ class EditTaskActivity : AppCompatActivity() {
             // FIX: Update teks tvAddFlowTimer dengan durasi Flow Timer yang baru
             tvAddFlowTimer.text = "Flow Timer Set (${timeDisplayString})"
 
-            Toast.makeText(this, "Flow Timer berhasil disetel: ${timeDisplayString}.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Flow Timer successfully set: ${timeDisplayString}.", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
         }
 
@@ -526,7 +526,7 @@ class EditTaskActivity : AppCompatActivity() {
 
                             taskDateMillis = midnightOfNewDate.timeInMillis
                             inputDate.setText(uiDateFormat.format(midnightOfNewDate.time))
-                            Toast.makeText(this, "Waktu berakhir di hari berikutnya, tanggal diupdate.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, "End time is on the next day, date updated.", Toast.LENGTH_SHORT).show()
                             // ***
                         }
 
@@ -542,14 +542,14 @@ class EditTaskActivity : AppCompatActivity() {
                     currentMinute,
                     true
                 )
-                endTimePicker.setTitle("Pilih Waktu Berakhir")
+                endTimePicker.setTitle("Select End Time")
                 endTimePicker.show()
             },
             currentHour,
             currentMinute,
             true
         )
-        startTimePicker.setTitle("Pilih Waktu Mulai")
+        startTimePicker.setTitle("Select Start Time")
         startTimePicker.show()
     }
 
@@ -593,8 +593,8 @@ class EditTaskActivity : AppCompatActivity() {
 
         val createResultIntent = { Intent().apply { putExtra("SHOULD_REFRESH_TASK", true) } }
 
-        btnClose.text = "Tutup"
-        btnView.text = "Lihat Tugas"
+        btnClose.text = "Close"
+        btnView.text = "View Task"
 
         btnClose.setOnClickListener {
             setResult(Activity.RESULT_OK, createResultIntent())
@@ -630,7 +630,7 @@ class EditTaskActivity : AppCompatActivity() {
             currentSelectedPriority = selectedPriority
             inputPriority.setText(selectedPriority)
 
-            Toast.makeText(this, "Prioritas diatur ke: $selectedPriority", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Priority set to: $selectedPriority", Toast.LENGTH_SHORT).show()
             listPopupWindow.dismiss()
         }
 
