@@ -80,7 +80,9 @@ class SearchFilterActivity : AppCompatActivity() {
         inputSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                performSearch(s.toString(), activeMonthFilter)
+                // Sanitasi sederhana: Hapus karakter newline atau tab yang tidak perlu di search
+                val cleanQuery = s.toString().replace(Regex("[\\n\\r\\t]"), " ")
+                performSearch(cleanQuery, activeMonthFilter)
             }
             override fun afterTextChanged(s: Editable) {}
         })

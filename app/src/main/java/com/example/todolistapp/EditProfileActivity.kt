@@ -483,13 +483,19 @@ class EditProfileActivity : AppCompatActivity() {
     }
 
     private fun saveProfileData() {
-        val newName = inputName.text.toString().trim()
-        val newUsername = inputUsername.text.toString().trim()
+        val rawName = inputName.text.toString()
+        val rawUsername = inputUsername.text.toString()
         val newGender = currentGender
         val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-        if (newName.isEmpty() || newUsername.isEmpty()) {
-            Toast.makeText(this, "Name and Username cannot be empty.", Toast.LENGTH_SHORT).show()
+        val newName = InputValidator.sanitizeText(rawName)
+        if (newName.isEmpty()) {
+            inputName.error = "Nama tidak boleh kosong"
+            return
+        }
+        val newUsername = rawUsername.trim()
+        if (!InputValidator.isValidUsername(rawUsername)) {
+            inputUsername.error = "Username hanya boleh huruf, angka, titik(.), atau garis bawah(_)"
             return
         }
 

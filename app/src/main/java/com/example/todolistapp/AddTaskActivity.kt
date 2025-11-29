@@ -127,16 +127,25 @@ class AddTaskActivity : AppCompatActivity() {
             return
         }
 
-        val title = inputActivity.text.toString().trim()
-        val location = inputLocation.text.toString().trim()
+        val rawTitle = inputActivity.text.toString()
+        val rawLocation = inputLocation.text.toString()
+        val rawDetails = inputDetails.text.toString()
         val priority = currentSelectedPriority
-        val details = inputDetails.text.toString().trim()
+
+        val title = InputValidator.sanitizeText(rawTitle)
+        val location = InputValidator.sanitizeText(rawLocation)
+        val details = InputValidator.sanitizeText(rawDetails)
 
         var taskEndTimeMillis: Long = 0L
         val selectedDayCalendar = Calendar.getInstance().apply { timeInMillis = taskDateMillis }
 
         if (title.isEmpty()) {
             Toast.makeText(this, "Activity name cannot be empty!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (title.length > 100) {
+            inputActivity.error = "Name too long (max 100 chars)"
             return
         }
 

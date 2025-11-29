@@ -33,18 +33,18 @@ class SignUpActivity : AppCompatActivity() {
             val password = passwordEditText.text.toString().trim()
             val confirmPassword = confirmPasswordEditText.text.toString().trim()
 
-            if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-                Toast.makeText(this, "All fields must be filled.", Toast.LENGTH_SHORT).show()
+            if (!InputValidator.isValidEmail(email)) {
+                emailEditText.error = "Format email tidak valid"
+                return@setOnClickListener
+            }
+
+            if (!InputValidator.isValidPassword(password)) {
+                passwordEditText.error = "Password minimal 6 karakter dan tanpa spasi"
                 return@setOnClickListener
             }
 
             if (password != confirmPassword) {
-                Toast.makeText(this, "Passwords do not match.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            if (password.length < 6) {
-                Toast.makeText(this, "Password must be at least 6 characters long.", Toast.LENGTH_SHORT).show()
+                confirmPasswordEditText.error = "Password tidak cocok"
                 return@setOnClickListener
             }
 

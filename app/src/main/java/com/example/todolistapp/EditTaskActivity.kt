@@ -235,10 +235,14 @@ class EditTaskActivity : AppCompatActivity() {
     }
 
     private fun saveChanges(isRescheduleMode: Boolean) {
-        val title = inputActivity.text.toString().trim()
-        val location = inputLocation.text.toString().trim()
+        val rawTitle = inputActivity.text.toString()
+        val rawLocation = inputLocation.text.toString()
+        val rawDetails = inputDetails.text.toString()
         val priority = currentSelectedPriority
-        val details = inputDetails.text.toString().trim()
+
+        val title = InputValidator.sanitizeText(rawTitle)
+        val location = InputValidator.sanitizeText(rawLocation)
+        val details = InputValidator.sanitizeText(rawDetails)
 
         var time: String
         var newEndTimeMillis: Long = 0L
@@ -247,8 +251,8 @@ class EditTaskActivity : AppCompatActivity() {
         val isTimeRangeSet = inputTime.tag is Long
         val isFlowTimerActive = inputTime.tag is Boolean && inputTime.tag as Boolean
 
-        if (title.isEmpty()) {
-            Toast.makeText(this, "Activity name cannot be empty!", Toast.LENGTH_SHORT).show()
+        if (!InputValidator.isValidTaskTitle(title)) {
+            inputActivity.error = "Nama aktivitas tidak boleh kosong atau terlalu panjang!"
             return
         }
 
