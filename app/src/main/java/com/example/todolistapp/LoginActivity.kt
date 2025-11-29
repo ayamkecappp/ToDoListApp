@@ -134,6 +134,9 @@ class LoginActivity : AppCompatActivity() {
         // Update waktu terakhir app dibuka
         NotificationHelper.updateLastAppOpenTime(this)
 
+        // SET FLAG BAHWA USER BARU LOGIN
+        TimyApplication.isJustLoggedIn = true
+
         val intent = Intent(this, HomeActivity::class.java)
         intent.flags = FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)

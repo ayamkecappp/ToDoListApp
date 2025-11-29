@@ -62,6 +62,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var dayProgressBars: List<ProgressBar>
     private lateinit var dayEllipses: List<View>
     private lateinit var dayRunnerIcons: List<View>
+    // Flag untuk mencegah popup muncul berkali-kali per session
 
     // HAPUS KONSTANTA SHARED PREFERENCES UNTUK USERNAME
     // private val PROFILE_PREFS_NAME = "ProfilePrefs"
@@ -145,6 +146,15 @@ class HomeActivity : AppCompatActivity() {
                 else -> false
             }
         }
+
+        // CEK DAN TAMPILKAN POPUP HANYA SAAT APP PERTAMA KALI DIBUKA
+        if (TimyApplication.isAppJustLaunched || TimyApplication.isJustLoggedIn) {
+            checkAndShowUpcomingTasksPopup()
+
+            // Reset kedua flag
+            TimyApplication.isAppJustLaunched = false
+            TimyApplication.isJustLoggedIn = false
+        }
     }
 
     private fun initializeViews() {
@@ -171,7 +181,10 @@ class HomeActivity : AppCompatActivity() {
         checkAndUpdateStreak()
         updateWeeklyProgressUI()
         bottomNav.selectedItemId = R.id.nav_home
-        startChatLoop() // Memanggil fungsi fetch username dari Firebase
+        startChatLoop()
+
+        // JANGAN PANGGIL checkAndShowUpcomingTasksPopup() di sini
+        // Karena kita hanya mau popup muncul saat pertama kali buka app (onCreate)
     }
 
     override fun onPause() {
@@ -501,4 +514,72 @@ class HomeActivity : AppCompatActivity() {
 
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
+
+    /**
+     * Mengecek apakah ada upcoming tasks dan menampilkan popup jika ada.
+     * Upcoming tasks = tasks H-1 atau lebih dekat yang belum selesai.
+     */
+    private fun checkAndShowUpcomingTasksPopup() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val allPendingTasks = TaskRepository.getTasksByStatus("pending")
+
+                val now = System.currentTimeMillis()
+                val oneDayMillis = 24 * 60 * 60 * 1000L
+
+                val upcomingTasks = allPendingTasks.filter { task ->
+                    val taskDeadline = if (task.endTimeMillis > 0L) {
+                        task.endTimeMillis
+                    } else {
+                        task.dueDate.toDate().time
+                    }
+
+                    taskDeadline <= (now + oneDayMillis)
+                }
+
+                if (upcomingTasks.isNotEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        showUpcomingTasksDialog()
+                        // TIDAK PERLU SET FLAG LAGI, sudah dihandle di onCreate()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("HomeActivity", "Error checking upcoming tasks: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Menampilkan dialog popup untuk upcoming tasks.
+     */
+    private fun showUpcomingTasksDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_upcoming_tasks, null)
+
+        val tvUpcomingMessage = dialogView.findViewById<TextView>(R.id.tvUpcomingMessage)
+        val btnIgnore = dialogView.findViewById<TextView>(R.id.btnIgnore)
+        val btnView = dialogView.findViewById<TextView>(R.id.btnView)
+
+        val alertDialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
+
+        alertDialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            setDimAmount(0.7f) // Background jadi gelap 70%
+        }
+
+        btnIgnore.setOnClickListener {
+            alertDialog.dismiss()
+        }
+
+        btnView.setOnClickListener {
+            alertDialog.dismiss()
+            // Navigate ke TaskActivity
+            startActivity(Intent(this, TaskActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION))
+            overridePendingTransition(0, 0)
+        }
+
+        alertDialog.show()
+    }
 }

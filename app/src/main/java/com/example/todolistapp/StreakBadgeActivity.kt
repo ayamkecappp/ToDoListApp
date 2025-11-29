@@ -14,14 +14,22 @@ import androidx.core.content.ContextCompat
 
 class StreakBadgeActivity : AppCompatActivity() {
 
-    // Badge tier thresholds - DIMULAI DARI 1, BUKAN 0
-    private val badgeTiers = listOf(
-        BadgeTier(1, R.drawable.streak_badge_1, "First Step", "Your journey begins!"),
-        BadgeTier(7, R.drawable.streak_badge_2, "7-Day Warrior", "One week strong!"),
-        BadgeTier(15, R.drawable.streak_badge_3, "15-Day Champion", "Two weeks of dedication!"),
-        BadgeTier(30, R.drawable.streak_badge_4, "Monthly Master", "A month of consistency!"),
-        BadgeTier(50, R.drawable.streak_badge_5, "50-Day Legend", "Unstoppable force!"),
-        BadgeTier(100, R.drawable.streak_badge_6, "Century Icon", "The ultimate achiever!")
+    // Main Badge tiers - DIMULAI DARI 7 HARI
+    private val mainBadgeTiers = listOf(
+        MainBadge(7, R.drawable.star_7, "7-Day Warrior", "One week strong!"),
+        MainBadge(15, R.drawable.star_15, "15-Day Champion", "Two weeks of dedication!"),
+        MainBadge(30, R.drawable.star_30, "Monthly Master", "A month of consistency!"),
+        MainBadge(50, R.drawable.star_50, "50-Day Legend", "Unstoppable force!"),
+        MainBadge(100, R.drawable.star_100, "Century Icon", "The ultimate achiever!")
+    )
+
+    // Grid badge thresholds (untuk tampilan di bawah)
+    private val gridBadgeTiers = listOf(
+        GridBadge(7, R.drawable.streak_badge_2),
+        GridBadge(15, R.drawable.streak_badge_3),
+        GridBadge(30, R.drawable.streak_badge_4),
+        GridBadge(50, R.drawable.streak_badge_5),
+        GridBadge(100, R.drawable.streak_badge_6)
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,20 +54,21 @@ class StreakBadgeActivity : AppCompatActivity() {
             }
 
             // Determine unlocked badges
-            val unlockedBadges = getUnlockedBadges(currentStreak)
+            val unlockedMainBadges = getUnlockedMainBadges(currentStreak)
+            val unlockedGridBadges = getUnlockedGridBadges(currentStreak)
 
             // Update UI
-            updateBadgeDisplay(currentStreak, unlockedBadges)
+            updateBadgeDisplay(currentStreak, unlockedMainBadges, unlockedGridBadges)
         }
     }
 
     /**
-     * Mendapatkan daftar badge yang sudah unlocked berdasarkan streak
+     * Mendapatkan daftar main badge yang sudah unlocked
      */
-    private fun getUnlockedBadges(streak: Int): List<Int> {
+    private fun getUnlockedMainBadges(streak: Int): List<Int> {
         val unlocked = mutableListOf<Int>()
-        for (i in badgeTiers.indices) {
-            if (streak >= badgeTiers[i].threshold) {
+        for (i in mainBadgeTiers.indices) {
+            if (streak >= mainBadgeTiers[i].threshold) {
                 unlocked.add(i)
             }
         }
@@ -67,39 +76,52 @@ class StreakBadgeActivity : AppCompatActivity() {
     }
 
     /**
-     * Mendapatkan badge tier yang sedang aktif (tertinggi yang telah di-unlock)
+     * Mendapatkan daftar grid badge yang sudah unlocked
      */
-    private fun getCurrentBadgeTier(unlockedBadges: List<Int>): BadgeTier? {
+    private fun getUnlockedGridBadges(streak: Int): List<Int> {
+        val unlocked = mutableListOf<Int>()
+        for (i in gridBadgeTiers.indices) {
+            if (streak >= gridBadgeTiers[i].threshold) {
+                unlocked.add(i)
+            }
+        }
+        return unlocked
+    }
+
+    /**
+     * Mendapatkan main badge yang sedang aktif (tertinggi yang telah di-unlock)
+     */
+    private fun getCurrentMainBadge(unlockedBadges: List<Int>): MainBadge? {
         return if (unlockedBadges.isNotEmpty()) {
-            badgeTiers[unlockedBadges.last()]
+            mainBadgeTiers[unlockedBadges.last()]
         } else {
-            null // Belum ada badge yang unlocked
+            null // Belum mencapai 7 hari
         }
     }
 
     /**
-     * Mendapatkan badge tier berikutnya yang akan di-unlock
+     * Mendapatkan main badge berikutnya yang akan di-unlock
      */
-    private fun getNextBadgeTier(unlockedBadges: List<Int>): BadgeTier? {
+    private fun getNextMainBadge(unlockedBadges: List<Int>): MainBadge? {
         val nextIndex = if (unlockedBadges.isEmpty()) 0 else unlockedBadges.last() + 1
-        return if (nextIndex < badgeTiers.size) {
-            badgeTiers[nextIndex]
+        return if (nextIndex < mainBadgeTiers.size) {
+            mainBadgeTiers[nextIndex]
         } else {
             null // Sudah unlock semua
         }
     }
 
-    private fun updateBadgeDisplay(currentStreak: Int, unlockedBadges: List<Int>) {
+    private fun updateBadgeDisplay(currentStreak: Int, unlockedMainBadges: List<Int>, unlockedGridBadges: List<Int>) {
         // Find views
         val ivMainBadge = findViewById<ImageView>(R.id.ivMainBadge)
         val tvOnFire = findViewById<TextView>(R.id.tvOnFire)
         val tvStreakInfo = findViewById<TextView>(R.id.tvStreakInfo)
 
-        val currentBadge = getCurrentBadgeTier(unlockedBadges)
-        val nextBadge = getNextBadgeTier(unlockedBadges)
+        val currentBadge = getCurrentMainBadge(unlockedMainBadges)
+        val nextBadge = getNextMainBadge(unlockedMainBadges)
 
         if (currentBadge != null) {
-            // User sudah punya minimal 1 badge
+            // User sudah punya minimal 1 main badge (streak >= 7)
             ivMainBadge.setImageResource(currentBadge.imageRes)
             ivMainBadge.alpha = 1.0f
             ivMainBadge.clearColorFilter()
@@ -125,7 +147,7 @@ class StreakBadgeActivity : AppCompatActivity() {
                 tvStreakInfo.visibility = View.VISIBLE
             }
         } else {
-            // User belum punya badge sama sekali (streak 0)
+            // User belum mencapai 7 hari
             ivMainBadge.setImageResource(R.drawable.ic_badge_empty) // Placeholder kosong
             ivMainBadge.alpha = 0.3f
             ivMainBadge.setColorFilter(ContextCompat.getColor(this, android.R.color.darker_gray))
@@ -140,7 +162,7 @@ class StreakBadgeActivity : AppCompatActivity() {
         }
 
         // Display badges in grid
-        updateGridBadges(unlockedBadges)
+        updateGridBadges(unlockedGridBadges)
     }
 
     private fun updateGridBadges(unlockedBadges: List<Int>) {
@@ -148,7 +170,7 @@ class StreakBadgeActivity : AppCompatActivity() {
         val linearLayout = scrollView?.getChildAt(0) as? android.widget.LinearLayout
 
         if (linearLayout != null) {
-            // Find the first GridLayout (contains badges 2, 3, 4)
+            // Find the GridLayouts
             var firstGridLayout: GridLayout? = null
             var secondGridLayout: GridLayout? = null
 
@@ -164,23 +186,23 @@ class StreakBadgeActivity : AppCompatActivity() {
                 }
             }
 
-            // Update first grid (badges 2, 3, 4 - index 1, 2, 3)
+            // Update first grid (badges index 0, 1, 2 = 7, 15, 30 days)
             firstGridLayout?.let { grid ->
                 for (i in 0 until grid.childCount) {
                     val imageView = grid.getChildAt(i) as? ImageView
                     imageView?.let {
-                        val badgeIndex = i + 1 // Badge 2, 3, 4 (index 1, 2, 3)
+                        val badgeIndex = i // Index 0, 1, 2
                         updateBadgeAppearance(it, badgeIndex, unlockedBadges)
                     }
                 }
             }
 
-            // Update second grid (badges 5, 6 - index 4, 5)
+            // Update second grid (badges index 3, 4 = 50, 100 days)
             secondGridLayout?.let { grid ->
                 for (i in 0 until grid.childCount) {
                     val imageView = grid.getChildAt(i) as? ImageView
                     imageView?.let {
-                        val badgeIndex = i + 4 // Badge 5, 6 (index 4, 5)
+                        val badgeIndex = i + 3 // Index 3, 4
                         updateBadgeAppearance(it, badgeIndex, unlockedBadges)
                     }
                 }
@@ -192,31 +214,26 @@ class StreakBadgeActivity : AppCompatActivity() {
         // Check if badge is unlocked
         val isUnlocked = badgeIndex in unlockedBadges
 
-        if (isUnlocked) {
-            // Badge unlocked - show in full color
-            imageView.alpha = 1.0f
-            imageView.clearColorFilter()
-            imageView.setImageResource(badgeTiers[badgeIndex].imageRes)
-        } else {
-            // Badge locked - show empty/locked state
-            // Opsi 1: Tetap tampilkan gambar tapi grayscale
-            imageView.setImageResource(badgeTiers[badgeIndex].imageRes)
-            imageView.alpha = 0.2f
-            imageView.setColorFilter(ContextCompat.getColor(this, android.R.color.darker_gray))
+        if (badgeIndex < gridBadgeTiers.size) {
+            val badge = gridBadgeTiers[badgeIndex]
 
-            // Opsi 2: Tampilkan placeholder empty badge (uncomment jika ingin gunakan)
-            // imageView.setImageResource(R.drawable.ic_badge_locked)
-            // imageView.alpha = 0.5f
-            // imageView.clearColorFilter()
-        }
-
-        // Add content description for accessibility
-        val badge = badgeTiers.getOrNull(badgeIndex)
-        badge?.let {
-            val description = if (isUnlocked) {
-                "Unlocked: ${it.name} - ${it.threshold}+ days"
+            if (isUnlocked) {
+                // Badge unlocked - show in full color
+                imageView.alpha = 1.0f
+                imageView.clearColorFilter()
+                imageView.setImageResource(badge.imageRes)
             } else {
-                "Locked: ${it.name} - Requires ${it.threshold}+ days"
+                // Badge locked - show grayed out
+                imageView.setImageResource(badge.imageRes)
+                imageView.alpha = 0.2f
+                imageView.setColorFilter(ContextCompat.getColor(this, android.R.color.darker_gray))
+            }
+
+            // Add content description for accessibility
+            val description = if (isUnlocked) {
+                "Unlocked: ${badge.threshold} days badge"
+            } else {
+                "Locked: Requires ${badge.threshold}+ days"
             }
             imageView.contentDescription = description
         }
@@ -227,13 +244,15 @@ class StreakBadgeActivity : AppCompatActivity() {
         overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
     }
 
-    private val Int.dp: Int
-        get() = (this * resources.displayMetrics.density).toInt()
-
-    data class BadgeTier(
+    data class MainBadge(
         val threshold: Int,
         val imageRes: Int,
         val name: String,
         val description: String
+    )
+
+    data class GridBadge(
+        val threshold: Int,
+        val imageRes: Int
     )
 }

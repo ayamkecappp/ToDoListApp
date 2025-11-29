@@ -44,10 +44,8 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import android.graphics.Matrix
 import androidx.exifinterface.media.ExifInterface
-
-// HAPUS: Konstan untuk SharedPrefs Streak
-// private val STREAK_PREFS_NAME = "TimyTimePrefs"
-// private val KEY_STREAK = "current_streak"
+import androidx.appcompat.app.AlertDialog
+import android.view.LayoutInflater
 
 class ProfileActivity : AppCompatActivity() {
 
@@ -55,27 +53,44 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var viewPager: ViewPager2
     private lateinit var tvUsername: TextView
     private lateinit var ivProfilePicture: CircleImageView
-    // --- HAPUS --- private lateinit var sharedPrefs: SharedPreferences
-    // HAPUS: private lateinit var streakPrefs: SharedPreferences // Ini untuk streak, jadi tetap aman
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var tvCompletedTasksLabel: TextView
     private lateinit var tvMissedTasksLabel: TextView
     private lateinit var tvDeletedTasksLabel: TextView
     private lateinit var tvStreakValue: TextView
 
+    // SharedPreferences untuk tracking badge yang sudah ditampilkan
+    private lateinit var badgePrefs: SharedPreferences
+    private val BADGE_PREFS_NAME = "BadgePrefs"
+    private val KEY_LAST_SHOWN_BADGE = "last_shown_badge"
+
     // --- Cloudinary and OkHttp client (Tetap) ---
     private val CLOUD_NAME = "dk2jrlugl"
     private val UPLOAD_PRESET = "android_profile_upload"
     private val client = OkHttpClient()
-    // --------------------------------------------------------------------
+
+    // Badge milestones
+    private val badgeMilestones = listOf(7, 15, 30, 50, 100)
+    private val badgeDrawables = mapOf(
+        7 to R.drawable.popup_badge7,
+        15 to R.drawable.popup_badge15,
+        30 to R.drawable.popup_badge30,
+        50 to R.drawable.popup_badge50,
+        100 to R.drawable.popup_badge100
+    )
+    private val badgeNames = mapOf(
+        7 to "7-Day Warrior",
+        15 to "15-Day Champion",
+        30 to "Monthly Master",
+        50 to "50-Day Legend",
+        100 to "Century Icon"
+    )
 
     // Launcher untuk Activity Result dari EditProfileActivity
     private val editProfileLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            // Cukup panggil loadProfileData.
-            // Ini sekarang akan mengambil data baru dari Firestore.
             loadProfileData()
             updateTaskCounts()
             updateStreakValue()
@@ -99,21 +114,16 @@ class ProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile)
 
+        // Inisialisasi badge preferences
+        badgePrefs = getSharedPreferences(BADGE_PREFS_NAME, Context.MODE_PRIVATE)
+
         // Inisialisasi dan Binding Views
-
-        // --- HAPUS --- Inisialisasi sharedPrefs untuk profil
-        // sharedPrefs = getSharedPreferences(EditProfileActivity.PREFS_NAME, Context.MODE_PRIVATE)
-
-        // HAPUS: Inisialisasi streakPrefs
-        // streakPrefs = getSharedPreferences(STREAK_PREFS_NAME, Context.MODE_PRIVATE)
-
         tabLayout = findViewById(R.id.tabLayout)
         viewPager = findViewById(R.id.viewPager)
-
         tvUsername = findViewById(R.id.tvUsername)
         bottomNav = findViewById(R.id.bottomNav)
         ivProfilePicture = findViewById(R.id.ivProfile)
-        tvStreakValue = findViewById(R.id.some_id) // BINDING
+        tvStreakValue = findViewById(R.id.some_id)
 
         val ivSettings = findViewById<ImageView>(R.id.ivSettings)
         val btnEditProfile = findViewById<TextView>(R.id.btnEditProfile)
@@ -126,7 +136,7 @@ class ProfileActivity : AppCompatActivity() {
         tvMissedTasksLabel = MissedTasks.getChildAt(0) as TextView
         tvDeletedTasksLabel = DeletedTasks.getChildAt(0) as TextView
 
-        // Setup Bottom Nav dan ViewPager (Kode yang sudah ada)
+        // Setup Bottom Nav dan ViewPager
         bottomNav.itemIconTintList = null
 
         val adapter = ProductivityStatsAdapter(this)
@@ -183,7 +193,6 @@ class ProfileActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
-        // Listener untuk ikon kamera
         ivCamera.setOnClickListener {
             val intent = Intent(this, CameraActivity::class.java)
             cameraLauncher.launch(intent)
@@ -220,32 +229,87 @@ class ProfileActivity : AppCompatActivity() {
 
         NotificationHelper.updateLastAppOpenTime(this)
 
-        // Panggil loadProfileData di onResume untuk menangkap perubahan
-        // yang mungkin terjadi di EditProfileActivity
         loadProfileData()
         updateTaskCounts()
         updateStreakValue()
+
+        // Cek apakah ada badge baru yang perlu ditampilkan
+        checkAndShowBadgePopup()
     }
 
     /**
-     * Mengambil nilai streak dari TaskRepository (Firestore) dan memperbarui TextView.
+     * Mengambil nilai streak dari TaskRepository dan memperbarui TextView.
+     * Juga mengecek apakah ada badge baru yang perlu ditampilkan.
      */
     private fun updateStreakValue() {
         lifecycleScope.launch(Dispatchers.Main) {
             val currentState = withContext(Dispatchers.IO) {
-                // Pastikan untuk selalu memanggil TaskRepository
                 TaskRepository.getCurrentUserStreakState()
             }
             tvStreakValue.text = currentState.currentStreak.toString()
         }
     }
 
+    /**
+     * Mengecek apakah user mencapai milestone badge baru dan menampilkan popup jika ada.
+     */
+    private fun checkAndShowBadgePopup() {
+        lifecycleScope.launch(Dispatchers.Main) {
+            val currentState = withContext(Dispatchers.IO) {
+                TaskRepository.getCurrentUserStreakState()
+            }
+
+            val currentStreak = currentState.currentStreak
+            val lastShownBadge = badgePrefs.getInt(KEY_LAST_SHOWN_BADGE, 0)
+
+            // Cari milestone tertinggi yang sudah tercapai tapi belum ditampilkan
+            val newBadgeToShow = badgeMilestones
+                .filter { it <= currentStreak && it > lastShownBadge }
+                .maxOrNull()
+
+            if (newBadgeToShow != null) {
+                showBadgeUnlockDialog(newBadgeToShow)
+                // Simpan badge yang sudah ditampilkan
+                badgePrefs.edit().putInt(KEY_LAST_SHOWN_BADGE, newBadgeToShow).apply()
+            }
+        }
+    }
+
+    /**
+     * Menampilkan dialog popup badge unlock.
+     */
+    private fun showBadgeUnlockDialog(milestone: Int) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_badge_unlock, null)
+
+        val ivBadgePopup = dialogView.findViewById<ImageView>(R.id.ivBadgePopup)
+        val btnClose = dialogView.findViewById<TextView>(R.id.btnClose)
+
+        // Set badge image sesuai milestone
+        val badgeDrawable = badgeDrawables[milestone] ?: R.drawable.popup_badge7
+        ivBadgePopup.setImageResource(badgeDrawable)
+
+        val alertDialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
+
+        // Set background transparan dan dim background belakang
+        alertDialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            setDimAmount(0.7f) // Background jadi gelap 70%
+        }
+
+        btnClose.setOnClickListener {
+            alertDialog.dismiss()
+        }
+
+        alertDialog.show()
+    }
 
     // --------------------------------------------------------------------------------------
     // --- FUNGSI UPLOAD GAMBAR & KOMPRESI (Tidak ada perubahan) ---
     // --------------------------------------------------------------------------------------
     private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
-        // ... (Kode tetap sama) ...
         val (height: Int, width: Int) = options.outHeight to options.outWidth
         var inSampleSize = 1
         if (height > reqWidth || width > reqWidth) {
@@ -261,7 +325,6 @@ class ProfileActivity : AppCompatActivity() {
     private fun getCompressedImageBytes(imageUri: Uri, targetSizeKB: Int): ByteArray? {
         var inputStream: InputStream? = null
         try {
-            // ... (Kode kompresi dan rotasi Anda tetap sama) ...
             inputStream = contentResolver.openInputStream(imageUri)
             val options = BitmapFactory.Options()
             options.inJustDecodeBounds = true
@@ -295,7 +358,7 @@ class ProfileActivity : AppCompatActivity() {
             }
 
             try {
-                inputStream = contentResolver.openInputStream(imageUri) // Buka stream BARU untuk EXIF
+                inputStream = contentResolver.openInputStream(imageUri)
                 if (inputStream != null) {
                     bitmapToProcess = rotateBitmapBasedOnExif(bitmapToProcess, inputStream)
                     Log.d("ImageCompression", "Rotasi EXIF diterapkan.")
@@ -340,8 +403,8 @@ class ProfileActivity : AppCompatActivity() {
             return null
         }
     }
+
     private fun extractSecureUrl(jsonResponse: String): String? {
-        // ... (Kode tetap sama) ...
         return try {
             val startIndex = jsonResponse.indexOf("\"secure_url\":\"") + 14
             if (startIndex < 14) return null
@@ -355,7 +418,6 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun rotateBitmapBasedOnExif(source: Bitmap, inputStream: InputStream): Bitmap {
-        // ... (Kode tetap sama) ...
         val exif = ExifInterface(inputStream)
         val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
         val matrix = Matrix()
@@ -386,8 +448,8 @@ class ProfileActivity : AppCompatActivity() {
             source
         }
     }
+
     private suspend fun uploadImageToCloudinary(userId: String, imageUri: Uri): String? {
-        // ... (Kode tetap sama) ...
         if (userId.isEmpty()) return null
         return withContext(Dispatchers.IO) {
             try {
@@ -424,7 +486,6 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
-    // --- UBAH --- Fungsi ini disederhanakan (dihapus SharedPreferences)
     private fun handleNewProfilePhoto(imageUri: Uri) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
@@ -432,29 +493,21 @@ class ProfileActivity : AppCompatActivity() {
             return
         }
 
-        // 1. Tampilkan gambar secara instan (preview)
         val options = RequestOptions().transform(CircleCrop())
         Glide.with(this).load(imageUri).apply(options).into(ivProfilePicture)
         Toast.makeText(this, "Photo is being uploaded...", Toast.LENGTH_LONG).show()
 
         lifecycleScope.launch {
-            // 2. --- HAPUS --- Simpan URI lokal ke SharedPreferences
-            // sharedPrefs.edit().putString(EditProfileActivity.KEY_IMAGE_URI, imageUri.toString()).apply()
-
-            // 3. Upload ke Cloudinary
             val uploadedUrl = uploadImageToCloudinary(userId, imageUri)
 
             if (uploadedUrl == null) {
-                // Gagal upload, kembali ke Main thread untuk UI
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@ProfileActivity, "Failed to upload photo.", Toast.LENGTH_LONG).show()
-                    // Muat ulang data (untuk mengembalikan foto lama dari Firestore)
                     loadProfileData()
                 }
                 return@launch
             }
 
-            // 4. Update Firestore dengan URL permanen
             val success = withContext(Dispatchers.IO) {
                 try {
                     val db = FirebaseFirestore.getInstance()
@@ -469,30 +522,19 @@ class ProfileActivity : AppCompatActivity() {
                 }
             }
 
-            // 5. Finalisasi (di Main thread)
             withContext(Dispatchers.Main) {
                 if (success) {
-                    // --- HAPUS --- Update SharedPreferences dengan URL permanen
-                    // sharedPrefs.edit().putString(EditProfileActivity.KEY_IMAGE_URI, uploadedUrl).apply()
-
-                    // Muat ulang data untuk memastikan Glide memuat URL permanen dari Firestore
                     loadProfileData()
                     Toast.makeText(this@ProfileActivity, "Profile photo successfully updated!", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this@ProfileActivity, "Failed to save photo to database.", Toast.LENGTH_SHORT).show()
-                    // Muat ulang data (untuk mengembalikan foto lama dari Firestore)
                     loadProfileData()
                 }
             }
         }
     }
 
-    // --------------------------------------------------------------------------------------
-    // --- FUNGSI LOAD DATA (Kode Diubah) ---
-    // --------------------------------------------------------------------------------------
-
     private fun updateTaskCounts() {
-        // ... (Fungsi ini tidak diubah, tampaknya sudah benar) ...
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 TaskRepository.processTasksForMissed()
@@ -510,18 +552,15 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
-    // --- UBAH --- Logika loadProfileData diubah total
     private fun loadProfileData() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
-            // Tampilkan default jika user tidak login (di Main thread)
             tvUsername.text = "Guest"
             ivProfilePicture.setImageResource(R.drawable.ic_profile)
             return
         }
 
         lifecycleScope.launch {
-            // 1. Ambil data dari Firestore di thread IO
             var profileData: Map<String, Any>? = null
             var error: Exception? = null
             try {
@@ -535,19 +574,16 @@ class ProfileActivity : AppCompatActivity() {
                 error = e
             }
 
-            // 2. Update UI di Main thread
             withContext(Dispatchers.Main) {
                 val options = RequestOptions().transform(CircleCrop())
 
                 if (profileData != null) {
-                    // Berhasil mengambil dari Firestore
                     val username = profileData["username"] as? String ?: "@username"
                     val imageUrl = profileData["profileImageUrl"] as? String
 
                     tvUsername.text = username
                     ivProfilePicture.scaleX = 1f
 
-                    // Muat gambar
                     if (imageUrl != null && imageUrl.isNotEmpty()) {
                         Glide.with(this@ProfileActivity)
                             .load(imageUrl)
@@ -558,20 +594,13 @@ class ProfileActivity : AppCompatActivity() {
                     } else {
                         ivProfilePicture.setImageResource(R.drawable.ic_profile)
                     }
-
-                    // --- HAPUS --- Seluruh blok Update SharedPreferences
-
                 } else {
-                    // Gagal mengambil dari Firestore
                     Toast.makeText(this@ProfileActivity, "Failed to load profile.", Toast.LENGTH_SHORT).show()
-                    // Tampilkan default (daripada data basi)
                     tvUsername.text = "Guest"
                     ivProfilePicture.setImageResource(R.drawable.ic_profile)
-
-                    // --- HAPUS --- Seluruh blok Fallback SharedPreferences
                 }
-            } // Akhir withContext(Dispatchers.Main)
-        } // Akhir lifecycleScope.launch
+            }
+        }
     }
 
     override fun finish() {
