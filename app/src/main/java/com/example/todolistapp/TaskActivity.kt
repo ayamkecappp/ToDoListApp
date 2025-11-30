@@ -695,9 +695,9 @@ class TaskActivity : AppCompatActivity() {
         return lastDateStr == yesterdayStr
     }
 
+    // Ganti fungsi addNewTaskToUI di TaskActivity.kt dengan yang ini:
     private fun addNewTaskToUI(task: Task) {
         val context = this
-        // oldStreak hanya di-mock sebagai placeholder karena nilai sebenarnya diambil di dalam listener
         val oldStreak = 0 // Placeholder
 
         // 1. Muat layout item tugas
@@ -705,15 +705,11 @@ class TaskActivity : AppCompatActivity() {
         mainContainer.layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply {
-            // Mengganti margin agar konsisten dengan cara item diatur di TaskActivity
             setMargins(16.dp, 0, 16.dp, 16.dp)
         }
 
         // 2. Dapatkan referensi views dari layout item
         val taskItem = mainContainer.findViewById<LinearLayout>(R.id.taskItem)
-        // Hapus shadow dengan mengatur elevation ke 0 di sini, meskipun tidak ada tag XML untuk ini.
-        // taskItem.elevation = 0f // Opsional, jika elevation diatur di Java
-
         val checklistBox = mainContainer.findViewById<View>(R.id.checklistBox)
         val taskTitle = mainContainer.findViewById<TextView>(R.id.taskTitle)
         val taskTime = mainContainer.findViewById<TextView>(R.id.taskTime)
@@ -729,45 +725,60 @@ class TaskActivity : AppCompatActivity() {
         // 3. Mengisi data
         taskTitle.text = task.title
 
-        // Logika untuk taskTime dan taskCategory
+        // Ambil semua data yang mungkin ditampilkan
         val timeText = task.time.trim()
         val categoryText = task.category.trim()
+        val detailsText = task.details.trim()
 
-        // FIX UTAMA: HANYA tampilkan time range atau category, BUKAN durasi Flow Timer di sini.
-        // Gunakan 'timeText' yang sudah dideklarasikan di scope fungsi ini.
+        // Cek apakah time hanya berisi Flow Timer
         val isFlowTimerOnly = task.flowDurationMillis > 0L && timeText.contains("(Flow)")
+        val hasValidTime = timeText.isNotEmpty() && !isFlowTimerOnly
 
-        if (categoryText.isNotEmpty() && !isFlowTimerOnly) {
-            // Tampilkan Lokasi di baris pertama
-            taskTime.text = categoryText
-            taskTime.visibility = View.VISIBLE
+        // LOGIKA TAMPILAN: Location, Time, dan Details masing-masing di baris terpisah
+        // Gunakan LinearLayout vertical untuk menampung semua field
 
-            // Periksa apakah ada waktu manual yang terpisah dari Flow Timer
-            if (timeText.isNotEmpty() && !isFlowTimerOnly) {
-                // Tampilkan Waktu manual di baris kedua
-                taskCategoryXml.text = timeText // Perbaikan: Menggunakan 'timeText'
-                taskCategoryXml.visibility = View.VISIBLE
-            } else {
-                taskCategoryXml.text = ""
+        // Hapus semua child views dari container yang ada (jika perlu)
+        val infoContainer = mainContainer.findViewById<LinearLayout>(R.id.taskItem)
+            ?.findViewById<LinearLayout>(android.R.id.content) // Ini placeholder, sebenarnya kita akan modifikasi taskTime & taskCategory
+
+        // Karena kita hanya punya 2 TextView (taskTime dan taskCategory),
+        // kita akan gunakan keduanya untuk menampilkan maksimal 2 baris pertama
+        // Dan tambahkan TextView baru untuk baris ketiga jika diperlukan
+
+        // Strategi: Tampilkan di baris terpisah sebisa mungkin
+        val displayLines = mutableListOf<String>()
+
+        if (categoryText.isNotEmpty()) displayLines.add(categoryText)
+        if (hasValidTime) displayLines.add(timeText)
+        if (detailsText.isNotEmpty()) displayLines.add(detailsText)
+
+        when (displayLines.size) {
+            0 -> {
+                taskTime.visibility = View.GONE
                 taskCategoryXml.visibility = View.GONE
             }
-        } else if (categoryText.isNotEmpty()) {
-            // Jika ada lokasi tetapi time adalah Flow Timer, tampilkan Lokasi saja
-            taskTime.text = categoryText
-            taskTime.visibility = View.VISIBLE
-            taskCategoryXml.text = ""
-            taskCategoryXml.visibility = View.GONE
-        } else if (timeText.isNotEmpty() && !isFlowTimerOnly) {
-            // Jika hanya ada Waktu Manual (bukan Flow Timer)
-            taskTime.text = timeText
-            taskTime.visibility = View.VISIBLE
-            taskCategoryXml.visibility = View.GONE
-        } else {
-            // Kosongkan kedua field jika hanya Flow Timer atau keduanya kosong
-            taskTime.visibility = View.GONE
-            taskCategoryXml.visibility = View.GONE
+            1 -> {
+                taskTime.text = displayLines[0]
+                taskTime.visibility = View.VISIBLE
+                taskCategoryXml.visibility = View.GONE
+            }
+            2 -> {
+                taskTime.text = displayLines[0]
+                taskTime.visibility = View.VISIBLE
+                taskCategoryXml.text = displayLines[1]
+                taskCategoryXml.visibility = View.VISIBLE
+            }
+            3 -> {
+                // Semua ada: Location, Time, Details
+                taskTime.text = displayLines[0] // Location
+                taskTime.visibility = View.VISIBLE
+                // Gabungkan Time dan Details di baris 2 karena kita cuma punya 2 TextView
+                taskCategoryXml.text = "${displayLines[1]}\n${displayLines[2]}"
+                taskCategoryXml.visibility = View.VISIBLE
+                taskCategoryXml.maxLines = 2
+                taskCategoryXml.ellipsize = android.text.TextUtils.TruncateAt.END
+            }
         }
-
 
         // 4. Logika prioritas
         if (task.priority != "None") {
@@ -780,7 +791,7 @@ class TaskActivity : AppCompatActivity() {
             exclamationIcon.visibility = View.GONE
         }
 
-        // Asumsi task di TaskActivity selalu pending
+        // Flow Timer button state
         checklistBox.setBackgroundResource(R.drawable.bg_checklist)
         if (task.flowDurationMillis <= 0L) {
             btnFlowTimer.isEnabled = false
@@ -790,13 +801,10 @@ class TaskActivity : AppCompatActivity() {
             btnFlowTimer.alpha = 1.0f
         }
 
-
         // 5. Setup Listeners
         checklistBox.setOnClickListener {
             lifecycleScope.launch(Dispatchers.IO) {
-                // AMBIL oldStreak SEBELUM task diselesaikan
                 val oldStreak = TaskRepository.getCurrentUserStreakState().currentStreak
-
                 val success = TaskRepository.completeTask(task.id)
                 withContext(Dispatchers.Main) {
                     if (success) {
@@ -808,7 +816,6 @@ class TaskActivity : AppCompatActivity() {
 
                         Handler(Looper.getMainLooper()).postDelayed({
                             tasksContainer.removeView(mainContainer)
-                            // Hanya perlu loadAllContent karena akan me-reload tasks dan calendar dot
                             loadAllContent()
                         }, 300)
                     } else {
@@ -846,7 +853,6 @@ class TaskActivity : AppCompatActivity() {
 
                         Handler(Looper.getMainLooper()).postDelayed({
                             tasksContainer.removeView(mainContainer)
-                            // Hanya perlu loadAllContent karena akan me-reload tasks dan calendar dot
                             loadAllContent()
                         }, 300)
                     } else {
@@ -857,7 +863,6 @@ class TaskActivity : AppCompatActivity() {
         }
 
         taskItem.setOnClickListener {
-            // Toggle visibility of actionButtonsContainer
             if (actionButtonsContainer.visibility == View.GONE) {
                 actionButtonsContainer.visibility = View.VISIBLE
                 arrowRight.rotation = 90f
