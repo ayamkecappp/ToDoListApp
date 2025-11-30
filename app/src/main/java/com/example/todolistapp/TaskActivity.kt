@@ -245,12 +245,26 @@ class TaskActivity : AppCompatActivity() {
     }
 
     /**
-     * Update UI untuk Tasks (Dioptimalkan untuk kebersihan)
+     * Update UI untuk Tasks dengan sorting berdasarkan Priority
      */
     private fun updateTasksUI(tasks: List<Task>) {
         tasksContainer.removeAllViews()
-        // Memastikan item yang baru ditambahkan muncul di bagian atas (seperti list normal)
-        tasks.reversed().forEach { addNewTaskToUI(it) }
+
+        // Definisikan urutan priority (High = 0, Medium = 1, Low = 2, None = 3)
+        val priorityOrder = mapOf(
+            "High" to 0,
+            "Medium" to 1,
+            "Low" to 2,
+            "None" to 3
+        )
+
+        // Sort tasks berdasarkan priority, kemudian reverse agar item terbaru di atas
+        val sortedTasks = tasks.sortedWith(
+            compareBy<Task> { priorityOrder[it.priority] ?: 3 }
+                .thenByDescending { it.id } // Item terbaru di atas untuk priority yang sama
+        )
+
+        sortedTasks.forEach { addNewTaskToUI(it) }
         updateEmptyState(tasks.size)
     }
 
@@ -829,8 +843,11 @@ class TaskActivity : AppCompatActivity() {
             val intent = Intent(context, FlowTimerActivity::class.java).apply {
                 putExtra(FlowTimerActivity.EXTRA_TASK_NAME, task.title)
                 putExtra(FlowTimerActivity.EXTRA_FLOW_DURATION, task.flowDurationMillis)
+                putExtra(FlowTimerActivity.EXTRA_TASK_ID, task.id) // TAMBAHKAN INI
             }
-            context.startActivity(intent)
+            // Gunakan launcher agar bisa menerima result
+            taskEditLauncher.launch(intent)
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
         btnEdit.setOnClickListener {

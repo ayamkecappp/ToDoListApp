@@ -19,8 +19,12 @@ import android.view.ViewGroup
 import android.graphics.drawable.ColorDrawable
 import android.widget.Button
 import android.view.Gravity
-import android.media.MediaPlayer // PENTING: Tambahkan ini
-import android.view.MotionEvent // PENTING: Tambahkan ini
+import android.media.MediaPlayer
+import android.view.MotionEvent
+import androidx.lifecycle.lifecycleScope // TAMBAHKAN INI
+import kotlinx.coroutines.launch // TAMBAHKAN INI
+import kotlinx.coroutines.Dispatchers // TAMBAHKAN INI
+import kotlinx.coroutines.withContext // TAMBAHKAN INI
 
 class FlowTimerActivity : AppCompatActivity() {
 
@@ -33,13 +37,15 @@ class FlowTimerActivity : AppCompatActivity() {
     private lateinit var layoutSetDuration: LinearLayout
     private lateinit var btnBack: ImageView
     private lateinit var btnSetDurationOK: Button
-    private lateinit var rootConstraintLayout: View // Diambil dari ID yang baru di XML
+    private lateinit var rootConstraintLayout: View
 
     private var countDownTimer: CountDownTimer? = null
     private var isTimerRunning = false
-    private var mediaPlayer: MediaPlayer? = null // PENTING: Deklarasi MediaPlayer
+    private var mediaPlayer: MediaPlayer? = null
 
-    // Durasi awal - PENTING: Prioritas dari task, baru fallback ke default
+    // TAMBAHKAN: Variabel untuk menyimpan Task ID
+    private var taskId: String? = null
+
     private var totalDurationMillis: Long = 30 * 60 * 1000L
     private var timeRemainingMillis: Long = totalDurationMillis
 
@@ -52,20 +58,20 @@ class FlowTimerActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_TASK_NAME = "EXTRA_TASK_NAME"
         const val EXTRA_FLOW_DURATION = "EXTRA_FLOW_DURATION"
-        const val DEFAULT_FLOW_DURATION = 30 * 60 * 1000L // 30 menit default
+        const val EXTRA_TASK_ID = "EXTRA_TASK_ID" // TAMBAHKAN INI
+        const val DEFAULT_FLOW_DURATION = 30 * 60 * 1000L
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_flow_timer)
 
-        // 1. Ambil Nama Tugas dari Intent
         val taskName = intent.getStringExtra(EXTRA_TASK_NAME) ?: "Flow Task"
-
-        // 2. Ambil durasi SPESIFIK dari Task (jika ada)
         val taskFlowDuration = intent.getLongExtra(EXTRA_FLOW_DURATION, 0L)
 
-        // 3. Tentukan durasi: gunakan durasi task jika > 0, jika tidak gunakan default 30 menit
+        // TAMBAHKAN: Ambil Task ID dari intent
+        taskId = intent.getStringExtra(EXTRA_TASK_ID)
+
         val initialDuration = if (taskFlowDuration > 0L) {
             taskFlowDuration
         } else {
@@ -75,7 +81,6 @@ class FlowTimerActivity : AppCompatActivity() {
         totalDurationMillis = initialDuration.coerceAtLeast(MILLIS_IN_SECOND)
         timeRemainingMillis = totalDurationMillis
 
-        // Hubungkan Views
         tvTaskName = findViewById(R.id.tvTaskName)
         tvTimerDisplay = findViewById(R.id.tvTimerDisplay)
         btnPlayPause = findViewById(R.id.btnPlayPause)
@@ -85,15 +90,12 @@ class FlowTimerActivity : AppCompatActivity() {
         layoutSetDuration = findViewById(R.id.layoutSetDuration)
         btnBack = findViewById(R.id.btnBack)
         btnSetDurationOK = findViewById(R.id.btnSetDurationOK)
-        // Hubungkan ke ID yang baru ditambahkan di XML
         rootConstraintLayout = findViewById(R.id.root_constraint_layout)
 
         tvTaskName.text = taskName
 
         setupNumberPickers()
         updateTimerDisplay()
-
-        // PENTING: Setup Swipe Listener di root layout
         setupSwipeListener()
 
         tvTimerDisplay.setOnClickListener {
@@ -121,23 +123,18 @@ class FlowTimerActivity : AppCompatActivity() {
         }
     }
 
-    // PENTING: Setup Swipe Listener
     private fun setupSwipeListener() {
-        // Mengatur listener swipe di root layout
         rootConstraintLayout.setOnTouchListener(object : OnSwipeTouchListener(this) {
             override fun onSwipeUp() {
-                // LOGIKA UTAMA: Berhenti Alarm saat Swipe Up
                 if (mediaPlayer?.isPlaying == true) {
                     stopAlarm()
                     Toast.makeText(this@FlowTimerActivity, "Alarm Stopped", Toast.LENGTH_SHORT).show()
                 }
             }
-            // Mengonsumsi event agar tidak diteruskan ke elemen lain
             override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
                 if (mediaPlayer?.isPlaying == true) {
-                    // Jika alarm berbunyi, kita ingin event diserap oleh listener ini
                     super.onTouch(view, motionEvent)
-                    return true // Penting untuk mengonsumsi event saat alarm berbunyi
+                    return true
                 }
                 return super.onTouch(view, motionEvent)
             }
@@ -229,24 +226,19 @@ class FlowTimerActivity : AppCompatActivity() {
 
     private fun timerFinishedFlow() {
         isTimerRunning = false
-        btnPlayPause.setImageResource(R.drawable.ic_alarm) // Ubah ikon menjadi alarm
+        btnPlayPause.setImageResource(R.drawable.ic_alarm)
 
         timeRemainingMillis = 0
         updateTimerDisplay()
 
-        startAlarm() // PENTING: Memulai Alarm
-
+        startAlarm()
         showDoneDialog()
     }
 
-    // PENTING: Fungsi untuk memulai alarm
     private fun startAlarm() {
-        // ASUMSI: File alarm_sound.mp3 ada di res/raw
         try {
-            // Jika Anda ingin menggunakan suara bawaan, ganti R.raw.alarm_sound dengan
-            // RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             mediaPlayer = MediaPlayer.create(this, R.raw.alarm_sound)
-            mediaPlayer?.isLooping = true // Ulangi suara alarm
+            mediaPlayer?.isLooping = true
             mediaPlayer?.start()
             Toast.makeText(this, "Alarm Ringing! Swipe up to stop.", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
@@ -254,7 +246,6 @@ class FlowTimerActivity : AppCompatActivity() {
         }
     }
 
-    // PENTING: Fungsi untuk menghentikan alarm
     private fun stopAlarm() {
         if (mediaPlayer?.isPlaying == true) {
             mediaPlayer?.stop()
@@ -296,15 +287,16 @@ class FlowTimerActivity : AppCompatActivity() {
         return dialog
     }
 
+    // PERBAIKI FUNGSI INI
     private fun showDoneDialog() {
         val dialog = buildCustomDialog(
             this,
             "Are you done with your task?",
             "Yes", "No",
             onPositive = {
-                stopAlarm() // Pastikan alarm mati sebelum keluar
-                Toast.makeText(this, "Task Completed!", Toast.LENGTH_SHORT).show()
-                finish()
+                stopAlarm()
+                // TAMBAHKAN: Tandai task sebagai completed
+                completeTaskAndFinish()
             },
             onNegative = {
                 showAdjustTimeDialog()
@@ -313,17 +305,42 @@ class FlowTimerActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    // TAMBAHKAN FUNGSI BARU INI
+    private fun completeTaskAndFinish() {
+        if (taskId.isNullOrEmpty()) {
+            Toast.makeText(this, "Task ID not found. Cannot mark as completed.", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val success = TaskRepository.completeTask(taskId!!)
+
+            withContext(Dispatchers.Main) {
+                if (success) {
+                    Toast.makeText(this@FlowTimerActivity, "Task Completed!", Toast.LENGTH_SHORT).show()
+                    // Kirim result agar TaskActivity reload
+                    setResult(RESULT_OK)
+                    finish()
+                } else {
+                    Toast.makeText(this@FlowTimerActivity, "Failed to complete task.", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+        }
+    }
+
     private fun showAdjustTimeDialog() {
         val dialog = buildCustomDialog(
             this,
             "Adjust Time?",
             "Yes", "No",
             onPositive = {
-                stopAlarm() // Matikan alarm saat pengguna ingin set waktu baru
+                stopAlarm()
                 showSetNewTimeDialog()
             },
             onNegative = {
-                stopAlarm() // Matikan alarm saat pengguna ingin keluar
+                stopAlarm()
                 Toast.makeText(this, "Returning to task list.", Toast.LENGTH_SHORT).show()
                 finish()
             }
@@ -349,7 +366,6 @@ class FlowTimerActivity : AppCompatActivity() {
 
     override fun onBackPressed() {
         if (mediaPlayer?.isPlaying == true) {
-            // Jika alarm berbunyi, jangan izinkan back press tanpa mematikan
             Toast.makeText(this, "Swipe up to stop alarm first.", Toast.LENGTH_SHORT).show()
             return
         }
@@ -360,7 +376,7 @@ class FlowTimerActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         countDownTimer?.cancel()
-        stopAlarm() // Pastikan MediaPlayer dilepaskan saat Activity dihancurkan
+        stopAlarm()
     }
 
     private val Int.dp: Int
